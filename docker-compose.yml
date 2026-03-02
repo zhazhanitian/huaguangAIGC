@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mariadb:10.11
+    container_name: huaguang-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: huaguang_aigc
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    container_name: huaguang-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: huaguang-server
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASS=root
+      - DB_DATABASE=huaguang_aigc
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=huaguang-aigc-jwt-secret-2026
+      - JWT_EXPIRES_IN=7d
+    depends_on:
+      - mysql
+      - redis
+    volumes:
+      - ./server/uploads:/app/uploads
+
+volumes:
+  mysql_data:
+  redis_data:

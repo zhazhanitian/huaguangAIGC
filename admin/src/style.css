@@ -1,0 +1,295 @@
+/* ============================================
+   华光 AIGC — 全局设计系统 (Arco Design Dark)
+   设计语言: Arco Design 暗黑模式 + 玻璃拟态
+   ============================================ */
+
+/* --- Design Tokens (Arco Design Dark Theme) --- */
+:root {
+  /* 主色 - Arco Design RGB(22, 93, 255) */
+  --primary: #165DFF;
+  --primary-light: #4080FF;
+  --primary-dark: #0E42D2;
+  --primary-hover: #4080FF;
+  --primary-active: #0E42D2;
+
+  /* 功能色 - Arco Design 标准色板 */
+  --success: #00B42A;
+  --warning: #FF7D00;
+  --danger: #F53F3F;
+  --info: #165DFF;
+  --accent-cyan: #14C9C9;
+  --accent-pink: #F759AB;
+  --accent-green: #00B42A;
+  --accent-amber: #FF7D00;
+  --accent-red: #F53F3F;
+
+  /* 渐变色 */
+  --gradient-primary: linear-gradient(135deg, #165DFF 0%, #4080FF 100%);
+  --gradient-accent: linear-gradient(135deg, #14C9C9 0%, #165DFF 100%);
+  --gradient-warm: linear-gradient(135deg, #FF7D00 0%, #F759AB 100%);
+  --gradient-green: linear-gradient(135deg, #00B42A 0%, #14C9C9 100%);
+
+  /* 背景层级 - Arco Design Dark */
+  --bg-base: #17171A;
+  --bg-body: #17171A;
+  --bg-surface-1: #2E2E30;
+  --bg-surface-2: #313132;
+  --bg-surface-3: #3D3D3E;
+  --bg-elevated: #484849;
+  --bg-overlay: rgba(23, 23, 26, 0.85);
+  --bg-canvas: #0F0F11;
+
+  /* 玻璃效果 */
+  --glass-bg: rgba(49, 49, 50, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: blur(20px) saturate(180%);
+
+  /* 文字 - Arco Design Dark */
+  --text-1: #FFFFFF;
+  --text-2: #E5E8EB;
+  --text-3: #C9CDD4;
+  --text-4: #86909C;
+  --text-inverse: #232324;
+
+  /* 边框 - Arco Design Dark */
+  --border-1: rgba(255, 255, 255, 0.08);
+  --border-2: rgba(255, 255, 255, 0.12);
+  --border-3: rgba(255, 255, 255, 0.16);
+  --border-focus: rgba(22, 93, 255, 0.5);
+
+  /* 阴影 - Arco Design Dark */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 20px rgba(22, 93, 255, 0.15);
+  --shadow-glow-lg: 0 0 40px rgba(22, 93, 255, 0.2);
+
+  /* 间距 (8px grid) */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
+
+  /* 圆角 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* 过渡 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 0.15s;
+  --duration-normal: 0.25s;
+  --duration-slow: 0.4s;
+
+  /* 字体 */
+  font-family: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: dark;
+}
+
+/* --- Arco 暗色主题深度覆盖 --- */
+body[arco-theme='dark'] {
+  --color-bg-1: var(--bg-surface-1);
+  --color-bg-2: var(--bg-surface-2);
+  --color-bg-3: var(--bg-surface-3);
+  --color-bg-4: var(--bg-elevated);
+  --color-bg-5: #555556;
+  --color-text-1: var(--text-1);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-text-4: var(--text-4);
+  --color-border: var(--border-2);
+  --color-border-2: var(--border-1);
+  --color-fill-1: rgba(255, 255, 255, 0.04);
+  --color-fill-2: rgba(255, 255, 255, 0.06);
+  --color-fill-3: rgba(255, 255, 255, 0.08);
+  --color-fill-4: rgba(255, 255, 255, 0.12);
+  --color-primary-6: var(--primary);
+  --color-primary-light-4: rgba(22, 93, 255, 0.2);
+  --color-success-6: var(--success);
+  --color-warning-6: var(--warning);
+  --color-danger-6: var(--danger);
+  --color-info-6: var(--info);
+}
+
+/* Arco 组件圆角覆盖 */
+body[arco-theme='dark'] .arco-input-wrapper,
+body[arco-theme='dark'] .arco-select-view-single,
+body[arco-theme='dark'] .arco-select-view-multiple,
+body[arco-theme='dark'] .arco-textarea-wrapper {
+  border-radius: var(--radius-md) !important;
+  background: var(--bg-surface-2) !important;
+  border-color: var(--border-2) !important;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+body[arco-theme='dark'] .arco-input-wrapper:focus-within,
+body[arco-theme='dark'] .arco-select-view-single:focus-within,
+body[arco-theme='dark'] .arco-textarea-wrapper:focus-within {
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.12) !important;
+}
+body[arco-theme='dark'] .arco-btn-primary {
+  border-radius: var(--radius-md);
+  background: var(--gradient-primary);
+  border: none;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+body[arco-theme='dark'] .arco-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-glow);
+  filter: brightness(1.1);
+}
+body[arco-theme='dark'] .arco-btn-primary:active {
+  transform: translateY(0);
+}
+body[arco-theme='dark'] .arco-modal-wrapper .arco-modal {
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-2);
+  box-shadow: var(--shadow-lg);
+}
+
+/* 表格：更清晰的层级与可读性 */
+body[arco-theme='dark'] .arco-table-container {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border-1);
+}
+body[arco-theme='dark'] .arco-table-th {
+  background: rgba(255, 255, 255, 0.03) !important;
+  color: var(--text-2) !important;
+  font-weight: 600;
+}
+body[arco-theme='dark'] .arco-table-td {
+  border-color: rgba(255, 255, 255, 0.04) !important;
+}
+body[arco-theme='dark'] .arco-table-tr:hover .arco-table-td {
+  background: rgba(22, 93, 255, 0.06) !important;
+}
+
+/* 统一弹窗 footer 间距 */
+body[arco-theme='dark'] .arco-modal-footer {
+  border-top: 1px solid var(--border-1);
+}
+body[arco-theme='dark'] .arco-card {
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur);
+}
+body[arco-theme='dark'] .arco-table-tr:hover .arco-table-td {
+  background: rgba(22, 93, 255, 0.04) !important;
+}
+body[arco-theme='dark'] .arco-tag {
+  border-radius: var(--radius-sm);
+}
+body[arco-theme='dark'] .arco-tabs-nav-tab .arco-tabs-tab-active {
+  color: var(--primary-light) !important;
+}
+
+/* --- 基础重置 --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100vh; background: var(--bg-body); color: var(--text-1); }
+#app { min-height: 100vh; }
+a { color: var(--primary-light); text-decoration: none; transition: color var(--duration-fast); }
+a:hover { color: var(--accent-cyan); }
+::selection { background: rgba(22, 93, 255, 0.3); color: #fff; }
+
+/* --- 滚动条 --- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); }
+
+/* --- 页面切换动画 --- */
+.fade-slide-enter-active { animation: fadeSlideIn var(--duration-slow) var(--ease-out); }
+.fade-slide-leave-active { animation: fadeSlideOut var(--duration-normal) ease-in; }
+@keyframes fadeSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeSlideOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-4px); } }
+
+/* 列表 stagger 动画 */
+.stagger-enter-active { animation: fadeSlideIn var(--duration-slow) var(--ease-out) backwards; }
+.stagger-item:nth-child(1) { animation-delay: 0.03s; }
+.stagger-item:nth-child(2) { animation-delay: 0.06s; }
+.stagger-item:nth-child(3) { animation-delay: 0.09s; }
+.stagger-item:nth-child(4) { animation-delay: 0.12s; }
+.stagger-item:nth-child(5) { animation-delay: 0.15s; }
+.stagger-item:nth-child(6) { animation-delay: 0.18s; }
+
+/* 消息进入动画 */
+@keyframes msgFadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.msg-enter { animation: msgFadeIn 0.35s var(--ease-out) backwards; }
+
+/* --- 骨架屏 shimmer --- */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-surface-2) 25%, var(--bg-surface-3) 37%, var(--bg-surface-2) 63%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+/* --- 发光按钮扫光 --- */
+@keyframes btnShimmer {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+.btn-glow { position: relative; overflow: hidden; }
+.btn-glow::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+  animation: btnShimmer 3s ease-in-out infinite;
+}
+
+/* --- 呼吸发光边框 --- */
+@keyframes breathGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(22, 93, 255, 0.08); }
+  50% { box-shadow: 0 0 30px rgba(22, 93, 255, 0.2), 0 0 60px rgba(64, 128, 255, 0.08); }
+}
+.glow-breathe { animation: breathGlow 4s ease-in-out infinite; }
+
+/* --- 动态 mesh 背景 --- */
+@keyframes meshMove {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -20px) scale(1.05); }
+  50% { transform: translate(-20px, 20px) scale(0.95); }
+  75% { transform: translate(10px, 10px) scale(1.02); }
+}
+.mesh-bg { position: fixed; inset: 0; overflow: hidden; z-index: 0; }
+.mesh-bg .blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+  animation: meshMove 20s ease-in-out infinite;
+}
+.mesh-bg .blob-1 { width: 500px; height: 500px; background: #165DFF; top: -10%; left: -5%; animation-delay: 0s; }
+.mesh-bg .blob-2 { width: 400px; height: 400px; background: #4080FF; bottom: -10%; right: -5%; animation-delay: -7s; }
+.mesh-bg .blob-3 { width: 350px; height: 350px; background: #14C9C9; top: 40%; left: 50%; animation-delay: -14s; }
+
+/* --- GlowCard --- */
+.glow-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-blur);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+.glow-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
+}
+
+/* --- NProgress 覆盖 --- */
+#nprogress .bar { background: var(--gradient-primary) !important; height: 2px !important; }
+#nprogress .peg { box-shadow: 0 0 10px var(--primary), 0 0 5px var(--primary) !important; }

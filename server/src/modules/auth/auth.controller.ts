@@ -1,0 +1,59 @@
+import { Controller, Post, Get, Put, Body, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { AuthService } from './auth.service';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { GetUser } from '../../common/decorators/user.decorator';
+import { User } from '../user/user.entity';
+import { Public } from '../../common/decorators/public.decorator';
+
+@ApiTags('认证')
+@Controller('auth')
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
+  @Public()
+  @Post('register')
+  @ApiOperation({ summary: '用户注册' })
+  async register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto);
+  }
+
+  @Public()
+  @Post('login')
+  @ApiOperation({ summary: '用户登录' })
+  async login(@Body() dto: LoginDto) {
+    return this.authService.login(dto);
+  }
+
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '获取当前用户信息' })
+  async getProfile(@GetUser() user: User) {
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      avatar: user.avatar,
+      role: user.role,
+      status: user.status,
+      balance: Number(user.balance),
+      membershipExpiredAt: user.membershipExpiredAt,
+      inviteCode: user.inviteCode,
+      phone: user.phone,
+      sign: user.sign,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
+  @Put('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '更新当前用户资料' })
+  async updateProfile(@GetUser() user: User, @Body() body: { username?: string; email?: string; avatar?: string; sign?: string }) {
+    return this.authService.updateProfile(user.id, body);
+  }
+}

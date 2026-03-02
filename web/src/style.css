@@ -1,0 +1,560 @@
+/* ============================================
+   华光 AIGC — 全局设计系统 (Arco Design)
+   设计语言: Arco Design + Light/Dark 双主题
+   ============================================ */
+
+/* --- Design Tokens (Base) --- */
+:root {
+  /* 主色 - Arco Design RGB(22, 93, 255) */
+  --primary: #165DFF;
+  --primary-light: #4080FF;
+  --primary-dark: #0E42D2;
+  --primary-hover: #4080FF;
+  --primary-active: #0E42D2;
+
+  /* 功能色 - Arco Design 标准色板 */
+  --success: #00B42A;
+  --warning: #FF7D00;
+  --danger: #F53F3F;
+  --info: #165DFF;
+  --accent-cyan: #14C9C9;
+  --accent-pink: #F759AB;
+  --accent-green: #00B42A;
+  --accent-amber: #FF7D00;
+  --accent-red: #F53F3F;
+
+  /* 渐变色 */
+  --gradient-primary: linear-gradient(135deg, #165DFF 0%, #4080FF 100%);
+  --gradient-accent: linear-gradient(135deg, #14C9C9 0%, #165DFF 100%);
+  --gradient-warm: linear-gradient(135deg, #FF7D00 0%, #F759AB 100%);
+  --gradient-green: linear-gradient(135deg, #00B42A 0%, #14C9C9 100%);
+
+  /* 背景层级 (default: dark) */
+  --bg-base: #17171A;
+  --bg-body: #17171A;
+  --bg-surface-1: #2E2E30;
+  --bg-surface-2: #313132;
+  --bg-surface-3: #3D3D3E;
+  --bg-elevated: #484849;
+  --bg-overlay: rgba(23, 23, 26, 0.85);
+  --bg-canvas: #0F0F11;
+
+  /* 玻璃效果 */
+  --glass-bg: rgba(49, 49, 50, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: blur(20px) saturate(180%);
+
+  /* 文字 */
+  --text-1: #FFFFFF;
+  --text-2: #E5E8EB;
+  --text-3: #C9CDD4;
+  --text-4: #86909C;
+  --text-inverse: #232324;
+
+  /* 边框 */
+  --border-1: rgba(255, 255, 255, 0.08);
+  --border-2: rgba(255, 255, 255, 0.12);
+  --border-3: rgba(255, 255, 255, 0.16);
+  --border-focus: rgba(22, 93, 255, 0.5);
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 20px rgba(22, 93, 255, 0.15);
+  --shadow-glow-lg: 0 0 40px rgba(22, 93, 255, 0.2);
+
+  /* 间距 (8px grid) */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
+
+  /* 圆角 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* 过渡 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 0.15s;
+  --duration-normal: 0.25s;
+  --duration-slow: 0.4s;
+
+  /* 字体 */
+  font-family: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: light dark;
+}
+
+/* --- 潮流标题字体 --- */
+.page-title {
+  font-family: 'Space Grotesk', 'Outfit', -apple-system, 'PingFang SC', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-size: 1.5rem;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 模块副标题 */
+.page-desc {
+  font-family: 'Outfit', -apple-system, 'PingFang SC', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* --- Arco Dark Theme Mapping --- */
+body[arco-theme='dark'] {
+  --color-bg-1: var(--bg-surface-1);
+  --color-bg-2: var(--bg-surface-2);
+  --color-bg-3: var(--bg-surface-3);
+  --color-bg-4: var(--bg-elevated);
+  --color-bg-5: #2e2e42;
+  --color-text-1: var(--text-1);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-text-4: var(--text-4);
+  --color-border: var(--border-2);
+  --color-border-2: var(--border-1);
+  --color-fill-1: rgba(255, 255, 255, 0.04);
+  --color-fill-2: rgba(255, 255, 255, 0.06);
+  --color-fill-3: rgba(255, 255, 255, 0.08);
+  --color-fill-4: rgba(255, 255, 255, 0.12);
+  --color-tooltip-bg: #2e2e42;
+  --color-primary-6: var(--primary);
+  --color-primary-light-4: rgba(22, 93, 255, 0.2);
+  --color-success-6: var(--success);
+  --color-warning-6: var(--warning);
+  --color-danger-6: var(--danger);
+  --color-info-6: var(--info);
+}
+
+/* --- Arco Light Theme Mapping --- */
+body[arco-theme='light'] {
+  --bg-base: #f5f7fa;
+  --bg-body: #f5f7fa;
+  --bg-surface-1: #ffffff;
+  --bg-surface-2: #f7f8fa;
+  --bg-surface-3: #eef1f5;
+  --bg-elevated: #ffffff;
+  --bg-overlay: rgba(255, 255, 255, 0.9);
+  --bg-canvas: #ffffff;
+
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(15, 23, 42, 0.08);
+
+  --text-1: #1d2129;
+  --text-2: #4e5969;
+  --text-3: #86909c;
+  --text-4: #a9b2c0;
+  --text-inverse: #ffffff;
+
+  --border-1: rgba(6, 23, 41, 0.08);
+  --border-2: rgba(6, 23, 41, 0.12);
+  --border-3: rgba(6, 23, 41, 0.2);
+  --border-focus: rgba(22, 93, 255, 0.35);
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.1);
+  --shadow-lg: 0 12px 30px rgba(15, 23, 42, 0.14);
+  --shadow-glow: 0 0 14px rgba(22, 93, 255, 0.1);
+  --shadow-glow-lg: 0 0 28px rgba(22, 93, 255, 0.14);
+
+  --color-bg-1: var(--bg-surface-1);
+  --color-bg-2: var(--bg-surface-2);
+  --color-bg-3: var(--bg-surface-3);
+  --color-bg-4: var(--bg-elevated);
+  --color-bg-5: #ffffff;
+  --color-text-1: var(--text-1);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-text-4: var(--text-4);
+  --color-border: var(--border-2);
+  --color-border-2: var(--border-1);
+  --color-fill-1: rgba(15, 23, 42, 0.03);
+  --color-fill-2: rgba(15, 23, 42, 0.05);
+  --color-fill-3: rgba(15, 23, 42, 0.08);
+  --color-fill-4: rgba(15, 23, 42, 0.12);
+  --color-tooltip-bg: #ffffff;
+  --color-primary-6: var(--primary);
+  --color-primary-light-4: rgba(22, 93, 255, 0.14);
+  --color-success-6: var(--success);
+  --color-warning-6: var(--warning);
+  --color-danger-6: var(--danger);
+  --color-info-6: var(--info);
+}
+
+/* Arco 组件圆角覆盖 */
+body[arco-theme] .arco-input-wrapper,
+body[arco-theme] .arco-select-view-single,
+body[arco-theme] .arco-select-view-multiple,
+body[arco-theme] .arco-textarea-wrapper {
+  border-radius: var(--radius-md) !important;
+  border-color: var(--border-2) !important;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+body[arco-theme] .arco-input-wrapper:focus-within,
+body[arco-theme] .arco-select-view-single:focus-within,
+body[arco-theme] .arco-textarea-wrapper:focus-within {
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.12) !important;
+}
+body[arco-theme] .arco-btn-primary {
+  border-radius: var(--radius-md);
+  background: var(--gradient-primary);
+  border: none;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+body[arco-theme] .arco-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-glow);
+  filter: brightness(1.1);
+}
+body[arco-theme] .arco-btn-primary:active {
+  transform: translateY(0);
+}
+body[arco-theme] .arco-modal-wrapper .arco-modal {
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-2);
+  box-shadow: var(--shadow-lg);
+}
+body[arco-theme] .arco-card {
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur);
+}
+body[arco-theme] .arco-table-tr:hover .arco-table-td {
+  background: rgba(22, 93, 255, 0.04) !important;
+}
+body[arco-theme] .arco-tag {
+  border-radius: var(--radius-sm);
+}
+body[arco-theme] .arco-tabs-nav-tab .arco-tabs-tab-active {
+  color: var(--primary-light) !important;
+}
+
+/* --- Arco Select 轻量统一（仅外观，不改结构） --- */
+body[arco-theme] .arco-select-dropdown,
+body[arco-theme] .arco-dropdown {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-2);
+  background: var(--bg-surface-2);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: var(--glass-blur);
+  padding: 8px 6px;
+}
+body[arco-theme] .arco-select-dropdown .arco-select-dropdown-list,
+body[arco-theme] .arco-dropdown .arco-dropdown-list {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+body[arco-theme] .arco-select-option,
+body[arco-theme] .arco-dropdown-option {
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  background: transparent !important;
+  margin-top: 1px;
+  margin-bottom: 1px;
+}
+body[arco-theme] .arco-select-option:hover,
+body[arco-theme] .arco-dropdown-option:hover {
+  background: rgba(128, 128, 128, 0.12) !important;
+  color: var(--text-1);
+}
+body[arco-theme] .arco-select-option-active,
+body[arco-theme] .arco-dropdown-option-active {
+  background: rgba(128, 128, 128, 0.2) !important;
+  color: var(--text-1);
+}
+body[arco-theme] .arco-select-option-disabled,
+body[arco-theme] .arco-dropdown-option-disabled {
+  opacity: 0.45;
+}
+body[arco-theme='dark'] .arco-select-option-active,
+body[arco-theme='dark'] .arco-dropdown-option-active {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: var(--text-1);
+}
+body[arco-theme='light'] .arco-select-option-active,
+body[arco-theme='light'] .arco-dropdown-option-active {
+  background: rgba(15, 23, 42, 0.08) !important;
+  color: var(--text-1);
+}
+
+/* --- Arco Popover 轻量统一（保留组件行为） --- */
+body[arco-theme] .arco-popover-content {
+  border-radius: 12px;
+  border: none;
+  background: var(--bg-surface-2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+body[arco-theme] .arco-popover-content .arco-popover-content-inner {
+  padding: 8px 10px;
+}
+body[arco-theme] .arco-popover-title {
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* --- 全局高级下拉选项结构 (UI Option) --- */
+.ui-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 2px 0;
+}
+.ui-option-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.ui-option-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+.ui-option-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-1);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.ui-option-desc {
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+.ui-option-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.ui-option-badge {
+  font-size: 11px;
+  color: var(--text-2);
+  background: var(--color-fill-2);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-2);
+  flex-shrink: 0;
+  line-height: 1.4;
+  margin-left: 2px;
+}
+body[arco-theme='dark'] .ui-option-badge {
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+body[arco-theme='light'] .ui-option-badge {
+  color: var(--text-2);
+  background: rgba(15, 23, 42, 0.06);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+/* --- Arco Tooltip 轻量统一 --- */
+body[arco-theme] .arco-tooltip-content {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-2);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-1);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 6px 10px;
+}
+
+body[arco-theme] .arco-tooltip-arrow::before {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-2);
+}
+
+body[arco-theme] .arco-tooltip-popup-arrow {
+  background: var(--bg-elevated) !important;
+  box-shadow: inset 0 0 0 1px var(--border-2) !important;
+}
+
+body[arco-theme] .arco-trigger-popup.arco-tooltip-popup .arco-trigger-arrow {
+  background: var(--bg-elevated) !important;
+  box-shadow: inset 0 0 0 1px var(--border-2) !important;
+}
+
+/* --- 基础重置 --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100vh; background: var(--bg-body); color: var(--text-1); }
+#app { min-height: 100vh; }
+a { color: var(--primary-light); text-decoration: none; transition: color var(--duration-fast); }
+a:hover { color: var(--accent-cyan); }
+::selection { background: rgba(22, 93, 255, 0.3); color: #fff; }
+
+/* 键盘可见焦点：全站统一 */
+:where(button, [role='button'], a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--primary-light);
+  outline-offset: 2px;
+}
+
+/* --- 滚动条 --- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); }
+
+/* --- 页面切换动画 --- */
+.fade-slide-enter-active { animation: fadeSlideIn var(--duration-slow) var(--ease-out); }
+.fade-slide-leave-active { animation: fadeSlideOut var(--duration-normal) ease-in; }
+@keyframes fadeSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeSlideOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-4px); } }
+
+/* 列表 stagger 动画 */
+.stagger-enter-active { animation: fadeSlideIn var(--duration-slow) var(--ease-out) backwards; }
+.stagger-item:nth-child(1) { animation-delay: 0.03s; }
+.stagger-item:nth-child(2) { animation-delay: 0.06s; }
+.stagger-item:nth-child(3) { animation-delay: 0.09s; }
+.stagger-item:nth-child(4) { animation-delay: 0.12s; }
+.stagger-item:nth-child(5) { animation-delay: 0.15s; }
+.stagger-item:nth-child(6) { animation-delay: 0.18s; }
+
+/* 消息进入动画 */
+@keyframes msgFadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.msg-enter { animation: msgFadeIn 0.35s var(--ease-out) backwards; }
+
+/* --- 骨架屏 shimmer --- */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-surface-2) 25%, var(--bg-surface-3) 37%, var(--bg-surface-2) 63%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+/* --- 发光按钮扫光 --- */
+@keyframes btnShimmer {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+.btn-glow { position: relative; overflow: hidden; }
+.btn-glow::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+  animation: btnShimmer 3s ease-in-out infinite;
+}
+
+/* --- 呼吸发光边框 --- */
+@keyframes breathGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(22, 93, 255, 0.08); }
+  50% { box-shadow: 0 0 30px rgba(22, 93, 255, 0.2), 0 0 60px rgba(64, 128, 255, 0.08); }
+}
+.glow-breathe { animation: breathGlow 4s ease-in-out infinite; }
+
+/* --- 动态 mesh 背景 --- */
+@keyframes meshMove {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -20px) scale(1.05); }
+  50% { transform: translate(-20px, 20px) scale(0.95); }
+  75% { transform: translate(10px, 10px) scale(1.02); }
+}
+.mesh-bg { position: fixed; inset: 0; overflow: hidden; z-index: 0; }
+.mesh-bg .blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+  animation: meshMove 20s ease-in-out infinite;
+}
+.mesh-bg .blob-1 { width: 500px; height: 500px; background: #165DFF; top: -10%; left: -5%; animation-delay: 0s; }
+.mesh-bg .blob-2 { width: 400px; height: 400px; background: #4080FF; bottom: -10%; right: -5%; animation-delay: -7s; }
+.mesh-bg .blob-3 { width: 350px; height: 350px; background: #14C9C9; top: 40%; left: 50%; animation-delay: -14s; }
+
+/* --- 打字光标闪烁 --- */
+@keyframes cursorBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.typing-cursor {
+  display: inline-block;
+  width: 2px; height: 1.2em;
+  background: var(--primary-light);
+  margin-left: 2px;
+  animation: cursorBlink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+/* --- 环形进度 --- */
+.ring-progress {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: conic-gradient(var(--primary) calc(var(--progress) * 3.6deg), var(--bg-surface-3) 0deg);
+  display: flex; align-items: center; justify-content: center;
+}
+.ring-progress::after {
+  content: '';
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--bg-surface-2);
+}
+
+/* --- 波形动画 (音乐) --- */
+@keyframes waveBar {
+  0%, 100% { height: 4px; }
+  50% { height: var(--h, 16px); }
+}
+.wave-bars { display: flex; align-items: flex-end; gap: 2px; height: 24px; }
+.wave-bars span {
+  width: 3px; border-radius: 2px;
+  background: var(--gradient-primary);
+  animation: waveBar 1.2s ease-in-out infinite;
+}
+.wave-bars span:nth-child(1) { --h: 20px; animation-delay: 0s; }
+.wave-bars span:nth-child(2) { --h: 14px; animation-delay: 0.1s; }
+.wave-bars span:nth-child(3) { --h: 24px; animation-delay: 0.2s; }
+.wave-bars span:nth-child(4) { --h: 10px; animation-delay: 0.3s; }
+.wave-bars span:nth-child(5) { --h: 18px; animation-delay: 0.4s; }
+
+/* 动效降级：尊重用户减少动态偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --- 消息操作栏 hover 显示 --- */
+.message-item:hover .message-actions { opacity: 1; }
+
+/* --- NProgress 覆盖 --- */
+#nprogress .bar { background: var(--gradient-primary) !important; height: 2px !important; }
+#nprogress .peg { box-shadow: 0 0 10px var(--primary), 0 0 5px var(--primary) !important; }
