@@ -12,6 +12,7 @@
     "@arco-design/web-vue": "^2.57.0",
     "@vueuse/core": "^14.2.1",
     "axios": "^1.13.5",
+    "dayjs": "^1.11.19",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.28",
     "lucide-vue-next": "^0.575.0",
