@@ -1,12 +1,15 @@
-FROM node:20-alpine AS builder
+# 约定：Node 24.11.0 + pnpm
+FROM node:24.11.0-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile
 
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 FROM nginx:alpine
 
@@ -16,4 +19,3 @@ COPY --from=builder /app/dist ./
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
-

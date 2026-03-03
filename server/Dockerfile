@@ -1,36 +1,29 @@
-FROM node:20-alpine AS builder
+# 约定：Node 24.11.0 + pnpm
+FROM node:24.11.0-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install --legacy-peer-deps
+# 启用 pnpm（Node 自带 corepack）
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile
 
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
-FROM node:20-alpine AS runner
+FROM node:24.11.0-alpine AS runner
 
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY package*.json ./
-RUN npm install --production --legacy-peer-deps
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --prod --frozen-lockfile
 
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3001
 
 CMD ["node", "dist/main.js"]
-FROM node:18-alpine
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm install --legacy-peer-deps --production
-
-COPY . .
-RUN npm run build
-
-EXPOSE 3000
-
-CMD ["node", "dist/main"]
