@@ -16,7 +16,7 @@ const coreModules = [
   {
     id: 'chat',
     title: '智能对话',
-    subtitle: 'AI Chat',
+    subtitle: 'Chat',
     description: '搭载先进的自然语言处理模型，为您提供编程辅助、文案创作与日常问答的智能交互体验。',
     icon: IconMessage,
     path: '/chat',
@@ -25,8 +25,8 @@ const coreModules = [
   },
   {
     id: 'draw',
-    title: 'AI 绘画',
-    subtitle: 'AI Generation',
+    title: '绘画创作',
+    subtitle: 'Generation',
     description: '通过文本描述快速生成高品质图像，激发视觉创意，打破设计灵感的边界。',
     icon: IconImage,
     path: '/draw',
@@ -55,7 +55,7 @@ const coreModules = [
   },
   {
     id: 'music',
-    title: 'AI 音乐',
+    title: '音乐创作',
     subtitle: 'Audio Studio',
     description: '智能生成背景音乐与音效，满足多元化的数字媒体内容创作需求。',
     icon: IconMusic,
@@ -80,7 +80,7 @@ const upcomingModules = [
     id: 'self-learn',
     title: '自学模块',
     subtitle: 'Self Learning',
-    description: '聚合图文与视频学习内容，构建可持续迭代的 AI 自学资源中心。',
+    description: '聚合图文与视频学习内容，构建可持续迭代的 人工智能 自学资源中心。',
     icon: IconEdit,
     color: 'linear-gradient(135deg, #4FACFE 0%, #00F2FE 100%)',
     bgLight: 'rgba(79, 172, 254, 0.08)',
@@ -90,7 +90,7 @@ const upcomingModules = [
     id: 'quanzhou-carving',
     title: '泉州雕艺大模型',
     subtitle: 'Carving Model',
-    description: '木雕、石雕、白瓷雕塑垂泪应用项目。',
+    description: '木雕、石雕、白瓷雕塑垂类应用项目。',
     icon: IconApps,
     color: 'linear-gradient(135deg, #FA709A 0%, #FEE140 100%)',
     bgLight: 'rgba(250, 112, 154, 0.08)',
@@ -98,7 +98,7 @@ const upcomingModules = [
   },
   {
     id: 'quanzhou-food',
-    title: '泉州餐饮垂泪大模型',
+    title: '泉州美食之都垂类大模型',
     subtitle: 'Cuisine Model',
     description: '世界美食之都大模型应用项目。',
     icon: IconMusic,
@@ -122,17 +122,18 @@ function navigateTo(path: string) {
         <div class="glow-orb orb-2"></div>
         <div class="grid-pattern"></div>
       </div>
-      
+
       <div class="hero-content">
         <h1 class="hero-title">泉州华光职业学院</h1>
         <div class="school-badge">人工智能应用平台</div>
         <p class="hero-subtitle">
-          汇聚前沿 AIGC 技术，打造校级一站式创意设计中枢。<br/>
-          在这里，释放想象力，让 AI 赋能每一次创作。
+          汇聚前沿 人工智能 技术，打造校级一站式创意设计中枢。<br />
+          在这里，释放想象力，让 人工智能 赋能每一次创作。
         </p>
         <div class="hero-actions">
           <button class="primary-btn" @click="navigateTo('/chat')">
-            开始创作 <IconArrowRight />
+            开始创作
+            <IconArrowRight />
           </button>
         </div>
       </div>
@@ -142,16 +143,11 @@ function navigateTo(path: string) {
     <div class="modules-section">
       <div class="section-header">
         <h2>核心能力矩阵</h2>
-        <p>探索多元化的 AI 创作模块，开启智能设计之旅</p>
+        <p>探索多元化的人工智能创作模块，开启智能设计之旅</p>
       </div>
 
       <div class="bento-grid">
-        <div
-          v-for="mod in coreModules"
-          :key="mod.id"
-          class="bento-card"
-          @click="navigateTo(mod.path)"
-        >
+        <div v-for="mod in coreModules" :key="mod.id" class="bento-card" @click="navigateTo(mod.path)">
           <div class="card-bg" :style="{ background: mod.bgLight }"></div>
           <div class="card-header">
             <div class="icon-box" :style="{ background: mod.color }">
@@ -171,11 +167,7 @@ function navigateTo(path: string) {
       </div>
 
       <div class="bento-grid bento-grid--triple extra-grid">
-        <div
-          v-for="mod in upcomingModules"
-          :key="mod.id"
-          class="bento-card bento-card--static"
-        >
+        <div v-for="mod in upcomingModules" :key="mod.id" class="bento-card bento-card--static">
           <div class="card-bg" :style="{ background: mod.bgLight }"></div>
           <div class="card-header">
             <div class="icon-box" :style="{ background: mod.color }">
@@ -193,10 +185,10 @@ function navigateTo(path: string) {
         </div>
       </div>
     </div>
-    
+
     <!-- Footer -->
     <footer class="footer">
-      <p>© 2026 泉州华光职业学院 - AIGC 创意设计平台. All rights reserved.</p>
+      <p>© 2026 泉州华光职业学院 - 人工智能 创意设计平台. All rights reserved.</p>
     </footer>
   </div>
 </template>
@@ -225,12 +217,15 @@ function navigateTo(path: string) {
 
 .hero-background {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 0;
   overflow: hidden;
   background: var(--hero-base-gradient);
   --hero-base-gradient: linear-gradient(180deg, var(--bg-surface-1) 0%, var(--bg-surface-2) 100%);
-  --hero-image-opacity: 0.46;
+  --hero-image-opacity: 0.86;
   --hero-image-saturate: 1;
   --hero-image-brightness: 1;
   --hero-image-scale: 1.02;
@@ -320,8 +315,13 @@ function navigateTo(path: string) {
 }
 
 @keyframes float {
-  0% { transform: translateY(0) scale(1); }
-  100% { transform: translateY(40px) scale(1.05); }
+  0% {
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    transform: translateY(40px) scale(1.05);
+  }
 }
 
 .hero-content {
@@ -355,14 +355,15 @@ function navigateTo(path: string) {
   line-height: 1.2;
   font-family: 'Space Grotesk', 'Outfit', -apple-system, 'PingFang SC', sans-serif;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, var(--text-1) 0%, var(--text-2) 100%);
+  /* background: linear-gradient(135deg, var(--text-1) 0%, var(--text-2) 100%);
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  -webkit-text-fill-color: transparent; */
+  color: #fff;
 }
 
 .hero-subtitle {
   font-size: 1.25rem;
-  color: var(--text-2);
+  color: #fff;
   line-height: 1.8;
   max-width: 700px;
   margin: 0;
@@ -582,16 +583,20 @@ function navigateTo(path: string) {
   .hero-title {
     font-size: 2.5rem;
   }
+
   .hero-subtitle {
     font-size: 1.1rem;
   }
+
   .section-header h2 {
     font-size: 2rem;
   }
+
   .bento-grid {
     grid-template-columns: 1fr;
     gap: 1.5rem;
   }
+
   .bento-card {
     padding: 30px 24px;
   }

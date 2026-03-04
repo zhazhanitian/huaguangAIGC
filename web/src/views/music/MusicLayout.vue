@@ -202,23 +202,25 @@ function fmtTime(s: number) {
 let poll: ReturnType<typeof setInterval> | null = null
 let unsubRealtime: (() => void) | null = null
 const hasPending = computed(() => myTasks.value.some(t => t.status === 'pending' || t.status === 'processing'))
-function startPoll() { if (poll) return; poll = setInterval(async () => {
-  if (realtimeConnected.value) { stopPoll(); return }
-  if (document.visibilityState === 'hidden') return
-  if (!hasPending.value) { stopPoll(); return }
-  const ids = myTasks.value
-    .filter((x) => x.status === 'pending' || x.status === 'processing')
-    .map((x) => x.id)
-  if (ids.length === 0) return
-  try {
-    const { data } = await getTasksStatusBatch(ids)
-    const list = Array.isArray(data) ? data : []
-    for (const u of list) {
-      const i = myTasks.value.findIndex((x) => x.id === u.id)
-      if (i >= 0) myTasks.value[i] = { ...myTasks.value[i], ...u }
-    }
-  } catch {}
-}, 10000) }
+function startPoll() {
+  if (poll) return; poll = setInterval(async () => {
+    if (realtimeConnected.value) { stopPoll(); return }
+    if (document.visibilityState === 'hidden') return
+    if (!hasPending.value) { stopPoll(); return }
+    const ids = myTasks.value
+      .filter((x) => x.status === 'pending' || x.status === 'processing')
+      .map((x) => x.id)
+    if (ids.length === 0) return
+    try {
+      const { data } = await getTasksStatusBatch(ids)
+      const list = Array.isArray(data) ? data : []
+      for (const u of list) {
+        const i = myTasks.value.findIndex((x) => x.id === u.id)
+        if (i >= 0) myTasks.value[i] = { ...myTasks.value[i], ...u }
+      }
+    } catch { }
+  }, 10000)
+}
 function stopPoll() { if (poll) { clearInterval(poll); poll = null } }
 watch(hasPending, v => v ? startPoll() : stopPoll())
 watch(activeTab, (t) => {
@@ -268,7 +270,7 @@ watch(realtimeConnected, (connected) => {
             if (i >= 0) myTasks.value[i] = { ...myTasks.value[i], ...u }
           }
         })
-        .catch(() => {})
+        .catch(() => { })
     }
   } else if (hasPending.value) startPoll()
 })
@@ -330,7 +332,7 @@ function buildRemixPayload() {
     throw new Error('请先选择一首已完成作品')
   }
   const model = form.value.model || 'V4_5PLUS'
-  const title = remixTitle.value.trim() || source.title || 'AI 二次创作'
+  const title = remixTitle.value.trim() || source.title || '二次创作'
   const prompt = remixPrompt.value.trim() || source.prompt || '在原曲基础上进行优化创作'
   const style = remixStyle.value || 'pop'
   const negativeTags = remixNegativeTags.value.trim()
@@ -443,7 +445,7 @@ function handleDeleteTask(task: MusicTask) {
 }
 
 function isDone(s: string) { return s === 'done' || s === 'completed' }
-function sText(s: string) { return ({ pending:'排队中', processing:'生成中', done:'已完成', completed:'已完成', failed:'失败' } as Record<string,string>)[s] ?? s }
+function sText(s: string) { return ({ pending: '排队中', processing: '生成中', done: '已完成', completed: '已完成', failed: '失败' } as Record<string, string>)[s] ?? s }
 function musicStageText(task: MusicTask) {
   if (task.status === 'pending') return '正在初始化音乐任务'
   const p = task.progress ?? 0
@@ -524,40 +526,36 @@ async function handleKieQuery() {
     <!-- 标题 -->
     <header class="hd">
       <div>
-        <h1 class="hd-title">AI 音乐</h1>
+        <h1 class="hd-title">音乐创作</h1>
         <p class="hd-desc">面向创作者的智能音乐平台，提供专业的生成能力、清晰的参数配置与稳定的任务处理体验。</p>
       </div>
       <div class="tab-group">
-        <button
-          v-for="t in [{k:'create',l:'创作'},{k:'gallery',l:'发现'}]"
-          :key="t.k"
-          class="tab-btn"
-          :class="{active:activeTab===t.k}"
-          @click="activeTab=t.k"
-        >{{ t.l }}</button>
+        <button v-for="t in [{ k: 'create', l: '创作' }, { k: 'gallery', l: '发现' }]" :key="t.k" class="tab-btn"
+          :class="{ active: activeTab === t.k }" @click="activeTab = t.k">{{ t.l }}</button>
       </div>
     </header>
 
     <!-- ===== 创作 ===== -->
-    <div v-show="activeTab==='create'" class="create-area">
+    <div v-show="activeTab === 'create'" class="create-area">
       <aside class="form-panel">
         <!-- 模型 -->
         <section class="fg">
           <label class="fl">模型</label>
           <select v-model="form.model" class="text-input">
-            <option v-for="m in modelOptions" :key="m.value" :value="m.value">{{ m.label }}{{ m.pts ? ` (${m.pts}积分)` : '' }}</option>
+            <option v-for="m in modelOptions" :key="m.value" :value="m.value">{{ m.label }}{{ m.pts ? ` (${m.pts}积分)` :
+              '' }}</option>
           </select>
         </section>
 
         <!-- 模式 -->
         <div class="mode-bar">
-          <button class="mode-btn" :class="{active:customMode}" @click="customMode=true">自定义模式</button>
-          <button class="mode-btn" :class="{active:!customMode}" @click="customMode=false">简易模式</button>
+          <button class="mode-btn" :class="{ active: customMode }" @click="customMode = true">自定义模式</button>
+          <button class="mode-btn" :class="{ active: !customMode }" @click="customMode = false">简易模式</button>
         </div>
 
         <!-- 歌曲标题 -->
         <section class="fg" v-if="customMode">
-          <label class="fl">歌曲名称 <span class="fl-opt">必填（<=80）</span></label>
+          <label class="fl">歌曲名称 <span class="fl-opt">必填（<=80）< /span></label>
           <input v-model="form.title" class="text-input" maxlength="80" placeholder="例如：Midnight Neon" />
         </section>
 
@@ -567,33 +565,25 @@ async function handleKieQuery() {
             {{ customMode ? (isInstrumental ? '音乐创意描述' : '歌词 / 提示词') : '提示词（简易模式）' }}
             <span class="fl-opt">{{ customMode ? '最多5000' : '最多500' }}</span>
           </label>
-          <textarea
-            v-model="form.prompt"
-            class="text-area lyrics-area"
-            :maxlength="customMode ? 5000 : 500"
-            :rows="customMode ? 8 : 5"
-            :placeholder="customMode ? '[主歌]\\n写歌词或详细描述风格与情绪' : '例如：适合雨夜聆听的梦幻 LoFi 歌曲'"
-          />
+          <textarea v-model="form.prompt" class="text-area lyrics-area" :maxlength="customMode ? 5000 : 500"
+            :rows="customMode ? 8 : 5" :placeholder="customMode ? '[主歌]\\n写歌词或详细描述风格与情绪' : '例如：适合雨夜聆听的梦幻 LoFi 歌曲'" />
           <div class="field-counter">{{ promptLen }}/{{ promptLimit }}</div>
         </section>
 
         <!-- 纯音乐开关 -->
         <div class="toggle-row" @click="isInstrumental = !isInstrumental">
           <span class="toggle-label">纯音乐（无人声）</span>
-          <div class="toggle-switch" :class="{on:isInstrumental}"><div class="toggle-dot" /></div>
+          <div class="toggle-switch" :class="{ on: isInstrumental }">
+            <div class="toggle-dot" />
+          </div>
         </div>
 
         <!-- 风格 -->
         <section class="fg" v-if="customMode">
           <label class="fl">风格 <span class="fl-opt">必填</span></label>
           <div class="style-grid">
-            <button
-              v-for="s in styles" :key="s.value"
-              class="style-chip"
-              :class="{active:form.style===s.value}"
-              :style="{'--sc':s.color}"
-              @click="form.style=s.value"
-            >
+            <button v-for="s in styles" :key="s.value" class="style-chip" :class="{ active: form.style === s.value }"
+              :style="{ '--sc': s.color }" @click="form.style = s.value">
               <span class="sc-emoji">{{ s.emoji }}</span>
               <span class="sc-label">{{ s.label }}</span>
             </button>
@@ -627,7 +617,8 @@ async function handleKieQuery() {
           </section>
           <section class="fg">
             <label class="fl">创意偏离（weirdnessConstraint，0-1）</label>
-            <input v-model.number="form.weirdnessConstraint" class="text-input" type="number" min="0" max="1" step="0.01" />
+            <input v-model.number="form.weirdnessConstraint" class="text-input" type="number" min="0" max="1"
+              step="0.01" />
           </section>
           <section class="fg">
             <label class="fl">音频权重（audioWeight，0-1）</label>
@@ -688,7 +679,8 @@ async function handleKieQuery() {
           <label class="fl" style="margin-top:10px">负向风格（可选）</label>
           <input v-model="remixNegativeTags" class="text-input" placeholder="如：metal, noisy" />
 
-          <button class="gen-btn" :disabled="creatorToolLoading || !completedTasks.length" @click="handleCreatorToolRun">
+          <button class="gen-btn" :disabled="creatorToolLoading || !completedTasks.length"
+            @click="handleCreatorToolRun">
             <IconLoading v-if="creatorToolLoading" class="spin" />
             <span>{{ creatorToolLoading ? '提交中...' : '执行二次创作' }}</span>
           </button>
@@ -700,32 +692,45 @@ async function handleKieQuery() {
 
       <!-- 右侧：我的歌曲 -->
       <section class="songs">
-        <div class="songs-head"><h3>我的音乐</h3><span v-if="myTotal>0" class="badge">{{ myTotal }}</span></div>
+        <div class="songs-head">
+          <h3>我的音乐</h3><span v-if="myTotal > 0" class="badge">{{ myTotal }}</span>
+        </div>
         <a-spin :loading="myLoading" class="songs-spin" style="width:100%;min-height:200px">
-          <div v-if="myTasks.length>0" class="song-grid">
-            <div v-for="t in myTasks" :key="t.id" class="song-card" :class="{playing:playingId===t.id}">
+          <div v-if="myTasks.length > 0" class="song-grid">
+            <div v-for="t in myTasks" :key="t.id" class="song-card" :class="{ playing: playingId === t.id }">
               <!-- 封面 -->
-              <div class="song-cover" :style="{background:`linear-gradient(135deg, ${styleColor(t.style??'')} 0%, ${styleColor(t.style??'')}66 100%)`}">
+              <div class="song-cover"
+                :style="{ background: `linear-gradient(135deg, ${styleColor(t.style ?? '')} 0%, ${styleColor(t.style ?? '')}66 100%)` }">
                 <div class="vinyl-disc" :class="{ 'has-image': !!t.coverUrl }">
                   <img v-if="t.coverUrl" :src="t.coverUrl" />
-                  <span v-else class="cover-emoji">{{ styleEmoji(t.style??'') }}</span>
+                  <span v-else class="cover-emoji">{{ styleEmoji(t.style ?? '') }}</span>
                   <span class="vinyl-center-label">{{ (t.title || 'AI').slice(0, 6) }}</span>
                   <span class="vinyl-center-hole" />
                 </div>
                 <!-- 播放按钮 -->
-                <button v-if="isDone(t.status) && t.audioUrl" class="play-circle" @click.stop="togglePlay(t.id, t.audioUrl!)">
-                  <svg v-if="playingId!==t.id" viewBox="0 0 24 24" width="24" height="24"><polygon points="8,5 19,12 8,19" fill="#fff" /></svg>
-                  <svg v-else viewBox="0 0 24 24" width="24" height="24"><rect x="6" y="5" width="4" height="14" rx="1" fill="#fff" /><rect x="14" y="5" width="4" height="14" rx="1" fill="#fff" /></svg>
+                <button v-if="isDone(t.status) && t.audioUrl" class="play-circle"
+                  @click.stop="togglePlay(t.id, t.audioUrl!)">
+                  <svg v-if="playingId !== t.id" viewBox="0 0 24 24" width="24" height="24">
+                    <polygon points="8,5 19,12 8,19" fill="#fff" />
+                  </svg>
+                  <svg v-else viewBox="0 0 24 24" width="24" height="24">
+                    <rect x="6" y="5" width="4" height="14" rx="1" fill="#fff" />
+                    <rect x="14" y="5" width="4" height="14" rx="1" fill="#fff" />
+                  </svg>
                 </button>
                 <!-- 波形 -->
-                <div v-if="playingId===t.id" class="wave-bars"><span /><span /><span /><span /><span /></div>
+                <div v-if="playingId === t.id" class="wave-bars"><span /><span /><span /><span /><span /></div>
                 <!-- 处理中 -->
-                <div v-if="t.status==='processing' || t.status==='pending'" class="proc-ov">
+                <div v-if="t.status === 'processing' || t.status === 'pending'" class="proc-ov">
                   <span class="proc-stage">{{ musicStageText(t) }}</span>
                   <div class="proc-ring">
-                    <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="rgba(255,255,255,0)" stroke-width="3" /><circle cx="20" cy="20" r="16" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" :stroke-dasharray="`${(t.progress??0)*1.005} 100`" transform="rotate(-90 20 20)" /></svg>
+                    <svg viewBox="0 0 40 40">
+                      <circle cx="20" cy="20" r="16" fill="none" stroke="rgba(255,255,255,0)" stroke-width="3" />
+                      <circle cx="20" cy="20" r="16" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"
+                        :stroke-dasharray="`${(t.progress ?? 0) * 1.005} 100`" transform="rotate(-90 20 20)" />
+                    </svg>
                   </div>
-                  <span class="proc-pct">{{ t.progress??0 }}%</span>
+                  <span class="proc-pct">{{ t.progress ?? 0 }}%</span>
                   <div class="proc-progress">
                     <div class="proc-progress-fill" :style="{ width: `${t.progress ?? 0}%` }" />
                   </div>
@@ -733,14 +738,21 @@ async function handleKieQuery() {
               </div>
               <!-- 信息 -->
               <div class="song-info">
-                <h4 class="song-title">{{ t.title || t.prompt?.slice(0,24) || '未命名' }}</h4>
+                <h4 class="song-title">{{ t.title || t.prompt?.slice(0, 24) || '未命名' }}</h4>
                 <div class="song-meta">
-                  <span class="song-style" :style="{color:styleColor(t.style??''), background:styleColor(t.style??'')+'1a'}">{{ styleLabel(t.style??'') }}</span>
+                  <span class="song-style"
+                    :style="{ color: styleColor(t.style ?? ''), background: styleColor(t.style ?? '') + '1a' }">{{
+                      styleLabel(t.style??'') }}</span>
                   <span class="song-status">· {{ String(taskParam(t, 'model') || 'V4_5PLUS') }}</span>
                   <span class="song-status">· {{ taskParam(t, 'customMode') ? '自定义' : '简易' }}</span>
                   <span class="song-status">· {{ taskParam(t, 'instrumental') ? '纯音乐' : '有人声' }}</span>
-                  <span v-if="!isDone(t.status)" class="song-status" :style="{color:t.status==='failed'?'var(--accent-red)':'var(--text-4)'}">{{ sText(t.status) }}</span>
-                  <span v-if="t.status==='failed' && t.errorMessage" class="song-status song-error-msg" style="color:var(--accent-red);cursor:pointer" :title="t.errorMessage" @click.stop="Modal.error({ title: '错误详情', content: t.errorMessage, okText: '关闭', maskClosable: true, closable: true })"> · {{ t.errorMessage }}</span>
+                  <span v-if="!isDone(t.status)" class="song-status"
+                    :style="{ color: t.status === 'failed' ? 'var(--accent-red)' : 'var(--text-4)' }">{{ sText(t.status)
+                    }}</span>
+                  <span v-if="t.status === 'failed' && t.errorMessage" class="song-status song-error-msg"
+                    style="color:var(--accent-red);cursor:pointer" :title="t.errorMessage"
+                    @click.stop="Modal.error({ title: '错误详情', content: t.errorMessage, okText: '关闭', maskClosable: true, closable: true })">
+                    · {{ t.errorMessage }}</span>
                 </div>
               </div>
               <!-- 底部操作 -->
@@ -748,20 +760,20 @@ async function handleKieQuery() {
                 <WorkCardActionButton danger title="删除任务" @click="handleDeleteTask(t)">
                   <IconDelete :size="14" />
                 </WorkCardActionButton>
-                <template v-if="isDone(t.status)&&t.audioUrl">
-                <WorkCardActionButton title="下载" @click="downloadAudio(t.audioUrl!, t.title??'')"><IconDownload :size="14" /></WorkCardActionButton>
-                <WorkCardActionButton title="复制提示词" @click="copyPrompt(t.prompt??'')"><IconCopy :size="14" /></WorkCardActionButton>
+                <template v-if="isDone(t.status) && t.audioUrl">
+                  <WorkCardActionButton title="下载" @click="downloadAudio(t.audioUrl!, t.title ?? '')">
+                    <IconDownload :size="14" />
+                  </WorkCardActionButton>
+                  <WorkCardActionButton title="复制提示词" @click="copyPrompt(t.prompt ?? '')">
+                    <IconCopy :size="14" />
+                  </WorkCardActionButton>
                 </template>
-                <template v-else-if="t.status==='failed'">
-                <WorkCardActionButton
-                  shape="pill"
-                  :disabled="retryingIds.has(t.id)"
-                  title="重新生成"
-                  @click="handleRetryTask(t)"
-                >
-                  <IconLoading v-if="retryingIds.has(t.id)" class="spin" />
-                  <span>{{ retryingIds.has(t.id) ? '重试中...' : '重新生成' }}</span>
-                </WorkCardActionButton>
+                <template v-else-if="t.status === 'failed'">
+                  <WorkCardActionButton shape="pill" :disabled="retryingIds.has(t.id)" title="重新生成"
+                    @click="handleRetryTask(t)">
+                    <IconLoading v-if="retryingIds.has(t.id)" class="spin" />
+                    <span>{{ retryingIds.has(t.id) ? '重试中...' : '重新生成' }}</span>
+                  </WorkCardActionButton>
                 </template>
               </div>
             </div>
@@ -770,38 +782,51 @@ async function handleKieQuery() {
             <EmptyState title="暂无音乐" description="输入歌词或描述，开始你的第一首AI音乐创作" />
           </div>
         </a-spin>
-        <a-pagination v-if="myTotal>20" v-model:current="myPage" :total="myTotal" :page-size="20" size="small" class="pager" @change="fetchMy" />
+        <a-pagination v-if="myTotal > 20" v-model:current="myPage" :total="myTotal" :page-size="20" size="small"
+          class="pager" @change="fetchMy" />
       </section>
     </div>
 
     <!-- ===== 发现 ===== -->
-    <div v-show="activeTab==='gallery'" class="gal-area">
+    <div v-show="activeTab === 'gallery'" class="gal-area">
       <a-spin :loading="galLoading" style="width:100%;min-height:200px">
-        <div v-if="gallery.length>0" class="song-grid gal-grid">
-          <div v-for="item in gallery" :key="item.id" class="song-card" :class="{playing:playingId===item.id}">
-            <div class="song-cover" :style="{background:`linear-gradient(135deg, ${styleColor(item.style??'')} 0%, ${styleColor(item.style??'')}66 100%)`}">
+        <div v-if="gallery.length > 0" class="song-grid gal-grid">
+          <div v-for="item in gallery" :key="item.id" class="song-card" :class="{ playing: playingId === item.id }">
+            <div class="song-cover"
+              :style="{ background: `linear-gradient(135deg, ${styleColor(item.style ?? '')} 0%, ${styleColor(item.style ?? '')}66 100%)` }">
               <div class="vinyl-disc" :class="{ 'has-image': !!item.coverUrl }">
                 <img v-if="item.coverUrl" :src="item.coverUrl" />
-                <span v-else class="cover-emoji">{{ styleEmoji(item.style??'') }}</span>
+                <span v-else class="cover-emoji">{{ styleEmoji(item.style ?? '') }}</span>
                 <span class="vinyl-center-label">{{ (item.title || 'AI').slice(0, 6) }}</span>
                 <span class="vinyl-center-hole" />
               </div>
               <button v-if="item.audioUrl" class="play-circle" @click.stop="togglePlay(item.id, item.audioUrl)">
-                <svg v-if="playingId!==item.id" viewBox="0 0 24 24" width="24" height="24"><polygon points="8,5 19,12 8,19" fill="#fff" /></svg>
-                <svg v-else viewBox="0 0 24 24" width="24" height="24"><rect x="6" y="5" width="4" height="14" rx="1" fill="#fff" /><rect x="14" y="5" width="4" height="14" rx="1" fill="#fff" /></svg>
+                <svg v-if="playingId !== item.id" viewBox="0 0 24 24" width="24" height="24">
+                  <polygon points="8,5 19,12 8,19" fill="#fff" />
+                </svg>
+                <svg v-else viewBox="0 0 24 24" width="24" height="24">
+                  <rect x="6" y="5" width="4" height="14" rx="1" fill="#fff" />
+                  <rect x="14" y="5" width="4" height="14" rx="1" fill="#fff" />
+                </svg>
               </button>
-              <div v-if="playingId===item.id" class="wave-bars"><span /><span /><span /><span /><span /></div>
+              <div v-if="playingId === item.id" class="wave-bars"><span /><span /><span /><span /><span /></div>
             </div>
             <div class="song-info">
               <h4 class="song-title">{{ item.title || '未命名' }}</h4>
               <div class="song-meta">
-                <span class="song-style" :style="{color:styleColor(item.style??''), background:styleColor(item.style??'')+'1a'}">{{ styleLabel(item.style??'') }}</span>
-                <span class="song-author">{{ item.authorName??'匿名' }}</span>
+                <span class="song-style"
+                  :style="{ color: styleColor(item.style ?? ''), background: styleColor(item.style ?? '') + '1a' }">{{
+                    styleLabel(item.style??'') }}</span>
+                <span class="song-author">{{ item.authorName ?? '匿名' }}</span>
               </div>
             </div>
             <div class="song-actions">
-              <WorkCardActionButton title="复制提示词" @click="copyPrompt(item.prompt??'')"><IconCopy :size="14" /></WorkCardActionButton>
-              <WorkCardActionButton title="喜欢"><IconHeart :size="14" /></WorkCardActionButton>
+              <WorkCardActionButton title="复制提示词" @click="copyPrompt(item.prompt ?? '')">
+                <IconCopy :size="14" />
+              </WorkCardActionButton>
+              <WorkCardActionButton title="喜欢">
+                <IconHeart :size="14" />
+              </WorkCardActionButton>
             </div>
           </div>
         </div>
@@ -809,11 +834,12 @@ async function handleKieQuery() {
           <EmptyState title="暂无公开作品" description="创作并分享你的AI音乐" />
         </div>
       </a-spin>
-      <a-pagination v-if="galTotal>20" v-model:current="galPage" :total="galTotal" :page-size="20" size="small" class="pager" @change="fetchGal" />
+      <a-pagination v-if="galTotal > 20" v-model:current="galPage" :total="galTotal" :page-size="20" size="small"
+        class="pager" @change="fetchGal" />
     </div>
 
     <!-- ===== Kie 全套工具台 ===== -->
-    <div v-show="activeTab==='toolkit'" class="toolkit-area">
+    <div v-show="activeTab === 'toolkit'" class="toolkit-area">
       <div class="toolkit-grid">
         <section class="toolkit-panel">
           <h3 class="toolkit-title">操作选择</h3>
@@ -827,12 +853,7 @@ async function handleKieQuery() {
           </div>
 
           <h3 class="toolkit-title">请求参数（JSON）</h3>
-          <textarea
-            v-model="payloadText"
-            class="toolkit-json"
-            rows="18"
-            spellcheck="false"
-          />
+          <textarea v-model="payloadText" class="toolkit-json" rows="18" spellcheck="false" />
 
           <div class="toolkit-actions">
             <button class="mode-btn" @click="loadOperationTemplate()">重置模板</button>
@@ -854,7 +875,7 @@ async function handleKieQuery() {
           </div>
 
           <h3 class="toolkit-title">返回结果</h3>
-          <pre class="toolkit-result">{{ toolkitResult || '{\n  "提示": "执行后将在这里显示结果"\n}' }}</pre>
+          <pre class="toolkit-result">{{ toolkitResult || '{\n "提示": "执行后将在这里显示结果"\n}' }}</pre>
         </section>
       </div>
     </div>
@@ -864,22 +885,25 @@ async function handleKieQuery() {
       <div v-if="playingId" class="player-bar">
         <div class="player-inner">
           <div class="player-info">
-            <div class="player-cover" :style="{background:'var(--gradient-primary)'}">
+            <div class="player-cover" :style="{ background: 'var(--gradient-primary)' }">
               <span style="font-size:16px">🎵</span>
             </div>
             <div class="player-text">
-              <span class="player-title">{{ [...myTasks,...gallery].find(x=>x.id===playingId)?.title || '播放中' }}</span>
+              <span class="player-title">{{[...myTasks, ...gallery].find(x => x.id === playingId)?.title || '播放中'}}</span>
               <span class="player-time">{{ fmtTime(playCurrentTime) }} / {{ fmtTime(playDuration) }}</span>
             </div>
           </div>
           <div class="player-controls">
             <button class="player-btn" @click="togglePlay(playingId!, '')">
-              <svg viewBox="0 0 24 24" width="20" height="20"><rect x="6" y="5" width="4" height="14" rx="1" fill="#fff" /><rect x="14" y="5" width="4" height="14" rx="1" fill="#fff" /></svg>
+              <svg viewBox="0 0 24 24" width="20" height="20">
+                <rect x="6" y="5" width="4" height="14" rx="1" fill="#fff" />
+                <rect x="14" y="5" width="4" height="14" rx="1" fill="#fff" />
+              </svg>
             </button>
           </div>
           <div class="player-progress" @click="seekAudio">
             <div class="player-bar-bg">
-              <div class="player-bar-fill" :style="{width:playProgress+'%'}" />
+              <div class="player-bar-fill" :style="{ width: playProgress + '%' }" />
             </div>
           </div>
         </div>
@@ -889,40 +913,188 @@ async function handleKieQuery() {
 </template>
 
 <style scoped>
-.page { display:flex; flex-direction:column; height:100%; overflow:hidden; position:relative; }
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
 
 /* 头部 */
-.hd { flex-shrink:0; display:flex; align-items:flex-end; justify-content:space-between; padding:var(--sp-6) var(--sp-8) var(--sp-4); }
-.hd-title { margin:0; font-size:1.25rem; font-weight:700; font-family: 'Space Grotesk', 'Outfit', -apple-system, 'PingFang SC', sans-serif; letter-spacing: -0.02em; background:var(--gradient-primary); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
-.hd-desc { margin:4px 0 0; font-size:0.82rem; color:var(--text-4); font-family: 'Outfit', -apple-system, 'PingFang SC', sans-serif; }
-.tab-group { display:flex; gap:4px; background:var(--bg-surface-2); border-radius:var(--radius-md); padding:3px; }
-.tab-btn { padding:6px 20px; border:none; border-radius:var(--radius-sm); background:transparent; color:var(--text-3); font-size:0.82rem; cursor:pointer; transition:all 0s; }
-.tab-btn.active { background:var(--primary); color:#fff; }
+.hd {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: var(--sp-6) var(--sp-8) var(--sp-4);
+}
+
+.hd-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-family: 'Space Grotesk', 'Outfit', -apple-system, 'PingFang SC', sans-serif;
+  letter-spacing: -0.02em;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hd-desc {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-4);
+  font-family: 'Outfit', -apple-system, 'PingFang SC', sans-serif;
+}
+
+.tab-group {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-surface-2);
+  border-radius: var(--radius-md);
+  padding: 3px;
+}
+
+.tab-btn {
+  padding: 6px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0s;
+}
+
+.tab-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
 
 /* 创作区 */
-.create-area { flex:1; display:flex; gap:var(--sp-6); padding:var(--sp-4) var(--sp-8) var(--sp-6); overflow:hidden; }
+.create-area {
+  flex: 1;
+  display: flex;
+  gap: var(--sp-6);
+  padding: var(--sp-4) var(--sp-8) var(--sp-6);
+  overflow: hidden;
+}
 
 /* 左侧表单 */
 .form-panel {
-  width:340px; flex-shrink:0; overflow-y:auto; display:flex; flex-direction:column; gap:var(--sp-3);
-  background:var(--glass-bg); backdrop-filter:var(--glass-blur); border:1px solid var(--glass-border);
-  border-radius:var(--radius-lg); padding:var(--sp-5);
+  width: 340px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
 }
-.fg { margin-bottom:var(--sp-1); }
-.fl { display:block; font-size:0.78rem; font-weight:600; color:var(--text-3); margin-bottom:var(--sp-2); text-transform:uppercase; letter-spacing:0.05em; }
-.fl-opt { font-weight:400; color:var(--text-4); text-transform:none; }
-.mode-bar { display:flex; gap:4px; background:var(--bg-surface-2); border-radius:var(--radius-md); padding:3px; margin-bottom:var(--sp-3); }
-.mode-btn { flex:1; padding:8px; border:none; border-radius:var(--radius-sm); background:transparent; color:var(--text-3); font-size:0.82rem; cursor:pointer; transition:all 0s; }
-.mode-btn.active { background:var(--primary); color:#fff; }
+
+.fg {
+  margin-bottom: var(--sp-1);
+}
+
+.fl {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-bottom: var(--sp-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fl-opt {
+  font-weight: 400;
+  color: var(--text-4);
+  text-transform: none;
+}
+
+.mode-bar {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-surface-2);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  margin-bottom: var(--sp-3);
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0s;
+}
+
+.mode-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
 
 /* 输入框 */
-.text-input { width:100%; padding:10px 14px; background:var(--bg-surface-2); border:1px solid var(--border-1); border-radius:var(--radius-md); color:var(--text-1); font-size:14px; outline:none; transition:border-color 0s; font-family:inherit; }
-.text-input:focus { border-color:var(--border-focus); box-shadow:0 0 0 3px rgba(22, 93, 255, 0.1); }
-.text-input::placeholder { color:var(--text-4); }
-.text-area { width:100%; padding:10px 14px; background:var(--bg-surface-2); border:1px solid var(--border-1); border-radius:var(--radius-md); color:var(--text-1); font-size:14px; outline:none; resize:vertical; line-height:1; font-family:inherit; transition:border-color 0s; }
-.text-area:focus { border-color:var(--border-focus); box-shadow:0 0 0 3px rgba(22, 93, 255, 0.1); }
-.text-area::placeholder { color:var(--text-4); }
-.lyrics-area { font-family:'JetBrains Mono','Fira Code',monospace; font-size:13px; }
+.text-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  color: var(--text-1);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0s;
+  font-family: inherit;
+}
+
+.text-input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.1);
+}
+
+.text-input::placeholder {
+  color: var(--text-4);
+}
+
+.text-area {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  color: var(--text-1);
+  font-size: 14px;
+  outline: none;
+  resize: vertical;
+  line-height: 1;
+  font-family: inherit;
+  transition: border-color 0s;
+}
+
+.text-area:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.1);
+}
+
+.text-area::placeholder {
+  color: var(--text-4);
+}
+
+.lyrics-area {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+}
+
 .field-counter {
   margin-top: 6px;
   text-align: right;
@@ -931,25 +1103,90 @@ async function handleKieQuery() {
 }
 
 /* 纯音乐开关 */
-.toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; cursor:pointer; margin-bottom:var(--sp-2); }
-.toggle-label { font-size:0.82rem; color:var(--text-2); }
-.toggle-switch { width:40px; height:22px; border-radius:11px; background:var(--bg-elevated); border:1px solid var(--border-2); position:relative; transition:all 0s; }
-.toggle-switch.on { background:var(--primary); border-color:var(--primary); }
-.toggle-dot { width:18px; height:18px; border-radius:50%; background:#fff; position:absolute; top:1px; left:1px; transition:transform 0s; }
-.toggle-switch.on .toggle-dot { transform:translateX(18px); }
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  cursor: pointer;
+  margin-bottom: var(--sp-2);
+}
+
+.toggle-label {
+  font-size: 0.82rem;
+  color: var(--text-2);
+}
+
+.toggle-switch {
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-2);
+  position: relative;
+  transition: all 0s;
+}
+
+.toggle-switch.on {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.toggle-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  transition: transform 0s;
+}
+
+.toggle-switch.on .toggle-dot {
+  transform: translateX(18px);
+}
 
 /* 风格选择 */
-.style-grid { display:flex; flex-wrap:wrap; gap:var(--sp-2); }
-.style-chip {
-  display:flex; align-items:center; gap:4px;
-  padding:6px 14px; border-radius:var(--radius-full);
-  background:var(--bg-surface-2); border:1px solid var(--border-1);
-  color:var(--text-3); font-size: 0.78rem; cursor:pointer; transition:all 0s;
+.style-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
 }
-.style-chip:hover { border-color:var(--sc); color:var(--sc); }
-.style-chip.active { background:color-mix(in srgb, var(--sc) 15%, transparent); border-color:var(--sc); color:var(--sc); box-shadow:0 0 12px color-mix(in srgb, var(--sc) 25%, transparent); }
-.sc-emoji { font-size:14px; }
-.sc-label { font-weight:500; }
+
+.style-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-1);
+  color: var(--text-3);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0s;
+}
+
+.style-chip:hover {
+  border-color: var(--sc);
+  color: var(--sc);
+}
+
+.style-chip.active {
+  background: color-mix(in srgb, var(--sc) 15%, transparent);
+  border-color: var(--sc);
+  color: var(--sc);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--sc) 25%, transparent);
+}
+
+.sc-emoji {
+  font-size: 14px;
+}
+
+.sc-label {
+  font-weight: 500;
+}
 
 /* 生成按钮 */
 /* 生成按钮 → 使用 GenerateButton 组件 */
@@ -962,28 +1199,33 @@ async function handleKieQuery() {
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--bg-surface-2) 84%, transparent);
 }
+
 .ct-title {
   margin: 0;
   font-size: 14px;
   color: var(--text-2);
 }
+
 .ct-desc {
   margin: 6px 0 10px;
   font-size: 12px;
   color: var(--text-4);
   line-height: 1;
 }
+
 .ct-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin-top: 10px;
 }
+
 .ct-tip {
   margin-top: 8px;
   font-size: 12px;
   color: var(--text-4);
 }
+
 .ct-result {
   margin-top: 10px;
   max-height: 140px;
@@ -998,44 +1240,140 @@ async function handleKieQuery() {
 }
 
 /* ===== 歌曲网格 ===== */
-.songs { flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
-.songs-spin { flex:1; min-height:0; display:flex; overflow:hidden; }
-.songs-spin :deep(.arco-spin) { flex:1; min-height:0; display:flex; }
-.songs-spin :deep(.arco-spin-children) { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
-.works-empty { flex:1; min-height:260px; display:flex; align-items:center; justify-content:center; }
-.songs-head { display:flex; align-items:center; gap:var(--sp-2); margin-bottom:var(--sp-3); flex-shrink:0; }
-.songs-head h3 { margin:0; font-size:1rem; font-weight:600; color:var(--text-1); }
-.badge { background:var(--primary); color:#fff; font-size:0.7rem; font-weight:600; padding:1px 8px; border-radius:var(--radius-full); }
+.songs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.songs-spin {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.songs-spin :deep(.arco-spin) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.songs-spin :deep(.arco-spin-children) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.works-empty {
+  flex: 1;
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.songs-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+  flex-shrink: 0;
+}
+
+.songs-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.badge {
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+}
 
 .song-grid {
-  display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
-  gap:var(--sp-4); overflow-y:auto; flex:1; padding-bottom:var(--sp-4);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--sp-4);
+  overflow-y: auto;
+  flex: 1;
+  padding-bottom: var(--sp-4);
   align-content: start;
   grid-auto-rows: max-content;
 }
-.gal-area { flex:1; padding:var(--sp-4) var(--sp-8) var(--sp-6); overflow-y:auto; padding-bottom:80px; }
-.gal-empty { min-height:340px; display:flex; align-items:center; justify-content:center; }
-.gal-grid { grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); }
+
+.gal-area {
+  flex: 1;
+  padding: var(--sp-4) var(--sp-8) var(--sp-6);
+  overflow-y: auto;
+  padding-bottom: 80px;
+}
+
+.gal-empty {
+  min-height: 340px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gal-grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
 
 /* 单张歌曲卡 */
 .song-card {
-  background:var(--bg-surface-2); border:1px solid var(--border-1); border-radius:var(--radius-lg);
-  overflow:hidden; transition:all 0s var(--ease-out);
-  display:flex;
-  flex-direction:column;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all 0s var(--ease-out);
+  display: flex;
+  flex-direction: column;
   cursor: pointer;
   align-self: start;
 }
-.song-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-glow); border-color:var(--border-3); }
-.song-card.playing { border-color:var(--primary); box-shadow:0 0 20px rgba(22, 93, 255, 0.1); }
+
+.song-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-glow);
+  border-color: var(--border-3);
+}
+
+.song-card.playing {
+  border-color: var(--primary);
+  box-shadow: 0 0 20px rgba(22, 93, 255, 0.1);
+}
 
 /* 封面 */
 .song-cover {
-  position:relative; height:196px; display:flex; align-items:center; justify-content:center;
-  overflow:hidden;
+  position: relative;
+  height: 196px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
-.song-card.playing .vinyl-disc { animation:coverSpin 6s linear infinite; }
-@keyframes coverSpin { to{transform:rotate(360deg)} }
+
+.song-card.playing .vinyl-disc {
+  animation: coverSpin 6s linear infinite;
+}
+
+@keyframes coverSpin {
+  to {
+    transform: rotate(360deg)
+  }
+}
+
 .vinyl-disc {
   position: relative;
   width: min(82%, 164px);
@@ -1047,26 +1385,31 @@ async function handleKieQuery() {
   justify-content: center;
   overflow: hidden;
   background:
-    repeating-radial-gradient(circle at center, rgba(255,255,255,0) 0 1px, rgba(255,255,255,0) 1px 6px),
-    radial-gradient(circle at 30% 24%, rgba(255,255,255,0.5), rgba(255,255,255,0) 36%),
+    repeating-radial-gradient(circle at center, rgba(255, 255, 255, 0) 0 1px, rgba(255, 255, 255, 0) 1px 6px),
+    radial-gradient(circle at 30% 24%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 36%),
     radial-gradient(circle at center, #2f2f35 0 46%, #151519 68%, #0a0a0d 100%);
   box-shadow:
-    inset 0 0 0 2px rgba(255,255,255,0),
-    inset 0 0 30px rgba(0,0,0,0.5),
-    0 12px 20px rgba(0,0,0,0.8);
+    inset 0 0 0 2px rgba(255, 255, 255, 0),
+    inset 0 0 30px rgba(0, 0, 0, 0.5),
+    0 12px 20px rgba(0, 0, 0, 0.8);
   transition: transform 0s ease;
 }
+
 @supports not (aspect-ratio: 1 / 1) {
-  .vinyl-disc { height: min(82%, 164px); }
+  .vinyl-disc {
+    height: min(82%, 164px);
+  }
 }
+
 .vinyl-disc.has-image::after {
   content: '';
   position: absolute;
   inset: 0;
   background:
-    repeating-radial-gradient(circle at center, rgba(255,255,255,0.06) 0 1px, rgba(255,255,255,0) 1px 7px);
+    repeating-radial-gradient(circle at center, rgba(255, 255, 255, 0.06) 0 1px, rgba(255, 255, 255, 0) 1px 7px);
   pointer-events: none;
 }
+
 .vinyl-disc img {
   position: absolute;
   inset: 0;
@@ -1074,7 +1417,12 @@ async function handleKieQuery() {
   height: 100%;
   object-fit: cover;
 }
-.cover-emoji { font-size:44px; filter:drop-shadow(0 2px 8px rgba(0,0,0,0.3)); }
+
+.cover-emoji {
+  font-size: 44px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+}
+
 .vinyl-center-label {
   position: absolute;
   width: 32%;
@@ -1088,94 +1436,275 @@ async function handleKieQuery() {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0px;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
   z-index: 2;
 }
+
 .vinyl-center-hole {
   position: absolute;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: #f8fafc;
-  box-shadow: 0 0 0 2px rgba(0,0,0,0.3);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.3);
   z-index: 3;
 }
 
 /* 播放按钮 */
 .play-circle {
-  position:absolute;
-  left:50%;
-  top:50%;
-  width:48px;
-  height:48px;
-  border-radius:50%;
-  background:rgba(0,0,0,0); backdrop-filter:none; border:none;
-  cursor:pointer; display:flex; align-items:center; justify-content:center;
-  opacity:0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0);
+  backdrop-filter: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
   transform: translate(-50%, -50%);
-  transition:all 0s;
-  z-index:2;
+  transition: all 0s;
+  z-index: 2;
 }
-.song-card:hover .play-circle { opacity:1; }
-.song-card.playing .play-circle { opacity:1; background:var(--primary); }
-.play-circle:hover { transform: translate(-50%, -50%) scale(1.06); }
+
+.song-card:hover .play-circle {
+  opacity: 1;
+}
+
+.song-card.playing .play-circle {
+  opacity: 1;
+  background: var(--primary);
+}
+
+.play-circle:hover {
+  transform: translate(-50%, -50%) scale(1.06);
+}
+
 @media (hover: none) {
-  .song-card .play-circle { opacity: 1; }
+  .song-card .play-circle {
+    opacity: 1;
+  }
 }
 
 /* 波形动画 */
-.wave-bars { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); display:flex; align-items:flex-end; gap:2px; height:20px; z-index:1; }
-.wave-bars span { width:3px; border-radius:2px; background:#fff; animation:wb 1s ease-in-out infinite; }
-.wave-bars span:nth-child(1){--h:16px;animation-delay:0s} .wave-bars span:nth-child(2){--h:10px;animation-delay:0.1s} .wave-bars span:nth-child(3){--h:20px;animation-delay:0s} .wave-bars span:nth-child(4){--h:8px;animation-delay:0.3s} .wave-bars span:nth-child(5){--h:14px;animation-delay:0s}
-@keyframes wb { 0%,100%{height:3px} 50%{height:var(--h,12px)} }
+.wave-bars {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 20px;
+  z-index: 1;
+}
+
+.wave-bars span {
+  width: 3px;
+  border-radius: 2px;
+  background: #fff;
+  animation: wb 1s ease-in-out infinite;
+}
+
+.wave-bars span:nth-child(1) {
+  --h: 16px;
+  animation-delay: 0s
+}
+
+.wave-bars span:nth-child(2) {
+  --h: 10px;
+  animation-delay: 0.1s
+}
+
+.wave-bars span:nth-child(3) {
+  --h: 20px;
+  animation-delay: 0s
+}
+
+.wave-bars span:nth-child(4) {
+  --h: 8px;
+  animation-delay: 0.3s
+}
+
+.wave-bars span:nth-child(5) {
+  --h: 14px;
+  animation-delay: 0s
+}
+
+@keyframes wb {
+
+  0%,
+  100% {
+    height: 3px
+  }
+
+  50% {
+    height: var(--h, 12px)
+  }
+}
 
 /* 处理中 */
-.proc-ov { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(6,10,20,0.2); gap:6px; overflow:hidden; }
-.proc-ov::before {
-  content:'';
-  position:absolute; inset:-30%;
-  background:radial-gradient(circle at 50% 50%, rgba(22, 93, 255, 0.2), transparent 62%);
-  animation:musicPulse 2s ease-in-out infinite;
+.proc-ov {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 10, 20, 0.2);
+  gap: 6px;
+  overflow: hidden;
 }
-.proc-stage { position:relative; z-index:1; font-size:0.72rem; color:rgba(255,255,255,0.9); letter-spacing:0.02em; }
-.proc-ring svg { width:44px; height:44px; }
-.proc-pct { position:relative; z-index:1; font-size:0.75rem; color:#fff; font-weight:600; }
-.proc-progress { position:relative; z-index:1; width:116px; height:4px; border-radius:999px; background:rgba(255,255,255,0.16); overflow:hidden; }
-.proc-progress-fill { height:100%; border-radius:inherit; background:linear-gradient(90deg,#165DFF,#4080FF); transition:width 0s ease; }
-@keyframes musicPulse { 0%,100%{ transform:scale(1); opacity:0.9 } 50%{ transform:scale(1.06); opacity:1 } }
+
+.proc-ov::before {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  background: radial-gradient(circle at 50% 50%, rgba(22, 93, 255, 0.2), transparent 62%);
+  animation: musicPulse 2s ease-in-out infinite;
+}
+
+.proc-stage {
+  position: relative;
+  z-index: 1;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.02em;
+}
+
+.proc-ring svg {
+  width: 44px;
+  height: 44px;
+}
+
+.proc-pct {
+  position: relative;
+  z-index: 1;
+  font-size: 0.75rem;
+  color: #fff;
+  font-weight: 600;
+}
+
+.proc-progress {
+  position: relative;
+  z-index: 1;
+  width: 116px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+.proc-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #165DFF, #4080FF);
+  transition: width 0s ease;
+}
+
+@keyframes musicPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9
+  }
+
+  50% {
+    transform: scale(1.06);
+    opacity: 1
+  }
+}
 
 /* 歌曲信息 */
-.song-info { padding:var(--sp-3) var(--sp-3) var(--sp-1); flex:0 0 auto; overflow:hidden; }
+.song-info {
+  padding: var(--sp-3) var(--sp-3) var(--sp-1);
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
 .song-title {
-  margin:0;
+  margin: 0;
   font-size: 0.8rem;
-  font-weight:600;
-  color:var(--text-1);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  font-weight: 600;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
 .song-meta {
-  display:flex;
-  align-items:center;
-  gap:var(--sp-2);
-  margin-top:4px;
-  flex-wrap:nowrap;
-  overflow:hidden;
-  white-space:nowrap;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: 4px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  white-space: nowrap;
 }
-.song-status { white-space:nowrap; }
-.song-style { padding:1px 8px; border-radius:var(--radius-full); font-size:0.7rem; font-weight:500; }
-.song-status { font-size:0.72rem; }
-.song-author { font-size:0.72rem; color:var(--text-4); }
+
+.song-status {
+  white-space: nowrap;
+}
+
+.song-style {
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.song-status {
+  font-size: 0.72rem;
+}
+
+.song-author {
+  font-size: 0.72rem;
+  color: var(--text-4);
+}
 
 /* 操作栏 */
-.song-actions { display:flex; gap:8px; padding:0 var(--sp-3) var(--sp-3); margin-top:auto; flex-wrap:nowrap; align-items:center; }
-.sa-btn { width:30px; height:30px; border:none; border-radius:50%; background:rgba(255,255,255,0.14); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all var(--duration-fast); }
-.sa-btn:hover { background:rgba(255,255,255,0.2); }
-.sa-btn.danger { color: #fca5a5; }
-.sa-btn.danger:hover { background:rgba(245, 63, 63, 0.5); color:#fee2e2; }
+.song-actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 var(--sp-3) var(--sp-3);
+  margin-top: auto;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.sa-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast);
+}
+
+.sa-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sa-btn.danger {
+  color: #fca5a5;
+}
+
+.sa-btn.danger:hover {
+  background: rgba(245, 63, 63, 0.5);
+  color: #fee2e2;
+}
+
 .retry-btn {
   width: 100%;
   border: 1px solid var(--border-2);
@@ -1187,20 +1716,38 @@ async function handleKieQuery() {
   cursor: pointer;
   transition: all 0s;
 }
+
 .retry-btn:hover:not(:disabled) {
   border-color: var(--primary);
   color: var(--primary);
 }
+
 .retry-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-.pager { flex-shrink:0; margin-top:var(--sp-3); display:flex; justify-content:center; }
+.pager {
+  flex-shrink: 0;
+  margin-top: var(--sp-3);
+  display: flex;
+  justify-content: center;
+}
 
 /* ===== 全套工具台 ===== */
-.toolkit-area { flex: 1; padding: var(--sp-4) var(--sp-8) var(--sp-6); overflow: hidden; }
-.toolkit-grid { height: 100%; display: grid; grid-template-columns: 1.1fr 1fr; gap: var(--sp-4); }
+.toolkit-area {
+  flex: 1;
+  padding: var(--sp-4) var(--sp-8) var(--sp-6);
+  overflow: hidden;
+}
+
+.toolkit-grid {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: var(--sp-4);
+}
+
 .toolkit-panel {
   min-height: 0;
   overflow: auto;
@@ -1209,8 +1756,21 @@ async function handleKieQuery() {
   border-radius: var(--radius-lg);
   padding: var(--sp-4);
 }
-.toolkit-title { margin: 0 0 var(--sp-2); font-size: 0.92rem; font-weight: 600; color: var(--text-2); }
-.toolkit-tip { margin: 8px 0 14px; font-size: 12px; color: var(--text-4); line-height: 1; }
+
+.toolkit-title {
+  margin: 0 0 var(--sp-2);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.toolkit-tip {
+  margin: 8px 0 14px;
+  font-size: 12px;
+  color: var(--text-4);
+  line-height: 1;
+}
+
 .toolkit-json {
   width: 100%;
   border: 1px solid var(--border-2);
@@ -1223,8 +1783,21 @@ async function handleKieQuery() {
   font-size: 12px;
   line-height: 1;
 }
-.toolkit-actions { margin-top: var(--sp-3); display: flex; gap: var(--sp-2); align-items: center; }
-.toolkit-query { display: flex; gap: var(--sp-2); align-items: center; margin-bottom: 8px; }
+
+.toolkit-actions {
+  margin-top: var(--sp-3);
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+.toolkit-query {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  margin-bottom: 8px;
+}
+
 .toolkit-result {
   margin: 0;
   border: 1px solid var(--border-2);
@@ -1241,29 +1814,164 @@ async function handleKieQuery() {
 
 /* ===== 底部播放器 ===== */
 .player-bar {
-  position:absolute; bottom:0; left:0; right:0; z-index:10;
-  background:var(--bg-surface-1); border-top:1px solid var(--border-2);
-  backdrop-filter:var(--glass-blur);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: var(--bg-surface-1);
+  border-top: 1px solid var(--border-2);
+  backdrop-filter: var(--glass-blur);
 }
-.player-inner { display:flex; align-items:center; gap:var(--sp-4); padding:var(--sp-3) var(--sp-6); max-width:100%; }
-.player-info { display:flex; align-items:center; gap:var(--sp-3); flex-shrink:0; min-width:180px; }
-.player-cover { width:40px; height:40px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.player-text { display:flex; flex-direction:column; gap:1px; }
-.player-title { font-size:0.9rem; font-weight:500; color:var(--text-1); }
-.player-time { font-size:0.72rem; color:var(--text-4); }
-.player-controls { flex-shrink:0; }
-.player-btn { width:36px; height:36px; border:none; border-radius:50%; background:var(--primary); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0s; }
-.player-btn:hover { transform:scale(1); }
-.player-progress { flex:1; cursor:pointer; padding:8px 0; }
-.player-bar-bg { height:4px; background:var(--bg-elevated); border-radius:2px; overflow:hidden; }
-.player-bar-fill { height:100%; background:var(--gradient-primary); border-radius:2px; transition:width 0s; }
+
+.player-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-6);
+  max-width: 100%;
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-shrink: 0;
+  min-width: 180px;
+}
+
+.player-cover {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.player-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.player-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-1);
+}
+
+.player-time {
+  font-size: 0.72rem;
+  color: var(--text-4);
+}
+
+.player-controls {
+  flex-shrink: 0;
+}
+
+.player-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0s;
+}
+
+.player-btn:hover {
+  transform: scale(1);
+}
+
+.player-progress {
+  flex: 1;
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.player-bar-bg {
+  height: 4px;
+  background: var(--bg-elevated);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.player-bar-fill {
+  height: 100%;
+  background: var(--gradient-primary);
+  border-radius: 2px;
+  transition: width 0s;
+}
 
 /* 进场动画 */
-.slide-up-enter-active { animation:slideUp 0.3s var(--ease-out); }
-.slide-up-leave-active { animation:slideUp 0s ease-in reverse; }
-@keyframes slideUp { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
+.slide-up-enter-active {
+  animation: slideUp 0.3s var(--ease-out);
+}
 
-@media(max-width:900px) { .create-area { flex-direction:column; } .form-panel { width:100%; max-height:45vh; } .song-grid { grid-template-columns:repeat(2,1fr); } .toolkit-grid { grid-template-columns: 1fr; } }
-@media(max-width:600px) { .hd { flex-direction:column; align-items:flex-start; gap:var(--sp-3); padding:var(--sp-4); } .create-area,.gal-area,.toolkit-area { padding:var(--sp-3); } .song-grid { grid-template-columns:repeat(2,1fr); gap:var(--sp-3); } }
-@media(max-width:420px) { .song-grid { grid-template-columns:1fr; } }
+.slide-up-leave-active {
+  animation: slideUp 0s ease-in reverse;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1
+  }
+}
+
+@media(max-width:900px) {
+  .create-area {
+    flex-direction: column;
+  }
+
+  .form-panel {
+    width: 100%;
+    max-height: 45vh;
+  }
+
+  .song-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .toolkit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media(max-width:600px) {
+  .hd {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+  }
+
+  .create-area,
+  .gal-area,
+  .toolkit-area {
+    padding: var(--sp-3);
+  }
+
+  .song-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-3);
+  }
+}
+
+@media(max-width:420px) {
+  .song-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

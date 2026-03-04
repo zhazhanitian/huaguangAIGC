@@ -32,32 +32,32 @@ type ModelType = 'text' | 'image' | 'video' | 'music' | '3d'
 interface TypeMeta { label: string; color: string; icon: string }
 
 const typeMetaMap: Record<ModelType, TypeMeta> = {
-  text:  { label: '文字', color: '#4080FF', icon: 'T' },
+  text: { label: '文字', color: '#4080FF', icon: 'T' },
   image: { label: '图像', color: '#00B42A', icon: 'I' },
   video: { label: '视频', color: '#f97316', icon: 'V' },
   music: { label: '音乐', color: '#f472b6', icon: 'M' },
-  '3d':  { label: '3D',   color: '#38bdf8', icon: '3' },
+  '3d': { label: '3D', color: '#38bdf8', icon: '3' },
 }
 
 const imageModelNames = new Set([
-  'nano-banana-pro','nano-banana-fast','nano-banana','nano-banana-pro-vt',
-  'nano-banana-pro-cl','nano-banana-pro-vip','nano-banana-pro-4k-vip',
-  'gpt-image-1.5','sora-image','doubao-seedance-4-5',
-  'flux-2-pro','flux-kontext-pro','flux-kontext-max',
+  'nano-banana-pro', 'nano-banana-fast', 'nano-banana', 'nano-banana-pro-vt',
+  'nano-banana-pro-cl', 'nano-banana-pro-vip', 'nano-banana-pro-4k-vip',
+  'gpt-image-1.5', 'sora-image', 'doubao-seedance-4-5',
+  'flux-2-pro', 'flux-kontext-pro', 'flux-kontext-max',
   'kie-market',
-  'z-image','qwen/text-to-image','qwen/image-to-image','qwen/image-edit',
+  'z-image', 'qwen/text-to-image', 'qwen/image-to-image', 'qwen/image-edit',
   'grok-imagine/text-to-image',
-  'midjourney','dalle',
+  'midjourney', 'dalle',
 ])
 const videoModelNames = new Set([
-  'veo3.1-fast','veo3.1-pro',
-  'sora-2','sora-2-pro','sora-2-preview','sora-2-pro-preview',
+  'veo3.1-fast', 'veo3.1-pro',
+  'sora-2', 'sora-2-pro', 'sora-2-preview', 'sora-2-pro-preview',
   'kling-3.0',
-  'kling-2.6/text-to-video','kling-2.6/image-to-video','kling-2.6/motion-control',
+  'kling-2.6/text-to-video', 'kling-2.6/image-to-video', 'kling-2.6/motion-control',
   'bytedance/seedance-1.5-pro',
 ])
-const musicModelNames = new Set(['suno-v3','suno-v3.5','suno-v4','suno-v4.5plus','udio'])
-const threeDModelNames = new Set(['tencent-hunyuan-3d-pro','tencent-hunyuan-3d-rapid','hunyuan-3d-pro','hunyuan-3d-rapid'])
+const musicModelNames = new Set(['suno-v3', 'suno-v3.5', 'suno-v4', 'suno-v4.5plus', 'udio'])
+const threeDModelNames = new Set(['tencent-hunyuan-3d-pro', 'tencent-hunyuan-3d-rapid', 'hunyuan-3d-pro', 'hunyuan-3d-rapid'])
 
 function getModelType(name: string): ModelType {
   if (imageModelNames.has(name)) return 'image'
@@ -505,16 +505,20 @@ function handleTableExpand(_expanded: boolean, record: Model) {
         </div>
         <div>
           <h2 class="header-title">模型管理</h2>
-          <p class="header-subtitle">管理 AI 模型库、API Key 池与调用配置</p>
+          <p class="header-subtitle">管理 人工智能 模型库、API Key 池与调用配置</p>
         </div>
       </div>
       <div class="header-right">
         <a-button class="sync-btn" :loading="submitLoading" @click="handleSyncPresets">
-          <template #icon><IconRefresh /></template>
+          <template #icon>
+            <IconRefresh />
+          </template>
           同步预设
         </a-button>
         <a-button type="primary" class="add-btn" @click="openAdd">
-          <template #icon><IconPlus /></template>
+          <template #icon>
+            <IconPlus />
+          </template>
           添加模型
         </a-button>
       </div>
@@ -524,13 +528,10 @@ function handleTableExpand(_expanded: boolean, record: Model) {
     <div class="glow-card toolbar-card">
       <div class="toolbar">
         <div class="toolbar-right">
-          <a-input
-            v-model="searchKeyword"
-            placeholder="搜索模型名称..."
-            :style="{ width: '200px' }"
-            allow-clear
-          >
-            <template #prefix><IconSearch /></template>
+          <a-input v-model="searchKeyword" placeholder="搜索模型名称..." :style="{ width: '200px' }" allow-clear>
+            <template #prefix>
+              <IconSearch />
+            </template>
           </a-input>
           <a-select v-model="filterStatus" :style="{ width: '120px' }" placeholder="状态">
             <a-option value="all">全部状态</a-option>
@@ -540,12 +541,16 @@ function handleTableExpand(_expanded: boolean, record: Model) {
           <div class="view-toggle">
             <a-tooltip content="卡片视图">
               <a-button :type="viewMode === 'grid' ? 'primary' : 'text'" shape="circle" @click="viewMode = 'grid'">
-                <template #icon><IconApps /></template>
+                <template #icon>
+                  <IconApps />
+                </template>
               </a-button>
             </a-tooltip>
             <a-tooltip content="表格视图">
               <a-button :type="viewMode === 'table' ? 'primary' : 'text'" shape="circle" @click="viewMode = 'table'">
-                <template #icon><IconList /></template>
+                <template #icon>
+                  <IconList />
+                </template>
               </a-button>
             </a-tooltip>
           </div>
@@ -554,14 +559,8 @@ function handleTableExpand(_expanded: boolean, record: Model) {
 
       <!-- Type filter tabs -->
       <div class="type-tabs">
-        <div
-          v-for="tab in typeTabs"
-          :key="tab.key"
-          class="type-tab"
-          :class="{ active: filterType === tab.key }"
-          :style="filterType === tab.key ? { '--tab-color': tab.color } as any : {}"
-          @click="filterType = tab.key"
-        >
+        <div v-for="tab in typeTabs" :key="tab.key" class="type-tab" :class="{ active: filterType === tab.key }"
+          :style="filterType === tab.key ? { '--tab-color': tab.color } as any : {}" @click="filterType = tab.key">
           <span v-if="tab.key !== 'all'" class="type-tab-dot" :style="{ background: tab.color }" />
           {{ tab.label }}
           <span class="type-tab-count">{{ typeCounts[tab.key] ?? 0 }}</span>
@@ -575,37 +574,31 @@ function handleTableExpand(_expanded: boolean, record: Model) {
         <a-empty description="没有匹配的模型" />
       </div>
       <div v-show="viewMode === 'grid' && filteredModels.length" class="model-grid">
-        <div
-          v-for="model in filteredModels"
-          :key="model.id"
-          class="glow-card model-card"
-          :class="{ expanded: expandedCardId === model.id }"
-        >
+        <div v-for="model in filteredModels" :key="model.id" class="glow-card model-card"
+          :class="{ expanded: expandedCardId === model.id }">
           <div class="model-card-header" @click="toggleCardExpand(model.id)">
-            <div class="type-avatar" :style="{ background: getTypeMeta(model.modelName).color + '18', color: getTypeMeta(model.modelName).color }">
+            <div class="type-avatar"
+              :style="{ background: getTypeMeta(model.modelName).color + '18', color: getTypeMeta(model.modelName).color }">
               {{ getTypeMeta(model.modelName).icon }}
             </div>
             <div class="model-card-info">
               <div class="model-name-row">
                 <span class="model-name">{{ model.modelName }}</span>
-                <span class="type-tag" :style="{ color: getTypeMeta(model.modelName).color, borderColor: getTypeMeta(model.modelName).color + '44' }">
+                <span class="type-tag"
+                  :style="{ color: getTypeMeta(model.modelName).color, borderColor: getTypeMeta(model.modelName).color + '44' }">
                   {{ getTypeMeta(model.modelName).label }}
                 </span>
               </div>
               <div class="model-meta">
                 <span class="points-badge">{{ providerText(model.provider) }}</span>
                 <span class="points-badge">{{ model.deductPoints ?? 0 }} 积分</span>
-                <span class="key-count" :class="{ 'no-key': !(model.keys?.length) }">{{ model.keys?.length ?? 0 }} Key</span>
+                <span class="key-count" :class="{ 'no-key': !(model.keys?.length) }">{{ model.keys?.length ?? 0 }}
+                  Key</span>
               </div>
             </div>
             <div class="model-switch" @click.stop>
-              <a-switch
-                :model-value="model.isActive"
-                :loading="togglingModelId === model.id"
-                checked-color="#00B42A"
-                unchecked-color="rgba(255,255,255,0.12)"
-                @change="(val) => toggleModelStatus(model, Boolean(val))"
-              >
+              <a-switch :model-value="model.isActive" :loading="togglingModelId === model.id" checked-color="#00B42A"
+                unchecked-color="rgba(255,255,255,0.12)" @change="(val) => toggleModelStatus(model, Boolean(val))">
                 <template #checked>ON</template>
                 <template #unchecked>OFF</template>
               </a-switch>
@@ -618,40 +611,41 @@ function handleTableExpand(_expanded: boolean, record: Model) {
             <div class="keys-header">
               <span>API Keys</span>
               <a-button type="primary" size="small" @click.stop="openAddKey(model.id)">
-                <template #icon><IconPlus /></template>
+                <template #icon>
+                  <IconPlus />
+                </template>
                 添加 Key
               </a-button>
             </div>
             <div v-if="model.keys?.length" class="keys-list">
-              <div
-                v-for="k in model.keys"
-                :key="k.id"
-                class="key-row"
-              >
+              <div v-for="k in model.keys" :key="k.id" class="key-row">
                 <span class="key-masked">{{ maskKey(k.apiKey) }}</span>
                 <span class="key-extra">权重 {{ k.weight ?? 1 }}</span>
                 <a-button type="text" size="mini" @click="copyKey(k.apiKey)">
-                  <template #icon><IconCopy /></template>
+                  <template #icon>
+                    <IconCopy />
+                  </template>
                 </a-button>
                 <a-button type="text" size="mini" @click="openEditKey(model.id, k)">
-                  <template #icon><IconEdit /></template>
+                  <template #icon>
+                    <IconEdit />
+                  </template>
                 </a-button>
-                <a-switch
-                  :model-value="k.isActive"
-                  size="small"
-                  checked-color="#00B42A"
-                  unchecked-color="rgba(255,255,255,0.12)"
-                  :loading="togglingKeyId === k.id"
-                  @change="(val) => toggleKeyStatus(k, Boolean(val))"
-                />
+                <a-switch :model-value="k.isActive" size="small" checked-color="#00B42A"
+                  unchecked-color="rgba(255,255,255,0.12)" :loading="togglingKeyId === k.id"
+                  @change="(val) => toggleKeyStatus(k, Boolean(val))" />
                 <a-button type="text" status="danger" size="mini" @click="handleDeleteKey(k.id)">
-                  <template #icon><IconDelete /></template>
+                  <template #icon>
+                    <IconDelete />
+                  </template>
                 </a-button>
               </div>
             </div>
             <div v-else class="empty-keys">暂无 API Key</div>
             <a-button type="text" size="small" @click.stop="openEdit(model)">
-              <template #icon><IconEdit /></template>
+              <template #icon>
+                <IconEdit />
+              </template>
               编辑模型
             </a-button>
           </div>
@@ -660,23 +654,18 @@ function handleTableExpand(_expanded: boolean, record: Model) {
 
       <!-- 表格视图 -->
       <div v-show="viewMode === 'table' && filteredModels.length" class="glow-card table-card">
-        <a-table
-          :columns="columns"
-          :data="filteredModels"
-          :loading="loading"
-          row-key="id"
-          :expandable="{
-            expandedRowKeys: expandedRowKeys,
-            onExpand: handleTableExpand,
-          }"
-          class="data-table"
-        >
+        <a-table :columns="columns" :data="filteredModels" :loading="loading" row-key="id" :expandable="{
+          expandedRowKeys: expandedRowKeys,
+          onExpand: handleTableExpand,
+        }" class="data-table">
           <template #expand-row="{ record }">
             <div class="key-section">
               <div class="keys-header">
                 <span>API Keys</span>
                 <a-button type="primary" size="small" @click="openAddKey(record.id)">
-                  <template #icon><IconPlus /></template>
+                  <template #icon>
+                    <IconPlus />
+                  </template>
                   添加 Key
                 </a-button>
               </div>
@@ -685,21 +674,22 @@ function handleTableExpand(_expanded: boolean, record: Model) {
                   <span class="key-masked">{{ maskKey(k.apiKey) }}</span>
                   <span class="key-extra">权重 {{ k.weight ?? 1 }}</span>
                   <a-button type="text" size="mini" @click="copyKey(k.apiKey)">
-                    <template #icon><IconCopy /></template>
+                    <template #icon>
+                      <IconCopy />
+                    </template>
                   </a-button>
                   <a-button type="text" size="mini" @click="openEditKey(record.id, k)">
-                    <template #icon><IconEdit /></template>
+                    <template #icon>
+                      <IconEdit />
+                    </template>
                   </a-button>
-                  <a-switch
-                    :model-value="k.isActive"
-                    size="small"
-                    checked-color="#00B42A"
-                    unchecked-color="rgba(255,255,255,0.12)"
-                    :loading="togglingKeyId === k.id"
-                    @change="(val) => toggleKeyStatus(k, Boolean(val))"
-                  />
+                  <a-switch :model-value="k.isActive" size="small" checked-color="#00B42A"
+                    unchecked-color="rgba(255,255,255,0.12)" :loading="togglingKeyId === k.id"
+                    @change="(val) => toggleKeyStatus(k, Boolean(val))" />
                   <a-button type="text" status="danger" size="mini" @click="handleDeleteKey(k.id)">
-                    <template #icon><IconDelete /></template>
+                    <template #icon>
+                      <IconDelete />
+                    </template>
                   </a-button>
                 </div>
               </div>
@@ -713,19 +703,15 @@ function handleTableExpand(_expanded: boolean, record: Model) {
             </div>
           </template>
           <template #type="{ record }">
-            <span class="type-tag" :style="{ color: getTypeMeta(record.modelName).color, borderColor: getTypeMeta(record.modelName).color + '44' }">
+            <span class="type-tag"
+              :style="{ color: getTypeMeta(record.modelName).color, borderColor: getTypeMeta(record.modelName).color + '44' }">
               {{ getTypeMeta(record.modelName).label }}
             </span>
           </template>
           <template #status="{ record }">
             <div class="table-switch-cell">
-              <a-switch
-                :model-value="record.isActive"
-                :loading="togglingModelId === record.id"
-                checked-color="#00B42A"
-                unchecked-color="rgba(255,255,255,0.12)"
-                @change="(val) => toggleModelStatus(record, Boolean(val))"
-              >
+              <a-switch :model-value="record.isActive" :loading="togglingModelId === record.id" checked-color="#00B42A"
+                unchecked-color="rgba(255,255,255,0.12)" @change="(val) => toggleModelStatus(record, Boolean(val))">
                 <template #checked>ON</template>
                 <template #unchecked>OFF</template>
               </a-switch>
@@ -738,20 +724,22 @@ function handleTableExpand(_expanded: boolean, record: Model) {
             <span :class="{ 'no-key': !(record.keys?.length) }">{{ record.keys?.length ?? 0 }}</span>
           </template>
           <template #provider="{ record }">
-            <span
-              class="provider-pill"
-              :style="{ borderColor: providerColor(record.provider), color: providerColor(record.provider) }"
-            >
+            <span class="provider-pill"
+              :style="{ borderColor: providerColor(record.provider), color: providerColor(record.provider) }">
               {{ providerText(record.provider) }}
             </span>
           </template>
           <template #action="{ record }">
             <a-button type="text" size="small" @click="openEdit(record)">
-              <template #icon><IconEdit /></template>
+              <template #icon>
+                <IconEdit />
+              </template>
               编辑
             </a-button>
             <a-button type="text" status="danger" size="small" @click="handleDeleteModel(record)">
-              <template #icon><IconDelete /></template>
+              <template #icon>
+                <IconDelete />
+              </template>
               删除
             </a-button>
           </template>
@@ -759,32 +747,15 @@ function handleTableExpand(_expanded: boolean, record: Model) {
       </div>
     </a-spin>
 
-    <a-modal
-      v-model:visible="addDialogVisible"
-      title="添加模型"
-      width="480px"
-      unmount-on-close
-      class="model-modal"
-    >
-      <a-form
-        ref="formRef"
-        :model="addForm"
-        :rules="addRules"
-        layout="horizontal"
-        :label-col-props="{ span: 6 }"
-        :wrapper-col-props="{ span: 18 }"
-      >
+    <a-modal v-model:visible="addDialogVisible" title="添加模型" width="480px" unmount-on-close class="model-modal">
+      <a-form ref="formRef" :model="addForm" :rules="addRules" layout="horizontal" :label-col-props="{ span: 6 }"
+        :wrapper-col-props="{ span: 18 }">
         <a-form-item label="模型名称" field="modelName">
           <a-input v-model="addForm.modelName" placeholder="如 gpt-4" />
         </a-form-item>
         <a-form-item label="提供方" field="provider">
           <a-select v-model="addForm.provider" placeholder="请选择提供商">
-            <a-option
-              v-for="item in providerOptions"
-              :key="item.value"
-              :value="item.value"
-              :label="item.label"
-            />
+            <a-option v-for="item in providerOptions" :key="item.value" :value="item.value" :label="item.label" />
           </a-select>
         </a-form-item>
         <a-form-item label="默认 API Key" field="apiKey">
@@ -821,32 +792,15 @@ function handleTableExpand(_expanded: boolean, record: Model) {
       </template>
     </a-modal>
 
-    <a-modal
-      v-model:visible="editDialogVisible"
-      title="编辑模型"
-      width="480px"
-      unmount-on-close
-      class="model-modal"
-    >
-      <a-form
-        ref="formRef"
-        :model="editForm"
-        :rules="addRules"
-        layout="horizontal"
-        :label-col-props="{ span: 6 }"
-        :wrapper-col-props="{ span: 18 }"
-      >
+    <a-modal v-model:visible="editDialogVisible" title="编辑模型" width="480px" unmount-on-close class="model-modal">
+      <a-form ref="formRef" :model="editForm" :rules="addRules" layout="horizontal" :label-col-props="{ span: 6 }"
+        :wrapper-col-props="{ span: 18 }">
         <a-form-item label="模型名称" field="modelName">
           <a-input v-model="editForm.modelName" />
         </a-form-item>
         <a-form-item label="提供方" field="provider">
           <a-select v-model="editForm.provider" placeholder="请选择提供商">
-            <a-option
-              v-for="item in providerOptions"
-              :key="item.value"
-              :value="item.value"
-              :label="item.label"
-            />
+            <a-option v-for="item in providerOptions" :key="item.value" :value="item.value" :label="item.label" />
           </a-select>
         </a-form-item>
         <a-form-item label="默认 API Key" field="apiKey">
@@ -883,21 +837,10 @@ function handleTableExpand(_expanded: boolean, record: Model) {
       </template>
     </a-modal>
 
-    <a-modal
-      v-model:visible="keyDialogVisible"
-      :title="keyDialogMode === 'add' ? '添加 API Key' : '编辑 API Key'"
-      width="520px"
-      unmount-on-close
-      class="model-modal"
-    >
-      <a-form
-        ref="keyFormRef"
-        :model="keyForm"
-        :rules="keyRules"
-        layout="horizontal"
-        :label-col-props="{ span: 6 }"
-        :wrapper-col-props="{ span: 18 }"
-      >
+    <a-modal v-model:visible="keyDialogVisible" :title="keyDialogMode === 'add' ? '添加 API Key' : '编辑 API Key'"
+      width="520px" unmount-on-close class="model-modal">
+      <a-form ref="keyFormRef" :model="keyForm" :rules="keyRules" layout="horizontal" :label-col-props="{ span: 6 }"
+        :wrapper-col-props="{ span: 18 }">
         <a-form-item label="选择方式">
           <a-radio-group v-model="keyForm.useSelect" type="button">
             <a-radio :value="true">从 API 库选择</a-radio>
@@ -907,12 +850,7 @@ function handleTableExpand(_expanded: boolean, record: Model) {
 
         <!-- 选择模式 -->
         <a-form-item v-if="keyForm.useSelect" label="选择 API Key" field="apiKeyId">
-          <a-select
-            v-model="keyForm.apiKeyId"
-            placeholder="请选择已配置的 API Key"
-            allow-clear
-            @change="onApiKeySelect"
-          >
+          <a-select v-model="keyForm.apiKeyId" placeholder="请选择已配置的 API Key" allow-clear @change="onApiKeySelect">
             <a-option v-for="key in apiKeyList" :key="key.id" :value="key.id">
               <div class="api-key-option">
                 <span class="api-key-name">{{ key.name }}</span>
@@ -930,15 +868,12 @@ function handleTableExpand(_expanded: boolean, record: Model) {
 
         <!-- 手动输入模式 -->
         <a-form-item v-if="!keyForm.useSelect" label="API Key" field="apiKey">
-          <a-textarea
-            v-model="keyForm.apiKey"
-            :rows="2"
-            placeholder="sk-xxx"
-          />
+          <a-textarea v-model="keyForm.apiKey" :rows="2" placeholder="sk-xxx" />
         </a-form-item>
 
         <a-form-item label="Base URL" field="baseUrl">
-          <a-input v-model="keyForm.baseUrl" placeholder="可选，选择 API Key 后自动填充" :disabled="keyForm.useSelect && !!keyForm.apiKeyId" />
+          <a-input v-model="keyForm.baseUrl" placeholder="可选，选择 API Key 后自动填充"
+            :disabled="keyForm.useSelect && !!keyForm.apiKeyId" />
         </a-form-item>
         <a-form-item label="权重" field="weight">
           <a-input-number v-model="keyForm.weight" :min="1" style="width: 100%" />
@@ -1052,7 +987,7 @@ function handleTableExpand(_expanded: boolean, record: Model) {
   gap: 6px;
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   flex-wrap: wrap;
 }
 
@@ -1071,7 +1006,10 @@ function handleTableExpand(_expanded: boolean, record: Model) {
   user-select: none;
 }
 
-.type-tab:hover { background: rgba(255,255,255,0.04); color: var(--text-1); }
+.type-tab:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-1);
+}
 
 .type-tab.active {
   background: color-mix(in srgb, var(--tab-color, var(--text-2)) 12%, transparent);
@@ -1079,10 +1017,16 @@ function handleTableExpand(_expanded: boolean, record: Model) {
   border-color: color-mix(in srgb, var(--tab-color, var(--text-2)) 24%, transparent);
 }
 
-.type-tab-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.type-tab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .type-tab-count {
   font-size: 11px;
-  background: rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.06);
   padding: 1px 6px;
   border-radius: 10px;
   min-width: 20px;
@@ -1112,11 +1056,16 @@ function handleTableExpand(_expanded: boolean, record: Model) {
   border: 1px solid;
   font-size: 11px;
   font-weight: 600;
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.02);
   flex-shrink: 0;
 }
 
-.table-type-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.table-type-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
 
 /* ===== Card grid ===== */
 .model-grid {
@@ -1124,8 +1073,18 @@ function handleTableExpand(_expanded: boolean, record: Model) {
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
-@media (max-width: 1200px) { .model-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 640px) { .model-grid { grid-template-columns: 1fr; } }
+
+@media (max-width: 1200px) {
+  .model-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .model-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 .model-card {
   padding: 18px;
@@ -1133,11 +1092,31 @@ function handleTableExpand(_expanded: boolean, record: Model) {
   transition: all 0.2s ease;
 }
 
-.model-card-header { display: flex; align-items: flex-start; gap: 14px; }
+.model-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
 
-.model-card-info { flex: 1; min-width: 0; }
-.model-name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.model-name { font-weight: 600; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.model-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.model-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.model-name {
+  font-weight: 600;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .model-meta {
   display: flex;
@@ -1148,25 +1127,44 @@ function handleTableExpand(_expanded: boolean, record: Model) {
   flex-wrap: wrap;
 }
 
-.meta-divider { width: 1px; height: 12px; background: rgba(255,255,255,0.10); }
+.meta-divider {
+  width: 1px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.10);
+}
 
-.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-4); flex-shrink: 0; }
-.status-dot.active { background: #00B42A; }
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-4);
+  flex-shrink: 0;
+}
 
-.points-badge, .key-count {
-  background: rgba(255,255,255,0.04);
+.status-dot.active {
+  background: #00B42A;
+}
+
+.points-badge,
+.key-count {
+  background: rgba(255, 255, 255, 0.04);
   padding: 2px 8px;
   border-radius: 8px;
   font-size: 11px;
 }
 
-.key-count.no-key { color: #f87171; }
-.no-key { color: #f87171; }
+.key-count.no-key {
+  color: #f87171;
+}
+
+.no-key {
+  color: #f87171;
+}
 
 .model-card-expand {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .keys-header {
@@ -1178,27 +1176,64 @@ function handleTableExpand(_expanded: boolean, record: Model) {
   color: var(--text-2);
 }
 
-.keys-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.keys-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
 
 .key-row {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 10px;
 }
 
-.key-masked { flex: 1; font-family: monospace; font-size: 13px; color: var(--text-3); }
-.key-extra { font-size: 11px; color: var(--text-4); background: rgba(255,255,255,0.04); padding: 2px 6px; border-radius: 8px; }
+.key-masked {
+  flex: 1;
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--text-3);
+}
 
-.empty-keys { padding: 24px; text-align: center; color: var(--text-4); font-size: 13px; margin-bottom: 12px; }
-.empty-state { padding: 60px 0; }
+.key-extra {
+  font-size: 11px;
+  color: var(--text-4);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+
+.empty-keys {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-4);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.empty-state {
+  padding: 60px 0;
+}
 
 /* ===== Table ===== */
-.table-card { padding: 20px; overflow: hidden; }
-.key-section { padding: 12px; background: rgba(255,255,255,0.02); border-radius: 10px; }
-.data-table :deep(.arco-table-tr:hover .arco-table-td) { background: rgba(22, 93, 255, 0.06) !important; }
+.table-card {
+  padding: 20px;
+  overflow: hidden;
+}
+
+.key-section {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+}
+
+.data-table :deep(.arco-table-tr:hover .arco-table-td) {
+  background: rgba(22, 93, 255, 0.06) !important;
+}
 
 .provider-pill {
   display: inline-flex;
@@ -1208,7 +1243,7 @@ function handleTableExpand(_expanded: boolean, record: Model) {
   border-radius: 999px;
   border: 1px solid;
   font-size: 12px;
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 /* ===== Model status switch ===== */
@@ -1232,19 +1267,25 @@ function handleTableExpand(_expanded: boolean, record: Model) {
   color: var(--text-4);
   transition: color 0.3s ease;
 }
-.switch-label.on { color: #00B42A; }
+
+.switch-label.on {
+  color: #00B42A;
+}
 
 /* Arco Switch global overrides for dark theme */
 :deep(.arco-switch) {
   transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
+
 :deep(.arco-switch-checked) {
   box-shadow: 0 0 8px rgba(52, 211, 153, 0.3);
 }
+
 :deep(.arco-switch .arco-switch-handle) {
   transition: left 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
+
 :deep(.arco-switch .arco-switch-text) {
   font-size: 10px;
   font-weight: 600;
@@ -1257,10 +1298,12 @@ function handleTableExpand(_expanded: boolean, record: Model) {
   gap: 8px;
   width: 100%;
 }
+
 .api-key-name {
   font-weight: 600;
   color: var(--text-1);
 }
+
 .api-key-provider {
   font-size: 11px;
   padding: 2px 6px;
@@ -1269,6 +1312,7 @@ function handleTableExpand(_expanded: boolean, record: Model) {
   color: #4080FF;
   text-transform: uppercase;
 }
+
 .api-key-remark {
   font-size: 11px;
   color: var(--text-3);

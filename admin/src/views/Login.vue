@@ -68,51 +68,27 @@ watch(
         <div class="login-icon">
           <IconThunderbolt />
         </div>
-        <h1 class="title">华光 AIGC 管理后台</h1>
+        <h1 class="title">华光管理后台系统</h1>
         <p class="subtitle">请使用管理员账号登录</p>
       </div>
-      <a-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        layout="vertical"
-        size="large"
-        class="login-form"
-      >
+      <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" size="large" class="login-form">
         <a-form-item field="email">
-          <a-input
-            v-model="form.email"
-            placeholder="请输入管理员邮箱"
-            allow-clear
-            autocomplete="email"
-            class="login-input"
-          >
+          <a-input v-model="form.email" placeholder="请输入管理员邮箱" allow-clear autocomplete="email" class="login-input">
             <template #prefix>
               <IconUser :size="18" class="input-icon" />
             </template>
           </a-input>
         </a-form-item>
         <a-form-item field="password">
-          <a-input-password
-            v-model="form.password"
-            placeholder="请输入密码"
-            autocomplete="current-password"
-            class="login-input"
-            @keyup.enter="handleLogin"
-          >
+          <a-input-password v-model="form.password" placeholder="请输入密码" autocomplete="current-password"
+            class="login-input" @keyup.enter="handleLogin">
             <template #prefix>
               <IconLock :size="18" class="input-icon" />
             </template>
           </a-input-password>
         </a-form-item>
         <a-form-item>
-          <a-button
-            type="primary"
-            size="large"
-            :loading="loading"
-            class="submit-btn btn-glow"
-            @click="handleLogin"
-          >
+          <a-button type="primary" size="large" :loading="loading" class="submit-btn btn-glow" @click="handleLogin">
             {{ loading ? '登录中...' : '登录' }}
           </a-button>
         </a-form-item>

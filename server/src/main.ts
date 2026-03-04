@@ -39,7 +39,7 @@ async function bootstrap() {
 
   // Swagger API 文档
   const config = new DocumentBuilder()
-    .setTitle('HuaGuang AIGC API')
+    .setTitle('HuaGuang API')
     .setDescription('AIGC 平台后端 API 文档')
     .setVersion('1.0')
     .addBearerAuth()

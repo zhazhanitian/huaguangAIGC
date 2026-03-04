@@ -57,51 +57,27 @@ async function handleLogin() {
       <div class="blob blob-3" />
     </div>
     <div class="login-card glow-breathe">
-      <h1 class="title">华光 AIGC</h1>
+      <h1 class="title">华光人工智能</h1>
       <p class="subtitle">智能对话 · 创意无限</p>
-      <a-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        layout="vertical"
-        class="login-form"
-      >
+      <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" class="login-form">
         <a-form-item field="email">
-          <a-input
-            v-model="form.email"
-            type="email"
-            placeholder="邮箱"
-            size="large"
-            :disabled="loading"
-            class="login-input"
-          >
+          <a-input v-model="form.email" type="email" placeholder="邮箱" size="large" :disabled="loading"
+            class="login-input">
             <template #prefix>
               <IconUser :size="18" class="input-icon" />
             </template>
           </a-input>
         </a-form-item>
         <a-form-item field="password">
-          <a-input-password
-            v-model="form.password"
-            placeholder="密码"
-            size="large"
-            :disabled="loading"
-            class="login-input"
-            @keyup.enter="handleLogin"
-          >
+          <a-input-password v-model="form.password" placeholder="密码" size="large" :disabled="loading"
+            class="login-input" @keyup.enter="handleLogin">
             <template #prefix>
               <IconLock :size="18" class="input-icon" />
             </template>
           </a-input-password>
         </a-form-item>
         <a-form-item>
-          <a-button
-            type="primary"
-            size="large"
-            :loading="loading"
-            class="submit-btn btn-glow"
-            @click="handleLogin"
-          >
+          <a-button type="primary" size="large" :loading="loading" class="submit-btn btn-glow" @click="handleLogin">
             登录
           </a-button>
         </a-form-item>

@@ -73,77 +73,42 @@ async function handleRegister() {
       <div class="blob blob-3" />
     </div>
     <div class="register-card glow-breathe">
-      <h1 class="title">华光 AIGC</h1>
+      <h1 class="title">华光人工智能</h1>
       <p class="subtitle">创建账号 · 开启创意之旅</p>
-      <a-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        layout="vertical"
-        class="register-form"
-      >
+      <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" class="register-form">
         <a-form-item field="username">
-          <a-input
-            v-model="form.username"
-            placeholder="用户名"
-            size="large"
-            :disabled="loading"
-            class="register-input"
-          >
+          <a-input v-model="form.username" placeholder="用户名" size="large" :disabled="loading" class="register-input">
             <template #prefix>
               <IconUser :size="18" class="input-icon" />
             </template>
           </a-input>
         </a-form-item>
         <a-form-item field="email">
-          <a-input
-            v-model="form.email"
-            type="email"
-            placeholder="邮箱"
-            size="large"
-            :disabled="loading"
-            class="register-input"
-          >
+          <a-input v-model="form.email" type="email" placeholder="邮箱" size="large" :disabled="loading"
+            class="register-input">
             <template #prefix>
               <IconEmail :size="18" class="input-icon" />
             </template>
           </a-input>
         </a-form-item>
         <a-form-item field="password">
-          <a-input-password
-            v-model="form.password"
-            placeholder="密码"
-            size="large"
-            :disabled="loading"
-            class="register-input"
-          >
+          <a-input-password v-model="form.password" placeholder="密码" size="large" :disabled="loading"
+            class="register-input">
             <template #prefix>
               <IconLock :size="18" class="input-icon" />
             </template>
           </a-input-password>
         </a-form-item>
         <a-form-item field="confirmPassword">
-          <a-input-password
-            v-model="form.confirmPassword"
-            placeholder="确认密码"
-            size="large"
-            :disabled="loading"
-            class="register-input"
-            @keyup.enter="handleRegister"
-          >
+          <a-input-password v-model="form.confirmPassword" placeholder="确认密码" size="large" :disabled="loading"
+            class="register-input" @keyup.enter="handleRegister">
             <template #prefix>
               <IconLock :size="18" class="input-icon" />
             </template>
           </a-input-password>
         </a-form-item>
         <a-form-item>
-          <a-button
-            type="primary"
-            size="large"
-            :loading="loading"
-            class="submit-btn btn-glow"
-            @click="handleRegister"
-          >
+          <a-button type="primary" size="large" :loading="loading" class="submit-btn btn-glow" @click="handleRegister">
             注册
           </a-button>
         </a-form-item>

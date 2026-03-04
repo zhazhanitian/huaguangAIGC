@@ -37,7 +37,7 @@ const sections: ConfigSection[] = [
     icon: IconSettings,
     iconColor: '#4080FF',
     fields: [
-      { key: 'siteName', label: '站点名称', description: '显示在页面标题和 Logo 旁的网站名', type: 'text', defaultVal: '华光 AIGC', placeholder: '例如：华光 AIGC' },
+      { key: 'siteName', label: '站点名称', description: '显示在页面标题和 Logo 旁的网站名', type: 'text', defaultVal: '华光管理后台系统', placeholder: '例如：华光管理后台系统' },
       { key: 'siteDescription', label: '站点描述', description: '用于 SEO 和分享预览的网站简介', type: 'textarea', defaultVal: '', placeholder: '一句话描述你的平台' },
       { key: 'maintenanceMode', label: '维护模式', description: '开启后前端将显示维护公告，用户无法使用生成功能', type: 'switch', defaultVal: false },
       { key: 'registerEnabled', label: '开放注册', description: '关闭后新用户将无法注册账号', type: 'switch', defaultVal: true },
@@ -51,7 +51,7 @@ const sections: ConfigSection[] = [
     iconColor: '#FBBF24',
     fields: [
       { key: 'defaultPoints', label: '注册赠送积分', description: '新用户注册时自动获得的积分数量', type: 'number', defaultVal: 100, placeholder: '100' },
-      { key: 'POINTS_PER_CHAT', label: '对话消耗', description: '每次 AI 对话扣除的积分', type: 'number', defaultVal: 1, placeholder: '1' },
+      { key: 'POINTS_PER_CHAT', label: '对话消耗', description: '每次人工智能对话扣除的积分', type: 'number', defaultVal: 1, placeholder: '1' },
       { key: 'POINTS_PER_DRAW', label: '绘画消耗', description: '每次生成图片扣除的积分', type: 'number', defaultVal: 5, placeholder: '5' },
       { key: 'POINTS_PER_VIDEO', label: '视频消耗', description: '每次生成视频扣除的积分', type: 'number', defaultVal: 10, placeholder: '10' },
       { key: 'POINTS_PER_MUSIC', label: '音乐消耗', description: '每次生成音乐扣除的积分', type: 'number', defaultVal: 5, placeholder: '5' },
@@ -61,7 +61,7 @@ const sections: ConfigSection[] = [
   {
     id: 'api',
     title: 'API 密钥',
-    subtitle: '各 AI 服务商的接口地址与密钥',
+    subtitle: '各人工智能服务商的接口地址与密钥',
     icon: IconLock,
     iconColor: '#00B42A',
     fields: [
@@ -69,7 +69,7 @@ const sections: ConfigSection[] = [
       { key: 'GRS_API_KEY', label: 'GrsAI API Key', description: 'GrsAI 的 Bearer Token', type: 'password', defaultVal: '', placeholder: 'sk-xxxx' },
       { key: 'APIMART_API_URL', label: 'Apimart 接口地址', description: 'Apimart 服务的 Host 地址', type: 'text', defaultVal: 'https://api.apimart.ai', placeholder: 'https://api.apimart.ai' },
       { key: 'APIMART_API_KEY', label: 'Apimart API Key', description: 'Apimart 的 Bearer Token', type: 'password', defaultVal: '', placeholder: 'sk-xxxx' },
-      { key: 'KIE_API_KEY', label: 'Kie AI API Key', description: 'Kie AI 音乐服务的 API Key', type: 'password', defaultVal: '', placeholder: 'xxxxxxxx' },
+      { key: 'KIE_API_KEY', label: 'Kie AI API Key', description: 'Kie 人工智能 音乐服务的 API Key', type: 'password', defaultVal: '', placeholder: 'xxxxxxxx' },
       { key: 'TENCENT_SECRET_ID', label: '腾讯云 SecretId', description: '腾讯云 API 的 SecretId，用于 3D 模型生成', type: 'password', defaultVal: '', placeholder: 'AKIDxxxx' },
       { key: 'TENCENT_SECRET_KEY', label: '腾讯云 SecretKey', description: '腾讯云 API 的 SecretKey', type: 'password', defaultVal: '', placeholder: 'xxxxxxxx' },
     ],
@@ -192,11 +192,15 @@ function handleReset() {
       </div>
       <div class="cfg-actions">
         <a-button :disabled="!hasChanges" @click="handleReset">
-          <template #icon><IconRefresh /></template>
+          <template #icon>
+            <IconRefresh />
+          </template>
           还原
         </a-button>
         <a-button type="primary" :loading="saveLoading" :disabled="!hasChanges" class="save-btn" @click="handleSave">
-          <template #icon><IconCheck /></template>
+          <template #icon>
+            <IconCheck />
+          </template>
           {{ saveLoading ? '保存中...' : '保存更改' }}
         </a-button>
       </div>
@@ -206,13 +210,8 @@ function handleReset() {
       <div class="cfg-body">
         <!-- Section tabs -->
         <div class="glow-card cfg-tabs">
-          <div
-            v-for="s in sections"
-            :key="s.id"
-            class="cfg-tab"
-            :class="{ active: activeSection === s.id }"
-            @click="activeSection = s.id"
-          >
+          <div v-for="s in sections" :key="s.id" class="cfg-tab" :class="{ active: activeSection === s.id }"
+            @click="activeSection = s.id">
             <span class="cfg-tab-icon" :style="{ color: s.iconColor }">
               <component :is="s.icon" />
             </span>
@@ -244,45 +243,23 @@ function handleReset() {
                   </div>
                   <div class="cfg-field-control">
                     <!-- Switch -->
-                    <a-switch
-                      v-if="f.type === 'switch'"
-                      v-model="configForm[f.key]"
-                      checked-color="#00B42A"
-                      unchecked-color="rgba(255,255,255,0.12)"
-                    >
+                    <a-switch v-if="f.type === 'switch'" v-model="configForm[f.key]" checked-color="#00B42A"
+                      unchecked-color="rgba(255,255,255,0.12)">
                       <template #checked>开启</template>
                       <template #unchecked>关闭</template>
                     </a-switch>
                     <!-- Number -->
-                    <a-input-number
-                      v-else-if="f.type === 'number'"
-                      v-model="configForm[f.key]"
-                      :placeholder="f.placeholder"
-                      :min="0"
-                      class="cfg-input-num"
-                    />
+                    <a-input-number v-else-if="f.type === 'number'" v-model="configForm[f.key]"
+                      :placeholder="f.placeholder" :min="0" class="cfg-input-num" />
                     <!-- Password -->
-                    <a-input-password
-                      v-else-if="f.type === 'password'"
-                      v-model="(configForm[f.key] as any)"
-                      :placeholder="f.placeholder"
-                      class="cfg-input"
-                    />
+                    <a-input-password v-else-if="f.type === 'password'" v-model="(configForm[f.key] as any)"
+                      :placeholder="f.placeholder" class="cfg-input" />
                     <!-- Textarea -->
-                    <a-textarea
-                      v-else-if="f.type === 'textarea'"
-                      v-model="(configForm[f.key] as any)"
-                      :placeholder="f.placeholder"
-                      :auto-size="{ minRows: 2, maxRows: 4 }"
-                      class="cfg-input"
-                    />
+                    <a-textarea v-else-if="f.type === 'textarea'" v-model="(configForm[f.key] as any)"
+                      :placeholder="f.placeholder" :auto-size="{ minRows: 2, maxRows: 4 }" class="cfg-input" />
                     <!-- Text -->
-                    <a-input
-                      v-else
-                      v-model="(configForm[f.key] as any)"
-                      :placeholder="f.placeholder"
-                      class="cfg-input"
-                    />
+                    <a-input v-else v-model="(configForm[f.key] as any)" :placeholder="f.placeholder"
+                      class="cfg-input" />
                   </div>
                 </div>
               </div>

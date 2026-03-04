@@ -134,20 +134,20 @@ const promptMaxLength = computed(() => (isProMode.value ? 1024 : 200))
 const exportFormatOptions = computed(() =>
   isProMode.value
     ? [
-        { value: '', label: '默认（返回 OBJ + GLB）' },
-        { value: 'stl', label: 'STL' },
-        { value: 'usdz', label: 'USDZ' },
-        { value: 'fbx', label: 'FBX' },
-      ]
+      { value: '', label: '默认（返回 OBJ + GLB）' },
+      { value: 'stl', label: 'STL' },
+      { value: 'usdz', label: 'USDZ' },
+      { value: 'fbx', label: 'FBX' },
+    ]
     : [
-        { value: '', label: '默认（返回 OBJ）' },
-        { value: 'obj', label: 'OBJ' },
-        { value: 'glb', label: 'GLB' },
-        { value: 'stl', label: 'STL' },
-        { value: 'usdz', label: 'USDZ' },
-        { value: 'fbx', label: 'FBX' },
-        { value: 'mp4', label: 'MP4' },
-      ],
+      { value: '', label: '默认（返回 OBJ）' },
+      { value: 'obj', label: 'OBJ' },
+      { value: 'glb', label: 'GLB' },
+      { value: 'stl', label: 'STL' },
+      { value: 'usdz', label: 'USDZ' },
+      { value: 'fbx', label: 'FBX' },
+      { value: 'mp4', label: 'MP4' },
+    ],
 )
 
 watch(
@@ -216,7 +216,7 @@ watch(realtimeConnected, (connected) => {
             if (idx >= 0) myTasks.value[idx] = { ...myTasks.value[idx], ...u }
           }
         })
-        .catch(() => {})
+        .catch(() => { })
     }
   } else if (hasPending.value) startPoll()
 })
@@ -322,7 +322,7 @@ function pickSourceImage(e: Event) {
   if (!file || !file.type.startsWith('image/')) return
   if (sourceImage.value) URL.revokeObjectURL(sourceImage.value.url)
   sourceImage.value = { file, url: URL.createObjectURL(file) }
-  ;(e.target as HTMLInputElement).value = ''
+    ; (e.target as HTMLInputElement).value = ''
 }
 
 function clearSourceImage() {
@@ -639,7 +639,7 @@ function ensureNormals(object: THREE.Object3D) {
     const hasNormal = Boolean((geom as any)?.attributes?.normal)
     if (!hasNormal && geom && 'computeVertexNormals' in geom) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(geom as any).computeVertexNormals?.()
+      ; (geom as any).computeVertexNormals?.()
     }
     geom?.computeBoundingSphere?.()
   })
@@ -1007,18 +1007,13 @@ onUnmounted(() => {
   <div class="page">
     <header class="page-header">
       <div>
-        <h1 class="page-title">AI 3D</h1>
+        <h1 class="page-title">3D</h1>
         <p class="page-desc">输入描述或图片，生成可预览、可导出的 3D 模型</p>
       </div>
       <div class="head-actions">
         <div class="tab-group">
-          <button
-            v-for="t in [{ k: 'create', l: '资产库' }, { k: 'gallery', l: '素材库' }]"
-            :key="t.k"
-            class="tab-btn"
-            :class="{ active: activeTab === t.k }"
-            @click="activeTab = t.k as 'create' | 'gallery'"
-          >
+          <button v-for="t in [{ k: 'create', l: '资产库' }, { k: 'gallery', l: '素材库' }]" :key="t.k" class="tab-btn"
+            :class="{ active: activeTab === t.k }" @click="activeTab = t.k as 'create' | 'gallery'">
             {{ t.l }}
           </button>
         </div>
@@ -1034,8 +1029,10 @@ onUnmounted(() => {
         <section class="fg">
           <label class="fl">任务模式</label>
           <div class="mode-row">
-            <button class="mode-btn" :class="{ active: form.taskType === 'text2model' }" @click="form.taskType = 'text2model'">文生3D</button>
-            <button class="mode-btn" :class="{ active: form.taskType === 'img2model' }" @click="form.taskType = 'img2model'">图生3D</button>
+            <button class="mode-btn" :class="{ active: form.taskType === 'text2model' }"
+              @click="form.taskType = 'text2model'">文生3D</button>
+            <button class="mode-btn" :class="{ active: form.taskType === 'img2model' }"
+              @click="form.taskType = 'img2model'">图生3D</button>
           </div>
         </section>
 
@@ -1059,12 +1056,8 @@ onUnmounted(() => {
             <label class="fl">提示词</label>
             <span class="limit-tip">{{ form.prompt.length }} / {{ promptMaxLength }}</span>
           </div>
-          <a-textarea
-            v-model="form.prompt"
-            :auto-size="{ minRows: 4, maxRows: 8 }"
-            :max-length="promptMaxLength"
-            placeholder="例如：黑色的狙击步枪，硬表面工业风，细节丰富"
-          />
+          <a-textarea v-model="form.prompt" :auto-size="{ minRows: 4, maxRows: 8 }" :max-length="promptMaxLength"
+            placeholder="例如：黑色的狙击步枪，硬表面工业风，细节丰富" />
         </section>
 
         <section class="fg">
@@ -1102,37 +1095,30 @@ onUnmounted(() => {
         <section class="fg">
           <label class="fl">贴图风格</label>
           <a-select v-model="form.textureStyle" class="w-full">
-            <a-option v-for="style in textureStyles" :key="style.value" :value="style.value">{{ style.label }}</a-option>
+            <a-option v-for="style in textureStyles" :key="style.value" :value="style.value">{{ style.label
+              }}</a-option>
           </a-select>
         </section>
 
         <section class="fg">
           <label class="fl">光影预设</label>
           <a-select v-model="form.lightingPreset" class="w-full">
-            <a-option v-for="light in lightingPresets" :key="light.value" :value="light.value">{{ light.label }}</a-option>
+            <a-option v-for="light in lightingPresets" :key="light.value" :value="light.value">{{ light.label
+              }}</a-option>
           </a-select>
         </section>
 
         <section class="fg">
           <label class="fl">导出格式</label>
           <a-select v-model="form.exportFormat" class="w-full">
-            <a-option
-              v-for="fmt in exportFormatOptions"
-              :key="fmt.value || 'default'"
-              :value="fmt.value"
-            >
+            <a-option v-for="fmt in exportFormatOptions" :key="fmt.value || 'default'" :value="fmt.value">
               {{ fmt.label }}
             </a-option>
           </a-select>
         </section>
 
-        <GenerateButton
-          :loading="generating || uploading"
-          :disabled="!form.prompt.trim()"
-          :loading-text="uploading ? '上传中...' : '生成中...'"
-          text="立即生成"
-          @click="handleGenerate"
-        />
+        <GenerateButton :loading="generating || uploading" :disabled="!form.prompt.trim()"
+          :loading-text="uploading ? '上传中...' : '生成中...'" text="立即生成" @click="handleGenerate" />
       </aside>
 
       <section class="works">
@@ -1142,15 +1128,20 @@ onUnmounted(() => {
         </div>
         <a-spin :loading="myLoading" class="works-spin" style="width:100%;min-height:200px">
           <div v-if="myTasks.length > 0" class="works-grid">
-            <div v-for="task in myTasks" :key="task.id" class="card" @click="task.status === 'completed' ? openPreview(task) : null">
+            <div v-for="task in myTasks" :key="task.id" class="card"
+              @click="task.status === 'completed' ? openPreview(task) : null">
               <div class="cover-box">
                 <img v-if="previewImage(task)" :src="previewImage(task)" class="cover" />
-                <div v-else class="cover-ph"><IconApps :size="28" style="opacity: 0.8" /></div>
+                <div v-else class="cover-ph">
+                  <IconApps :size="28" style="opacity: 0.8" />
+                </div>
                 <span class="status-badge" :style="{ background: sColor(task.status) }">{{ sText(task.status) }}</span>
                 <div v-if="task.status === 'pending' || task.status === 'processing'" class="progress-ov">
                   <span class="progress-stage">{{ progressStage(task) }}</span>
                   <span class="progress-value">{{ task.progress ?? 0 }}%</span>
-                  <div class="progress-track"><div class="progress-fill" :style="{ width: `${task.progress ?? 0}%` }" /></div>
+                  <div class="progress-track">
+                    <div class="progress-fill" :style="{ width: `${task.progress ?? 0}%` }" />
+                  </div>
                 </div>
               </div>
               <p class="prompt">{{ task.prompt || '无描述' }}</p>
@@ -1165,19 +1156,12 @@ onUnmounted(() => {
                 <WorkCardActionButton v-if="task.status === 'completed'" title="3D打印" @click="openPrintFlow(task)">
                   <IconApps />
                 </WorkCardActionButton>
-                <WorkCardActionButton
-                  v-if="task.status === 'completed'"
-                  :title="task.isPublic ? '设为私密' : '设为公开'"
-                  @click="handleTogglePublic(task)"
-                >
+                <WorkCardActionButton v-if="task.status === 'completed'" :title="task.isPublic ? '设为私密' : '设为公开'"
+                  @click="handleTogglePublic(task)">
                   <IconCopy />
                 </WorkCardActionButton>
-                <WorkCardActionButton
-                  v-if="task.status === 'failed'"
-                  title="重试"
-                  :disabled="retryingId === task.id"
-                  @click="handleRetry(task)"
-                >
+                <WorkCardActionButton v-if="task.status === 'failed'" title="重试" :disabled="retryingId === task.id"
+                  @click="handleRetry(task)">
                   <IconRefresh />
                 </WorkCardActionButton>
                 <WorkCardActionButton danger title="删除" @click="handleDelete(task)">
@@ -1190,29 +1174,20 @@ onUnmounted(() => {
             <EmptyState title="暂无 3D 作品" description="输入提示词开始创建你的第一个 3D 模型" />
           </div>
         </a-spin>
-        <a-pagination
-          v-if="myTotal > 12"
-          v-model:current="myPage"
-          :total="myTotal"
-          :page-size="12"
-          size="small"
-          class="pager"
-          @change="fetchMyTasks"
-        />
+        <a-pagination v-if="myTotal > 12" v-model:current="myPage" :total="myTotal" :page-size="12" size="small"
+          class="pager" @change="fetchMyTasks" />
       </section>
     </div>
 
     <div v-show="activeTab === 'gallery'" class="gallery-area">
       <a-spin :loading="galLoading" style="width:100%;min-height:200px">
         <div v-if="gallery.length > 0" class="gallery-grid">
-          <div
-            v-for="item in gallery"
-            :key="item.id"
-            class="gallery-card"
-          >
+          <div v-for="item in gallery" :key="item.id" class="gallery-card">
             <div class="gallery-cover">
               <img v-if="galleryPreview(item)" :src="galleryPreview(item)" />
-              <div v-else class="cover-ph"><IconApps :size="28" style="opacity: 0.8" /></div>
+              <div v-else class="cover-ph">
+                <IconApps :size="28" style="opacity: 0.8" />
+              </div>
             </div>
             <p class="gallery-prompt">{{ item.prompt || '无描述' }}</p>
             <div class="gallery-actions">
@@ -1227,42 +1202,23 @@ onUnmounted(() => {
           <EmptyState title="广场暂无 3D 作品" description="完成作品并公开后，将显示在这里" />
         </div>
       </a-spin>
-      <a-pagination
-        v-if="galTotal > 20"
-        v-model:current="galPage"
-        :total="galTotal"
-        :page-size="20"
-        size="small"
-        class="pager"
-        @change="fetchGallery"
-      />
+      <a-pagination v-if="galTotal > 20" v-model:current="galPage" :total="galTotal" :page-size="20" size="small"
+        class="pager" @change="fetchGallery" />
     </div>
 
-    <a-modal
-      v-model:visible="previewOpen"
-      title="3D 详情预览"
-      :width="980"
-      :footer="false"
-      unmount-on-close
-      @close="destroyViewer"
-    >
+    <a-modal v-model:visible="previewOpen" title="3D 详情预览" :width="980" :footer="false" unmount-on-close
+      @close="destroyViewer">
       <div class="preview-wrap">
         <div class="viewer" ref="viewerRef">
           <div class="viewer-tools" v-if="previewTask">
-            <button
-              class="vt-btn"
-              :class="{ active: (previewWhiteModel ?? Boolean((previewTask.params||{} as any).whiteModel)) === false }"
-              @click="previewWhiteModel = false; applyAppearance()"
-              title="使用模型自带材质/贴图"
-            >
+            <button class="vt-btn"
+              :class="{ active: (previewWhiteModel ?? Boolean((previewTask.params || {} as any).whiteModel)) === false }"
+              @click="previewWhiteModel = false; applyAppearance()" title="使用模型自带材质/贴图">
               贴图
             </button>
-            <button
-              class="vt-btn"
-              :class="{ active: (previewWhiteModel ?? Boolean((previewTask.params||{} as any).whiteModel)) === true }"
-              @click="previewWhiteModel = true; applyAppearance()"
-              title="强制白模材质（不依赖贴图）"
-            >
+            <button class="vt-btn"
+              :class="{ active: (previewWhiteModel ?? Boolean((previewTask.params || {} as any).whiteModel)) === true }"
+              @click="previewWhiteModel = true; applyAppearance()" title="强制白模材质（不依赖贴图）">
               白模
             </button>
           </div>
@@ -1306,13 +1262,7 @@ onUnmounted(() => {
       </div>
     </a-modal>
 
-    <a-modal
-      v-model:visible="printOrderOpen"
-      title="3D打印定制"
-      :width="720"
-      :footer="false"
-      @close="resetPrintFlowState"
-    >
+    <a-modal v-model:visible="printOrderOpen" title="3D打印定制" :width="720" :footer="false" @close="resetPrintFlowState">
       <div class="print-flow">
         <a-steps :current="printOrderStep" size="small">
           <a-step title="选择工艺" />
@@ -1322,13 +1272,8 @@ onUnmounted(() => {
 
         <div v-if="printOrderStep === 0" class="print-step">
           <div class="print-material-list">
-            <button
-              v-for="m in printMaterials"
-              :key="m.value"
-              class="material-card"
-              :class="{ active: printForm.material === m.value }"
-              @click="printForm.material = m.value"
-            >
+            <button v-for="m in printMaterials" :key="m.value" class="material-card"
+              :class="{ active: printForm.material === m.value }" @click="printForm.material = m.value">
               <div class="material-title">{{ m.label }}</div>
               <div class="material-desc">{{ m.desc }}</div>
               <div class="material-price">¥{{ m.price }}</div>
@@ -1348,7 +1293,8 @@ onUnmounted(() => {
               <a-input v-model="printForm.receiverAddress" placeholder="请输入详细收货地址" />
             </a-form-item>
             <a-form-item label="订单备注">
-              <a-textarea v-model="printForm.remark" :auto-size="{ minRows: 2, maxRows: 4 }" placeholder="选填：颜色、尺寸等特殊说明" />
+              <a-textarea v-model="printForm.remark" :auto-size="{ minRows: 2, maxRows: 4 }"
+                placeholder="选填：颜色、尺寸等特殊说明" />
             </a-form-item>
           </a-form>
         </div>
@@ -1377,24 +1323,14 @@ onUnmounted(() => {
 
         <div class="print-actions">
           <a-button v-if="printOrderStep > 0 && printOrderStep < 2" @click="goPrintStepBack">上一步</a-button>
-          <a-button
-            v-if="printOrderStep < 2"
-            type="primary"
-            :loading="printSubmitting"
-            @click="goPrintStepNext"
-          >
+          <a-button v-if="printOrderStep < 2" type="primary" :loading="printSubmitting" @click="goPrintStepNext">
             {{ printOrderStep === 1 ? '提交订单' : '下一步' }}
           </a-button>
         </div>
       </div>
     </a-modal>
 
-    <a-modal
-      v-model:visible="printOrdersOpen"
-      title="3D打印订单系统"
-      :width="840"
-      :footer="false"
-    >
+    <a-modal v-model:visible="printOrdersOpen" title="3D打印订单系统" :width="840" :footer="false">
       <a-spin :loading="printOrdersLoading" style="width: 100%">
         <div v-if="printOrders.length" class="print-order-list">
           <div v-for="order in printOrders" :key="order.id" class="print-order-item">
@@ -1414,15 +1350,8 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
-          <a-pagination
-            v-if="printOrdersTotal > 10"
-            v-model:current="printOrdersPage"
-            :total="printOrdersTotal"
-            :page-size="10"
-            size="small"
-            class="pager"
-            @change="fetchPrintOrders"
-          />
+          <a-pagination v-if="printOrdersTotal > 10" v-model:current="printOrdersPage" :total="printOrdersTotal"
+            :page-size="10" size="small" class="pager" @change="fetchPrintOrders" />
         </div>
         <div v-else class="gallery-empty">
           <EmptyState title="暂无打印订单" description="可在资产库或素材库模型卡片发起 3D打印 定制" />
@@ -1433,197 +1362,870 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.page { display:flex; flex-direction:column; height:100%; overflow:hidden; }
-.page-header { flex-shrink:0; display:flex; align-items:flex-end; justify-content:space-between; padding:var(--sp-6) var(--sp-8) var(--sp-4); }
-.head-actions { display:flex; align-items:center; gap:12px; }
-.page-title { margin:0; font-size:1.25rem; font-weight:700; font-family: 'Space Grotesk', 'Outfit', -apple-system, 'PingFang SC', sans-serif; letter-spacing: -0.02em; background:var(--gradient-primary); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
-.page-desc { margin:4px 0 0; font-size: 0.82rem; color:var(--text-4); font-family: 'Outfit', -apple-system, 'PingFang SC', sans-serif; }
-.tab-group { display:flex; gap:4px; background:var(--bg-surface-2); border-radius:var(--radius-md); padding:3px; }
-.tab-btn { padding:6px 20px; border:none; border-radius:var(--radius-sm); background:transparent; color:var(--text-3); font-size: 0.82rem; cursor:pointer; }
-.tab-btn.active { background:var(--primary); color:#fff; }
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
 
-.create-area { flex:1; display:flex; gap:var(--sp-6); padding:var(--sp-4) var(--sp-8) var(--sp-6); overflow:hidden; }
-.form-panel { width:340px; flex-shrink:0; overflow-y:auto; display:flex; flex-direction:column; gap:var(--sp-3); background:var(--glass-bg); backdrop-filter:var(--glass-blur); border:1px solid var(--glass-border); border-radius:var(--radius-lg); padding:var(--sp-5); }
-.fg { margin-bottom:var(--sp-1); }
-.fl { display:block; font-size:0.78rem; font-weight:600; color:var(--text-3); margin-bottom:var(--sp-2); text-transform:uppercase; letter-spacing:0.05em; }
-.fl-row { display:flex; align-items:center; }
-.limit-tip { margin-left:auto; color:var(--text-4); font-size:0.72rem; }
-.mini-btn { margin-left:auto; border:none; background:var(--bg-surface-2); color:var(--text-3); border-radius:8px; padding:4px 10px; cursor:pointer; }
-.mode-row { display:flex; gap:var(--sp-2); }
-.mode-btn { flex:1; padding:var(--sp-2) var(--sp-3); border:1px solid var(--border-1); border-radius:var(--radius-md); background:var(--bg-surface-2); color:var(--text-3); cursor:pointer; }
-.mode-btn.active { border-color:var(--primary); color:var(--primary-light); background:rgba(22, 93, 255, 0.1); }
-.source-preview { border:1px solid var(--border-2); border-radius:var(--radius-md); overflow:hidden; width:120px; height:120px; }
-.source-preview img { width:100%; height:100%; object-fit:cover; }
+.page-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: var(--sp-6) var(--sp-8) var(--sp-4);
+}
+
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-family: 'Space Grotesk', 'Outfit', -apple-system, 'PingFang SC', sans-serif;
+  letter-spacing: -0.02em;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.page-desc {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-4);
+  font-family: 'Outfit', -apple-system, 'PingFang SC', sans-serif;
+}
+
+.tab-group {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-surface-2);
+  border-radius: var(--radius-md);
+  padding: 3px;
+}
+
+.tab-btn {
+  padding: 6px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.create-area {
+  flex: 1;
+  display: flex;
+  gap: var(--sp-6);
+  padding: var(--sp-4) var(--sp-8) var(--sp-6);
+  overflow: hidden;
+}
+
+.form-panel {
+  width: 340px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+}
+
+.fg {
+  margin-bottom: var(--sp-1);
+}
+
+.fl {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-bottom: var(--sp-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fl-row {
+  display: flex;
+  align-items: center;
+}
+
+.limit-tip {
+  margin-left: auto;
+  color: var(--text-4);
+  font-size: 0.72rem;
+}
+
+.mini-btn {
+  margin-left: auto;
+  border: none;
+  background: var(--bg-surface-2);
+  color: var(--text-3);
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.mode-row {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.mode-btn {
+  flex: 1;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-2);
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.mode-btn.active {
+  border-color: var(--primary);
+  color: var(--primary-light);
+  background: rgba(22, 93, 255, 0.1);
+}
+
+.source-preview {
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  width: 120px;
+  height: 120px;
+}
+
+.source-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .dropzone {
-  width:120px;
-  height:120px;
-  border:1px dashed var(--border-3);
-  border-radius:var(--radius-md);
-  padding:10px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-  color:var(--text-3);
-  cursor:pointer;
-  text-align:center;
+  width: 100%;
+  height: 270px;
+  border: 1px dashed var(--border-3);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-3);
+  cursor: pointer;
+  text-align: center;
 }
-.dropzone:hover { border-color:var(--primary); color:var(--primary-light); background:rgba(22, 93, 255, 0.05); }
+
+.dropzone:hover {
+  border-color: var(--primary);
+  color: var(--primary-light);
+  background: rgba(22, 93, 255, 0.05);
+}
+
 .dz-plus {
-  color:var(--primary-light);
-  background:rgba(22, 93, 255, 0.14);
-  border:1px solid rgba(22, 93, 255, 0.36);
-  border-radius:10px;
-  padding:6px;
+  color: var(--primary-light);
+  background: rgba(22, 93, 255, 0.14);
+  border: 1px solid rgba(22, 93, 255, 0.36);
+  border-radius: 10px;
+  padding: 6px;
 }
-.w-full { width:100%; }
+
+.w-full {
+  width: 100%;
+}
 
 /* 生成按钮 → 使用 GenerateButton 组件 */
 
-.works { flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
-.works-head { display:flex; align-items:center; gap:var(--sp-2); margin-bottom:var(--sp-3); flex-shrink:0; }
-.works-title { margin:0; font-size:1rem; font-weight:600; color:var(--text-1); }
-.badge { background:var(--primary); color:#fff; font-size:0.7rem; font-weight:600; padding:1px 8px; border-radius:var(--radius-full); }
-.works-spin { flex:1; min-height:0; display:flex; overflow:hidden; }
-.works-spin :deep(.arco-spin) { flex:1; min-height:0; display:flex; }
-.works-spin :deep(.arco-spin-children) { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
-.works-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:var(--sp-4); overflow-y:auto; flex:1; padding-bottom:var(--sp-4); align-content:start; grid-auto-rows:max-content; }
-.works-empty { flex:1; display:flex; align-items:center; justify-content:center; min-height:280px; }
-
-.card { background:var(--bg-surface-2); border:1px solid var(--border-1); border-radius:var(--radius-lg); overflow:hidden; display:flex; flex-direction:column; align-self:start; }
-.card:hover { transform:translateY(-3px); box-shadow:var(--shadow-glow); border-color:var(--border-3); }
-.cover-box { position:relative; height:196px; background:var(--bg-surface-3); overflow:hidden; }
-.cover { width:100%; height:100%; object-fit:cover; }
-.cover-ph { height:100%; display:flex; align-items:center; justify-content:center; }
-.status-badge { position:absolute; top:var(--sp-2); left:var(--sp-2); padding:2px 10px; border-radius:var(--radius-full); font-size:0.7rem; color:#fff; font-weight:500; }
-.progress-ov { position:absolute; inset:0; background:rgba(7,10,20,0.4); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; }
-.progress-stage { font-size:0.74rem; color:var(--text-2); }
-.progress-value { font-size: 0.82rem; color:#fff; font-weight:600; }
-.progress-track { width:130px; height:4px; border-radius:999px; background:rgba(255,255,255,0.15); overflow:hidden; }
-.progress-fill { height:100%; border-radius:inherit; background:linear-gradient(90deg,#165DFF,#4080FF); transition:width 0s ease; }
-
-.prompt { margin:0; padding:var(--sp-2) var(--sp-3); font-size:0.78rem; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.task-error{
-  margin:0;
-  padding:0 var(--sp-3) var(--sp-2);
-  font-size:0.75rem;
-  color:var(--accent-red, #F53F3F);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+.works {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 }
-.actions { display:flex; gap:8px; padding:0 var(--sp-3) var(--sp-3); margin-top:auto; flex-wrap:nowrap; }
-.icon-btn { width:30px; height:30px; border:none; border-radius:50%; background:rgba(255,255,255,0.14); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-.icon-btn.danger:hover { background:rgba(245, 63, 63, 0.5); }
 
-.gallery-area { flex:1; padding:var(--sp-4) var(--sp-8) var(--sp-6); overflow-y:auto; }
-.gallery-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:var(--sp-4); }
-.gallery-card { background:var(--bg-surface-2); border:1px solid var(--border-1); border-radius:var(--radius-lg); overflow:hidden; }
-.gallery-cover { height:196px; background:var(--bg-surface-3); overflow:hidden; }
-.gallery-cover img { width:100%; height:100%; object-fit:cover; }
-.gallery-prompt { margin:0; padding:var(--sp-2) var(--sp-3); font-size:0.78rem; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.gallery-actions { padding:0 var(--sp-3) var(--sp-3); display:flex; justify-content:flex-end; }
-.gallery-empty { min-height:360px; display:flex; align-items:center; justify-content:center; }
-.pager { flex-shrink:0; margin-top:var(--sp-3); display:flex; justify-content:center; }
+.works-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+  flex-shrink: 0;
+}
 
-.preview-wrap { display:grid; grid-template-columns:1fr 320px; gap:var(--sp-4); min-height:520px; }
-.viewer { position:relative; border:1px solid var(--border-1); border-radius:var(--radius-md); background:var(--bg-surface-3); min-height:520px; overflow:hidden; }
-.viewer-tools { position:absolute; top:10px; right:10px; z-index:2; display:flex; gap:8px; }
+.works-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.badge {
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+}
+
+.works-spin {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.works-spin :deep(.arco-spin) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.works-spin :deep(.arco-spin-children) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.works-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--sp-4);
+  overflow-y: auto;
+  flex: 1;
+  padding-bottom: var(--sp-4);
+  align-content: start;
+  grid-auto-rows: max-content;
+}
+
+.works-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+}
+
+.card {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-glow);
+  border-color: var(--border-3);
+}
+
+.cover-box {
+  position: relative;
+  height: 196px;
+  background: var(--bg-surface-3);
+  overflow: hidden;
+}
+
+.cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cover-ph {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-badge {
+  position: absolute;
+  top: var(--sp-2);
+  left: var(--sp-2);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  color: #fff;
+  font-weight: 500;
+}
+
+.progress-ov {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 10, 20, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.progress-stage {
+  font-size: 0.74rem;
+  color: var(--text-2);
+}
+
+.progress-value {
+  font-size: 0.82rem;
+  color: #fff;
+  font-weight: 600;
+}
+
+.progress-track {
+  width: 130px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #165DFF, #4080FF);
+  transition: width 0s ease;
+}
+
+.prompt {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 0.78rem;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-error {
+  margin: 0;
+  padding: 0 var(--sp-3) var(--sp-2);
+  font-size: 0.75rem;
+  color: var(--accent-red, #F53F3F);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 var(--sp-3) var(--sp-3);
+  margin-top: auto;
+  flex-wrap: nowrap;
+}
+
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn.danger:hover {
+  background: rgba(245, 63, 63, 0.5);
+}
+
+.gallery-area {
+  flex: 1;
+  padding: var(--sp-4) var(--sp-8) var(--sp-6);
+  overflow-y: auto;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--sp-4);
+}
+
+.gallery-card {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.gallery-cover {
+  height: 196px;
+  background: var(--bg-surface-3);
+  overflow: hidden;
+}
+
+.gallery-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gallery-prompt {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 0.78rem;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gallery-actions {
+  padding: 0 var(--sp-3) var(--sp-3);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.gallery-empty {
+  min-height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pager {
+  flex-shrink: 0;
+  margin-top: var(--sp-3);
+  display: flex;
+  justify-content: center;
+}
+
+.preview-wrap {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: var(--sp-4);
+  min-height: 520px;
+}
+
+.viewer {
+  position: relative;
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-3);
+  min-height: 520px;
+  overflow: hidden;
+}
+
+.viewer-tools {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+}
+
 .vt-btn {
-  border:1px solid rgba(255,255,255,0.18);
-  background:rgba(0,0,0,0.1);
-  color:var(--text-2);
-  border-radius:999px;
-  padding:6px 10px;
-  font-size:0.75rem;
-  cursor:pointer;
-  backdrop-filter:none;
-  transition:all var(--duration-fast);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--text-2);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  backdrop-filter: none;
+  transition: all var(--duration-fast);
 }
-.vt-btn:hover { border-color: rgba(255,255,255,0.32); background:rgba(0,0,0,0.15); }
-.vt-btn.active { border-color: rgba(22, 93, 255, 0.3); background: rgba(22, 93, 255, 0.18); color: #fff; }
-.viewer-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:8px; color:var(--text-2); font-size: 0.82rem; background:rgba(9,13,26,0.5); pointer-events:none; }
-.detail { border:1px solid var(--border-1); border-radius:var(--radius-md); background:var(--bg-surface-2); padding:var(--sp-3); overflow:auto; }
-.detail-title { font-size: 0.82rem; color:var(--text-2); font-weight:600; margin-bottom:var(--sp-3); }
-.detail-grid { display:grid; grid-template-columns:1fr; gap:8px; }
-.item { display:flex; gap:8px; min-width:0; }
-.item .k { color:var(--text-4); font-size:0.76rem; white-space:nowrap; }
-.item .v { color:var(--text-2); font-size:0.76rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-.detail-block { margin-top:var(--sp-3); }
-.kb { font-size:0.76rem; color:var(--text-4); margin-bottom:6px; }
-.json { margin:0; white-space:pre-wrap; word-break:break-word; padding:10px 12px; border-radius:10px; border:1px solid var(--border-1); background:var(--bg-surface-3); color:var(--text-2); font-size:0.74rem; line-height:1.5; }
-.detail-actions { margin-top:var(--sp-3); display:flex; justify-content:flex-end; }
-.print-btn {
-  border:none;
-  border-radius:999px;
-  background:rgba(22, 93, 255, 0.15);
-  color:var(--primary-light);
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:8px 14px;
-  cursor:pointer;
-  margin-right:10px;
-}
-.export-btn { border:none; border-radius:999px; background:var(--gradient-primary); color:#fff; display:flex; align-items:center; gap:8px; padding:8px 14px; cursor:pointer; }
 
-.print-flow { display:flex; flex-direction:column; gap:16px; margin-top:6px; }
-.print-step { min-height:260px; }
-.print-material-list { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; }
+.vt-btn:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.vt-btn.active {
+  border-color: rgba(22, 93, 255, 0.3);
+  background: rgba(22, 93, 255, 0.18);
+  color: #fff;
+}
+
+.viewer-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 0.82rem;
+  background: rgba(9, 13, 26, 0.5);
+  pointer-events: none;
+}
+
+.detail {
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-2);
+  padding: var(--sp-3);
+  overflow: auto;
+}
+
+.detail-title {
+  font-size: 0.82rem;
+  color: var(--text-2);
+  font-weight: 600;
+  margin-bottom: var(--sp-3);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.item {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.item .k {
+  color: var(--text-4);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.item .v {
+  color: var(--text-2);
+  font-size: 0.76rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.detail-block {
+  margin-top: var(--sp-3);
+}
+
+.kb {
+  font-size: 0.76rem;
+  color: var(--text-4);
+  margin-bottom: 6px;
+}
+
+.json {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-1);
+  background: var(--bg-surface-3);
+  color: var(--text-2);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.detail-actions {
+  margin-top: var(--sp-3);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.print-btn {
+  border: none;
+  border-radius: 999px;
+  background: rgba(22, 93, 255, 0.15);
+  color: var(--primary-light);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.export-btn {
+  border: none;
+  border-radius: 999px;
+  background: var(--gradient-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.print-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 6px;
+}
+
+.print-step {
+  min-height: 260px;
+}
+
+.print-material-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .material-card {
-  border:1px solid var(--border-2);
-  border-radius:12px;
-  background:var(--bg-surface-2);
-  color:var(--text-2);
-  text-align:left;
-  padding:14px;
-  cursor:pointer;
+  border: 1px solid var(--border-2);
+  border-radius: 12px;
+  background: var(--bg-surface-2);
+  color: var(--text-2);
+  text-align: left;
+  padding: 14px;
+  cursor: pointer;
 }
+
 .material-card.active {
-  border-color:var(--primary);
-  box-shadow:0 0 0 1px rgba(22, 93, 255, 0.2);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px rgba(22, 93, 255, 0.2);
 }
-.material-title { font-size:0.9rem; font-weight:600; color:var(--text-1); }
-.material-desc { margin-top:6px; font-size:0.76rem; color:var(--text-4); line-height:1.45; min-height:34px; }
-.material-price { margin-top:8px; font-size:1rem; font-weight:700; color:var(--primary-light); }
-.print-actions { display:flex; justify-content:flex-end; gap:12px; }
-.pay-wrap { display:grid; grid-template-columns:260px 1fr; gap:20px; }
-.pay-left { display:flex; flex-direction:column; align-items:center; gap:10px; }
-.pay-title { font-size:0.82rem; color:var(--text-2); }
-.pay-amount { font-size:1.05rem; font-weight:700; color:var(--primary-light); }
-.qr-img { width:220px; height:220px; border-radius:10px; border:1px solid var(--border-2); background:#fff; }
-.qr-placeholder { width:220px; height:220px; border-radius:10px; border:1px dashed var(--border-2); display:flex; align-items:center; justify-content:center; color:var(--text-4); }
-.pay-right { border:1px solid var(--border-1); border-radius:12px; padding:12px; background:var(--bg-surface-2); display:flex; flex-direction:column; gap:10px; }
-.order-line { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; font-size:0.8rem; color:var(--text-3); }
-.order-line b { color:var(--text-1); font-weight:600; text-align:right; word-break:break-all; }
-.print-order-list { display:flex; flex-direction:column; gap:12px; }
-.print-order-item { display:grid; grid-template-columns:88px 1fr; gap:12px; border:1px solid var(--border-1); border-radius:12px; background:var(--bg-surface-2); padding:10px; }
-.print-order-preview { width:88px; height:88px; object-fit:cover; border-radius:10px; background:var(--bg-surface-3); }
-.print-order-preview.empty { display:flex; align-items:center; justify-content:center; color:var(--text-4); font-size:12px; border:1px dashed var(--border-2); }
-.print-order-content { min-width:0; display:flex; flex-direction:column; gap:8px; }
-.print-order-top { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-.print-order-no { font-size:0.84rem; color:var(--text-2); font-weight:600; }
-.print-order-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px 12px; font-size:0.76rem; color:var(--text-3); }
-.print-order-grid .addr { grid-column:1 / -1; }
+
+.material-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.material-desc {
+  margin-top: 6px;
+  font-size: 0.76rem;
+  color: var(--text-4);
+  line-height: 1.45;
+  min-height: 34px;
+}
+
+.material-price {
+  margin-top: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary-light);
+}
+
+.print-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.pay-wrap {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 20px;
+}
+
+.pay-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.pay-title {
+  font-size: 0.82rem;
+  color: var(--text-2);
+}
+
+.pay-amount {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--primary-light);
+}
+
+.qr-img {
+  width: 220px;
+  height: 220px;
+  border-radius: 10px;
+  border: 1px solid var(--border-2);
+  background: #fff;
+}
+
+.qr-placeholder {
+  width: 220px;
+  height: 220px;
+  border-radius: 10px;
+  border: 1px dashed var(--border-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-4);
+}
+
+.pay-right {
+  border: 1px solid var(--border-1);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--bg-surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.order-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: var(--text-3);
+}
+
+.order-line b {
+  color: var(--text-1);
+  font-weight: 600;
+  text-align: right;
+  word-break: break-all;
+}
+
+.print-order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.print-order-item {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 12px;
+  border: 1px solid var(--border-1);
+  border-radius: 12px;
+  background: var(--bg-surface-2);
+  padding: 10px;
+}
+
+.print-order-preview {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 10px;
+  background: var(--bg-surface-3);
+}
+
+.print-order-preview.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-4);
+  font-size: 12px;
+  border: 1px dashed var(--border-2);
+}
+
+.print-order-content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.print-order-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.print-order-no {
+  font-size: 0.84rem;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.print-order-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  font-size: 0.76rem;
+  color: var(--text-3);
+}
+
+.print-order-grid .addr {
+  grid-column: 1 / -1;
+}
 
 @media(max-width:1100px) {
-  .preview-wrap { grid-template-columns:1fr; }
-  .viewer { min-height:400px; }
+  .preview-wrap {
+    grid-template-columns: 1fr;
+  }
+
+  .viewer {
+    min-height: 400px;
+  }
 }
+
 @media(max-width:900px) {
-  .head-actions { width:100%; justify-content:space-between; }
-  .create-area { flex-direction:column; }
-  .form-panel { width:100%; max-height:48vh; }
-  .works-grid { grid-template-columns:repeat(2,1fr); }
-  .print-material-list { grid-template-columns:1fr; }
-  .pay-wrap { grid-template-columns:1fr; }
-  .print-order-grid { grid-template-columns:1fr; }
+  .head-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .create-area {
+    flex-direction: column;
+  }
+
+  .form-panel {
+    width: 100%;
+    max-height: 48vh;
+  }
+
+  .works-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .print-material-list {
+    grid-template-columns: 1fr;
+  }
+
+  .pay-wrap {
+    grid-template-columns: 1fr;
+  }
+
+  .print-order-grid {
+    grid-template-columns: 1fr;
+  }
 }
+
 @media(max-width:600px) {
-  .page-header { flex-direction:column; align-items:flex-start; gap:var(--sp-3); padding:var(--sp-4); }
-  .create-area, .gallery-area { padding:var(--sp-3); }
-  .works-grid, .gallery-grid { grid-template-columns:1fr; }
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+  }
+
+  .create-area,
+  .gallery-area {
+    padding: var(--sp-3);
+  }
+
+  .works-grid,
+  .gallery-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

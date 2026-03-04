@@ -64,7 +64,7 @@ function pickFrame(type: 'first' | 'last', e: Event) {
   const url = URL.createObjectURL(file)
   if (type === 'first') { if (firstFrameFile.value) URL.revokeObjectURL(firstFrameFile.value.url); firstFrameFile.value = { url, file } }
   else { if (lastFrameFile.value) URL.revokeObjectURL(lastFrameFile.value.url); lastFrameFile.value = { url, file } }
-  ;(e.target as HTMLInputElement).value = ''
+  ; (e.target as HTMLInputElement).value = ''
 }
 function clearFrame(type: 'first' | 'last') {
   if (type === 'first' && firstFrameFile.value) { URL.revokeObjectURL(firstFrameFile.value.url); firstFrameFile.value = null }
@@ -77,7 +77,7 @@ function pickMotionImage(e: Event) {
   const url = URL.createObjectURL(file)
   if (motionRoleImage.value) URL.revokeObjectURL(motionRoleImage.value.url)
   motionRoleImage.value = { url, file }
-  ;(e.target as HTMLInputElement).value = ''
+    ; (e.target as HTMLInputElement).value = ''
 }
 function clearMotionImage() {
   if (motionRoleImage.value) {
@@ -91,7 +91,7 @@ function pickMotionVideo(e: Event) {
   const url = URL.createObjectURL(file)
   if (motionVideoFile.value) URL.revokeObjectURL(motionVideoFile.value.url)
   motionVideoFile.value = { url, file }
-  ;(e.target as HTMLInputElement).value = ''
+    ; (e.target as HTMLInputElement).value = ''
 }
 function clearMotionVideo() {
   if (motionVideoFile.value) {
@@ -112,7 +112,7 @@ function addRefImages(files: File[]) {
   const left = maxRef - refImages.value.length
   if (left <= 0) { Message.warning(`最多 ${maxRef} 张参考图`); return }
   for (const f of imgs.slice(0, left)) {
-    refImages.value.push({ id: `r${Date.now()}${Math.random().toString(36).slice(2,5)}`, file: f, url: URL.createObjectURL(f) })
+    refImages.value.push({ id: `r${Date.now()}${Math.random().toString(36).slice(2, 5)}`, file: f, url: URL.createObjectURL(f) })
   }
 }
 function removeRef(id: string) {
@@ -406,23 +406,25 @@ watch(previewMode, () => {
 let poll: ReturnType<typeof setInterval> | null = null
 let unsubRealtime: (() => void) | null = null
 const hasPending = computed(() => myTasks.value.some(t => t.status === 'pending' || t.status === 'processing'))
-function startPoll() { if (poll) return; poll = setInterval(async () => {
-  if (realtimeConnected.value) { stopPoll(); return }
-  if (document.visibilityState === 'hidden') return
-  if (!hasPending.value) { stopPoll(); return }
-  const ids = myTasks.value
-    .filter((x) => x.status === 'pending' || x.status === 'processing')
-    .map((x) => x.id)
-  if (ids.length === 0) return
-  try {
-    const { data } = await getTasksStatusBatch(ids)
-    const list = Array.isArray(data) ? data : []
-    for (const u of list) {
-      const i = myTasks.value.findIndex((x) => x.id === u.id)
-      if (i >= 0) myTasks.value[i] = { ...myTasks.value[i], ...u }
-    }
-  } catch {}
-}, 10000) }
+function startPoll() {
+  if (poll) return; poll = setInterval(async () => {
+    if (realtimeConnected.value) { stopPoll(); return }
+    if (document.visibilityState === 'hidden') return
+    if (!hasPending.value) { stopPoll(); return }
+    const ids = myTasks.value
+      .filter((x) => x.status === 'pending' || x.status === 'processing')
+      .map((x) => x.id)
+    if (ids.length === 0) return
+    try {
+      const { data } = await getTasksStatusBatch(ids)
+      const list = Array.isArray(data) ? data : []
+      for (const u of list) {
+        const i = myTasks.value.findIndex((x) => x.id === u.id)
+        if (i >= 0) myTasks.value[i] = { ...myTasks.value[i], ...u }
+      }
+    } catch { }
+  }, 10000)
+}
 function stopPoll() { if (poll) { clearInterval(poll); poll = null } }
 watch(hasPending, v => v ? startPoll() : stopPoll())
 watch(activeTab, t => t === 'create' ? fetchMy() : fetchGal())
@@ -465,7 +467,7 @@ watch(realtimeConnected, (connected) => {
             if (i >= 0) myTasks.value[i] = { ...myTasks.value[i], ...u }
           }
         })
-        .catch(() => {})
+        .catch(() => { })
     }
   } else if (hasPending.value) startPoll()
 })
@@ -518,37 +520,37 @@ async function handleGenerate() {
       params,
     }
     if (previewMode.value && currentModel === 'sora-2-pro-preview') {
-      ;(payload.params as Record<string, unknown>).resolution = selectedResolution.value
+      ; (payload.params as Record<string, unknown>).resolution = selectedResolution.value
     }
     if (isKlingModel.value) {
-      ;(payload.params as Record<string, unknown>).klingMode = klingMode.value
-      ;(payload.params as Record<string, unknown>).sound = klingSound.value
+      ; (payload.params as Record<string, unknown>).klingMode = klingMode.value
+        ; (payload.params as Record<string, unknown>).sound = klingSound.value
     }
     if (showKling26Sound.value) {
-      ;(payload.params as Record<string, unknown>).sound = kling26Sound.value
+      ; (payload.params as Record<string, unknown>).sound = kling26Sound.value
     }
     if (isKling26Motion.value) {
-      ;(payload.params as Record<string, unknown>).mode = motionResolution.value
-      ;(payload.params as Record<string, unknown>).character_orientation = motionOrientation.value
+      ; (payload.params as Record<string, unknown>).mode = motionResolution.value
+        ; (payload.params as Record<string, unknown>).character_orientation = motionOrientation.value
     }
     if (isSeedanceModel.value) {
-      ;(payload.params as Record<string, unknown>).resolution = seedanceResolution.value
-      ;(payload.params as Record<string, unknown>).fixed_lens = seedanceFixedLens.value
-      ;(payload.params as Record<string, unknown>).generate_audio = seedanceGenerateAudio.value
+      ; (payload.params as Record<string, unknown>).resolution = seedanceResolution.value
+        ; (payload.params as Record<string, unknown>).fixed_lens = seedanceFixedLens.value
+        ; (payload.params as Record<string, unknown>).generate_audio = seedanceGenerateAudio.value
     }
     if (taskMode.value === 'img2video') {
       if (inputMode.value === 'frame') {
         payload.imageUrl = await uploadImageAndGetUrl(firstFrameFile.value!.file)
         if (lastFrameFile.value) {
-          ;(payload.params as Record<string, unknown>).lastFrameUrl = await uploadImageAndGetUrl(lastFrameFile.value.file)
+          ; (payload.params as Record<string, unknown>).lastFrameUrl = await uploadImageAndGetUrl(lastFrameFile.value.file)
         }
       } else if (inputMode.value === 'ref') {
         const urls = await Promise.all(refImages.value.map((r) => uploadImageAndGetUrl(r.file)))
         payload.imageUrl = urls[0]
-        ;(payload.params as Record<string, unknown>).urls = urls.slice(0, maxRef.value)
+          ; (payload.params as Record<string, unknown>).urls = urls.slice(0, maxRef.value)
       } else if (inputMode.value === 'motion') {
         payload.imageUrl = await uploadImageAndGetUrl(motionRoleImage.value!.file)
-        ;(payload.params as Record<string, unknown>).motionVideoUrl = await uploadVideoAndGetUrl(motionVideoFile.value!.file)
+          ; (payload.params as Record<string, unknown>).motionVideoUrl = await uploadVideoAndGetUrl(motionVideoFile.value!.file)
       }
     }
 
@@ -568,8 +570,8 @@ async function handleGenerate() {
 }
 
 function isDone(s: string) { return s === 'done' || s === 'completed' }
-function sText(s: string) { return ({ pending:'排队中', processing:'生成中', done:'已完成', completed:'已完成', failed:'失败' } as Record<string,string>)[s] ?? s }
-function sColor(s: string) { return ({ pending:'#6B7785', processing:'#FF7D00', done:'#00B42A', completed:'#00B42A', failed:'#F53F3F' } as Record<string,string>)[s] ?? '#6B7785' }
+function sText(s: string) { return ({ pending: '排队中', processing: '生成中', done: '已完成', completed: '已完成', failed: '失败' } as Record<string, string>)[s] ?? s }
+function sColor(s: string) { return ({ pending: '#6B7785', processing: '#FF7D00', done: '#00B42A', completed: '#00B42A', failed: '#F53F3F' } as Record<string, string>)[s] ?? '#6B7785' }
 function thumb(t: VideoTask) { return t.thumbnailUrl || t.videoUrl || t.resultUrl || '' }
 function stepIdx(t: VideoTask) { if (isDone(t.status)) return 3; if (t.status === 'failed') return -1; const p = t.progress ?? 0; return p < 30 ? 1 : 2 }
 function videoStageText(t: VideoTask) {
@@ -587,7 +589,7 @@ function openPreview(url: string, task?: VideoTask | null) {
     const el = previewVideoRef.value
     if (el) {
       el.muted = false
-      el.play().catch(() => {})
+      el.play().catch(() => { })
     }
   })
 }
@@ -639,16 +641,17 @@ function handleDeleteTask(task: VideoTask) {
   <div class="page">
     <header class="page-header">
       <div>
-        <h1 class="page-title">AI 视频</h1>
-        <p class="page-desc">用文字或图片生成高质量 AI 视频</p>
+        <h1 class="page-title">视频创作</h1>
+        <p class="page-desc">用文字或图片生成高质量 人工智能 视频</p>
       </div>
       <div class="tab-group">
-        <button v-for="t in [{k:'create',l:'创作'},{k:'gallery',l:'广场'}]" :key="t.k" class="tab-btn" :class="{active:activeTab===t.k}" @click="activeTab=t.k">{{ t.l }}</button>
+        <button v-for="t in [{ k: 'create', l: '创作' }, { k: 'gallery', l: '广场' }]" :key="t.k" class="tab-btn"
+          :class="{ active: activeTab === t.k }" @click="activeTab = t.k">{{ t.l }}</button>
       </div>
     </header>
 
     <!-- ===== 创作 ===== -->
-    <div v-show="activeTab==='create'" class="create-area">
+    <div v-show="activeTab === 'create'" class="create-area">
       <aside class="form-panel">
         <!-- 模型下拉 -->
         <section class="fg">
@@ -690,37 +693,44 @@ function handleDeleteTask(task: VideoTask) {
         <section class="fg">
           <label class="fl">输入方式</label>
           <div class="mode-toggle">
-            <button v-for="mode in availableInputModes" :key="mode" class="mode-btn" :class="{active:inputMode===mode}" @click="inputMode=mode">
+            <button v-for="mode in availableInputModes" :key="mode" class="mode-btn"
+              :class="{ active: inputMode === mode }" @click="inputMode = mode">
               {{ inputModeLabels[mode] }}
             </button>
           </div>
         </section>
 
         <!-- 首帧 + 尾帧（frame 模式）-->
-        <section v-if="inputMode==='frame' && canUseFrameMode" class="fg">
+        <section v-if="inputMode === 'frame' && canUseFrameMode" class="fg">
           <label class="fl">首帧图片 <span class="fl-hint">必选</span></label>
           <div v-if="firstFrameFile" class="frame-preview">
             <img :src="firstFrameFile.url" />
-            <button class="frame-clear" aria-label="清除首帧" @click="clearFrame('first')"><IconClose :size="10" /></button>
+            <button class="frame-clear" aria-label="清除首帧" @click="clearFrame('first')">
+              <IconClose :size="10" />
+            </button>
           </div>
           <div v-else class="dropzone-sm" @click="firstFrameInputRef?.click()">
             <IconImage :size="18" class="upload-icon" /><span>点击上传首帧</span>
           </div>
-          <input ref="firstFrameInputRef" type="file" accept="image/*" class="hidden-input" @change="pickFrame('first', $event)" />
+          <input ref="firstFrameInputRef" type="file" accept="image/*" class="hidden-input"
+            @change="pickFrame('first', $event)" />
 
           <label class="fl mt-12">尾帧图片 <span class="fl-hint">可选，需搭配首帧</span></label>
           <div v-if="lastFrameFile" class="frame-preview">
             <img :src="lastFrameFile.url" />
-            <button class="frame-clear" aria-label="清除尾帧" @click="clearFrame('last')"><IconClose :size="10" /></button>
+            <button class="frame-clear" aria-label="清除尾帧" @click="clearFrame('last')">
+              <IconClose :size="10" />
+            </button>
           </div>
           <div v-else class="dropzone-sm" @click="lastFrameInputRef?.click()">
             <IconImage :size="18" class="upload-icon" /><span>点击上传尾帧</span>
           </div>
-          <input ref="lastFrameInputRef" type="file" accept="image/*" class="hidden-input" @change="pickFrame('last', $event)" />
+          <input ref="lastFrameInputRef" type="file" accept="image/*" class="hidden-input"
+            @change="pickFrame('last', $event)" />
         </section>
 
         <!-- 参考图 -->
-        <section v-if="inputMode==='ref' && canUseRefMode" class="fg">
+        <section v-if="inputMode === 'ref' && canUseRefMode" class="fg">
           <div class="fl-row">
             <label class="fl">参考图</label>
             <span class="fl-count">{{ refImages.length }}/{{ maxRef }}</span>
@@ -728,52 +738,64 @@ function handleDeleteTask(task: VideoTask) {
           <div v-if="refImages.length > 0" class="ref-grid">
             <div v-for="r in refImages" :key="r.id" class="ref-item">
               <img :src="r.url" />
-              <button class="ref-del" @click="removeRef(r.id)"><IconClose :size="10" /></button>
+              <button class="ref-del" @click="removeRef(r.id)">
+                <IconClose :size="10" />
+              </button>
             </div>
-            <button v-if="refImages.length < maxRef" class="ref-add" @click="refInputRef?.click()"><IconPlus :size="22" /></button>
+            <button v-if="refImages.length < maxRef" class="ref-add" @click="refInputRef?.click()">
+              <IconPlus :size="22" />
+            </button>
           </div>
           <div v-else class="dropzone" @dragover.prevent @drop="handleRefDrop" @click="refInputRef?.click()">
-            <IconPlus :size="28" class="upload-plus" />
+            <IconPlus :size="44" class="upload-plus" />
             <span class="dz-text">点击或拖拽上传参考图</span>
             <span class="dz-hint">最多 {{ maxRef }} 张，不可与首尾帧同时使用</span>
           </div>
-          <input ref="refInputRef" type="file" accept="image/*" multiple class="hidden-input" @change="handleRefSelect" />
+          <input ref="refInputRef" type="file" accept="image/*" multiple class="hidden-input"
+            @change="handleRefSelect" />
         </section>
 
         <!-- 动作控制：角色图 + 动作视频 -->
-        <section v-if="inputMode==='motion'" class="fg">
+        <section v-if="inputMode === 'motion'" class="fg">
           <label class="fl">角色图 <span class="fl-hint">必选</span></label>
           <div v-if="motionRoleImage" class="frame-preview">
             <img :src="motionRoleImage.url" />
-            <button class="frame-clear" @click="clearMotionImage"><IconClose :size="10" /></button>
+            <button class="frame-clear" @click="clearMotionImage">
+              <IconClose :size="10" />
+            </button>
           </div>
           <div v-else class="dropzone-sm" @click="motionRoleInputRef?.click()">
             <IconImage :size="18" class="upload-icon" /><span>点击上传角色图</span>
           </div>
-          <input ref="motionRoleInputRef" type="file" accept="image/*" class="hidden-input" @change="pickMotionImage($event)" />
+          <input ref="motionRoleInputRef" type="file" accept="image/*" class="hidden-input"
+            @change="pickMotionImage($event)" />
 
           <label class="fl mt-12">动作视频 <span class="fl-hint">必选</span></label>
           <div v-if="motionVideoFile" class="frame-preview">
             <video :src="motionVideoFile.url" muted preload="metadata" />
-            <button class="frame-clear" aria-label="清除动作视频" @click="clearMotionVideo"><IconClose :size="10" /></button>
+            <button class="frame-clear" aria-label="清除动作视频" @click="clearMotionVideo">
+              <IconClose :size="10" />
+            </button>
           </div>
           <div v-else class="dropzone-sm" @click="motionVideoInputRef?.click()">
             <IconVideoCamera :size="18" class="upload-icon" /><span>点击上传动作视频</span>
           </div>
-          <input ref="motionVideoInputRef" type="file" accept="video/*" class="hidden-input" @change="pickMotionVideo($event)" />
+          <input ref="motionVideoInputRef" type="file" accept="video/*" class="hidden-input"
+            @change="pickMotionVideo($event)" />
         </section>
 
         <!-- 提示词 -->
         <section class="fg">
           <label class="fl">提示词</label>
-          <a-textarea v-model="form.prompt" :auto-size="{minRows:4,maxRows:8}" placeholder="描述你想生成的视频内容..." />
+          <a-textarea v-model="form.prompt" :auto-size="{ minRows: 4, maxRows: 8 }" placeholder="描述你想生成的视频内容..." />
         </section>
 
         <!-- 画面比例 -->
         <section v-if="showRatio" class="fg">
           <label class="fl">画面比例</label>
           <div class="dur-row">
-            <button v-for="r in ratioOptions" :key="r.value" class="dur-btn" :class="{active:selectedRatio===r.value}" @click="selectedRatio=r.value">
+            <button v-for="r in ratioOptions" :key="r.value" class="dur-btn"
+              :class="{ active: selectedRatio === r.value }" @click="selectedRatio = r.value">
               <span class="ratio-outline" :style="ratioPreviewStyle(r.value)" />
               {{ r.label }}
             </button>
@@ -783,7 +805,8 @@ function handleDeleteTask(task: VideoTask) {
         <section v-if="isSeedanceModel" class="fg">
           <label class="fl">分辨率</label>
           <div class="dur-row">
-            <button v-for="r in seedanceResolutionOptions" :key="r.value" class="dur-btn" :class="{active:seedanceResolution===r.value}" @click="seedanceResolution=r.value">
+            <button v-for="r in seedanceResolutionOptions" :key="r.value" class="dur-btn"
+              :class="{ active: seedanceResolution === r.value }" @click="seedanceResolution = r.value">
               {{ r.label }}
             </button>
           </div>
@@ -792,7 +815,8 @@ function handleDeleteTask(task: VideoTask) {
         <section v-if="showDuration" class="fg">
           <label class="fl">视频时长</label>
           <div class="dur-row">
-            <button v-for="d in durationOptions" :key="d" class="dur-btn" :class="{active:form.duration===d}" @click="form.duration=d">
+            <button v-for="d in durationOptions" :key="d" class="dur-btn" :class="{ active: form.duration === d }"
+              @click="form.duration = d">
               {{ d }} 秒
             </button>
           </div>
@@ -816,17 +840,23 @@ function handleDeleteTask(task: VideoTask) {
         <section v-if="isKling26Motion" class="fg">
           <label class="fl">输出分辨率</label>
           <div class="dur-row">
-            <button class="dur-btn" :class="{active:motionResolution==='480p'}" @click="motionResolution='480p'">480p</button>
-            <button class="dur-btn" :class="{active:motionResolution==='720p'}" @click="motionResolution='720p'">720p</button>
-            <button class="dur-btn" :class="{active:motionResolution==='1080p'}" @click="motionResolution='1080p'">1080p</button>
+            <button class="dur-btn" :class="{ active: motionResolution === '480p' }"
+              @click="motionResolution = '480p'">480p</button>
+            <button class="dur-btn" :class="{ active: motionResolution === '720p' }"
+              @click="motionResolution = '720p'">720p</button>
+            <button class="dur-btn" :class="{ active: motionResolution === '1080p' }"
+              @click="motionResolution = '1080p'">1080p</button>
           </div>
         </section>
         <section v-if="isKling26Motion" class="fg">
           <label class="fl">角色朝向</label>
           <div class="dur-row">
-            <button class="dur-btn" :class="{active:motionOrientation==='image'}" @click="motionOrientation='image'">image</button>
-            <button class="dur-btn" :class="{active:motionOrientation==='video'}" @click="motionOrientation='video'">video</button>
-            <button class="dur-btn" :class="{active:motionOrientation==='auto'}" @click="motionOrientation='auto'">auto</button>
+            <button class="dur-btn" :class="{ active: motionOrientation === 'image' }"
+              @click="motionOrientation = 'image'">image</button>
+            <button class="dur-btn" :class="{ active: motionOrientation === 'video' }"
+              @click="motionOrientation = 'video'">video</button>
+            <button class="dur-btn" :class="{ active: motionOrientation === 'auto' }"
+              @click="motionOrientation = 'auto'">auto</button>
           </div>
         </section>
 
@@ -834,8 +864,10 @@ function handleDeleteTask(task: VideoTask) {
         <section v-if="isKlingModel" class="fg">
           <label class="fl">画质模式</label>
           <div class="dur-row">
-            <button class="dur-btn" :class="{active:klingMode==='std'}" @click="klingMode='std'">标准 (std)</button>
-            <button class="dur-btn" :class="{active:klingMode==='pro'}" @click="klingMode='pro'">高清 (pro)</button>
+            <button class="dur-btn" :class="{ active: klingMode === 'std' }" @click="klingMode = 'std'">标准
+              (std)</button>
+            <button class="dur-btn" :class="{ active: klingMode === 'pro' }" @click="klingMode = 'pro'">高清
+              (pro)</button>
           </div>
         </section>
         <section v-if="isKlingModel" class="fg">
@@ -872,54 +904,57 @@ function handleDeleteTask(task: VideoTask) {
 
         <!-- 生成按钮 -->
         <div class="form-actions">
-          <GenerateButton
-            :loading="generating || uploading"
-            :disabled="!form.prompt?.trim()"
-            text="开始生成"
-            :loading-text="uploading ? '上传素材中...' : '生成中...'"
-            @click="handleGenerate"
-          />
+          <GenerateButton :loading="generating || uploading" :disabled="!form.prompt?.trim()" text="开始生成"
+            :loading-text="uploading ? '上传素材中...' : '生成中...'" @click="handleGenerate" />
         </div>
       </aside>
 
       <!-- 右侧作品 -->
       <section class="works">
-        <div class="works-head"><h3 class="works-title">我的视频</h3><span v-if="myTotal>0" class="badge">{{ myTotal }}</span></div>
+        <div class="works-head">
+          <h3 class="works-title">我的视频</h3><span v-if="myTotal > 0" class="badge">{{ myTotal }}</span>
+        </div>
         <a-spin :loading="myLoading" class="works-spin">
-          <div v-if="myTasks.length>0" class="works-grid">
-            <div v-for="t in myTasks" :key="t.id" class="vcard" @click="isDone(t.status)&&(t.videoUrl||t.resultUrl)?openPreview((t.videoUrl||t.resultUrl) as string, t):null">
+          <div v-if="myTasks.length > 0" class="works-grid">
+            <div v-for="t in myTasks" :key="t.id" class="vcard"
+              @click="isDone(t.status) && (t.videoUrl || t.resultUrl) ? openPreview((t.videoUrl || t.resultUrl) as string, t) : null">
               <div class="vcard-media">
-                <video v-if="(t.videoUrl||t.resultUrl)&&isDone(t.status)" :src="(t.videoUrl||t.resultUrl) as string" muted loop preload="metadata" class="vcard-video" @mouseenter="($event.target as HTMLVideoElement)?.play()" @mouseleave="($event.target as HTMLVideoElement)?.pause()" />
+                <video v-if="(t.videoUrl || t.resultUrl) && isDone(t.status)"
+                  :src="(t.videoUrl || t.resultUrl) as string" muted loop preload="metadata" class="vcard-video"
+                  @mouseenter="($event.target as HTMLVideoElement)?.play()"
+                  @mouseleave="($event.target as HTMLVideoElement)?.pause()" />
                 <img v-else-if="thumb(t)" :src="thumb(t)" class="vcard-thumb" />
-                <div v-else class="vcard-ph"><IconVideoCamera :size="28" class="placeholder-icon" /></div>
+                <div v-else class="vcard-ph">
+                  <IconVideoCamera :size="28" class="placeholder-icon" />
+                </div>
                 <!-- 进度步骤 -->
-                <div v-if="t.status==='processing' || t.status==='pending'" class="step-ov">
+                <div v-if="t.status === 'processing' || t.status === 'pending'" class="step-ov">
                   <div class="step-stage">{{ videoStageText(t) }}</div>
                   <div class="steps">
-                    <div class="st" :class="{on:stepIdx(t)>=1}"><span class="st-dot" />生成</div>
-                    <div class="st-line" :class="{on:stepIdx(t)>=2}" />
-                    <div class="st" :class="{on:stepIdx(t)>=2}"><span class="st-dot" />渲染</div>
-                    <div class="st-line" :class="{on:stepIdx(t)>=3}" />
-                    <div class="st" :class="{on:stepIdx(t)>=3}"><span class="st-dot" />完成</div>
+                    <div class="st" :class="{ on: stepIdx(t) >= 1 }"><span class="st-dot" />生成</div>
+                    <div class="st-line" :class="{ on: stepIdx(t) >= 2 }" />
+                    <div class="st" :class="{ on: stepIdx(t) >= 2 }"><span class="st-dot" />渲染</div>
+                    <div class="st-line" :class="{ on: stepIdx(t) >= 3 }" />
+                    <div class="st" :class="{ on: stepIdx(t) >= 3 }"><span class="st-dot" />完成</div>
                   </div>
-                  <span class="st-pct">{{ t.progress??0 }}%</span>
+                  <span class="st-pct">{{ t.progress ?? 0 }}%</span>
                   <div class="st-progress">
                     <div class="st-progress-fill" :style="{ width: `${t.progress ?? 0}%` }" />
                   </div>
                   <div class="st-dots"><span /><span /><span /></div>
                 </div>
-                <span class="sbadge" :style="{background:sColor(t.status)}">{{ sText(t.status) }}</span>
-                <div v-if="isDone(t.status)" class="play-ov"><IconPlayArrowFill :size="36" /></div>
+                <span class="sbadge" :style="{ background: sColor(t.status) }">{{ sText(t.status) }}</span>
+                <div v-if="isDone(t.status)" class="play-ov">
+                  <IconPlayArrowFill :size="36" />
+                </div>
               </div>
-              <p class="vcard-prompt">{{ t.prompt||'无描述' }}</p>
-              <p v-if="t.status==='failed' && t.errorMessage" class="vcard-error" :title="t.errorMessage" @click.stop="Modal.error({ title: '错误详情', content: t.errorMessage, okText: '关闭', maskClosable: true, closable: true })">{{ t.errorMessage }}</p>
+              <p class="vcard-prompt">{{ t.prompt || '无描述' }}</p>
+              <p v-if="t.status === 'failed' && t.errorMessage" class="vcard-error" :title="t.errorMessage"
+                @click.stop="Modal.error({ title: '错误详情', content: t.errorMessage, okText: '关闭', maskClosable: true, closable: true })">
+                {{ t.errorMessage }}</p>
               <div class="vcard-actions">
-                <WorkCardActionButton
-                  v-if="t.status==='failed'"
-                  title="重试"
-                  :disabled="retryingId===t.id"
-                  @click="handleRetry(t)"
-                >
+                <WorkCardActionButton v-if="t.status === 'failed'" title="重试" :disabled="retryingId === t.id"
+                  @click="handleRetry(t)">
                   <IconRefresh />
                 </WorkCardActionButton>
                 <WorkCardActionButton danger title="删除" @click="handleDeleteTask(t)">
@@ -932,25 +967,30 @@ function handleDeleteTask(task: VideoTask) {
             <EmptyState title="暂无视频" description="输入提示词，生成你的第一支AI视频" />
           </div>
         </a-spin>
-        <a-pagination v-if="myTotal>12" v-model:current="myPage" :total="myTotal" :page-size="12" size="small" class="pager" @change="fetchMy" />
+        <a-pagination v-if="myTotal > 12" v-model:current="myPage" :total="myTotal" :page-size="12" size="small"
+          class="pager" @change="fetchMy" />
       </section>
     </div>
 
     <!-- ===== 广场 ===== -->
-    <div v-show="activeTab==='gallery'" class="gal-area">
+    <div v-show="activeTab === 'gallery'" class="gal-area">
       <a-spin :loading="galLoading" class="gal-spin">
-        <div v-if="gallery.length>0" class="gal-grid">
+        <div v-if="gallery.length > 0" class="gal-grid">
           <div v-for="item in gallery" :key="item.id" class="gcard" @click="openPreview(item.videoUrl)">
             <div class="gcard-media">
-              <video :src="item.videoUrl" :poster="item.thumbnailUrl" muted loop preload="metadata" class="gcard-vid" @mouseenter="($event.target as HTMLVideoElement)?.play()" @mouseleave="($event.target as HTMLVideoElement)?.pause()" />
-              <div class="gcard-hover"><IconPlayArrowFill :size="40" /></div>
+              <video :src="item.videoUrl" :poster="item.thumbnailUrl" muted loop preload="metadata" class="gcard-vid"
+                @mouseenter="($event.target as HTMLVideoElement)?.play()"
+                @mouseleave="($event.target as HTMLVideoElement)?.pause()" />
+              <div class="gcard-hover">
+                <IconPlayArrowFill :size="40" />
+              </div>
             </div>
             <div class="gcard-info">
-              <p class="gcard-prompt">{{ item.prompt||'无描述' }}</p>
+              <p class="gcard-prompt">{{ item.prompt || '无描述' }}</p>
               <div class="gcard-meta">
-                <span class="author-dot">{{ item.authorName?.charAt(0)??'?' }}</span>
-                <span>{{ item.authorName??'匿名' }}</span>
-                <WorkCardActionButton shape="pill" title="一键同款" @click="copyPrompt(item.prompt??'')">
+                <span class="author-dot">{{ item.authorName?.charAt(0) ?? '?' }}</span>
+                <span>{{ item.authorName ?? '匿名' }}</span>
+                <WorkCardActionButton shape="pill" title="一键同款" @click="copyPrompt(item.prompt ?? '')">
                   <IconCopy :size="12" />
                   同款
                 </WorkCardActionButton>
@@ -962,23 +1002,31 @@ function handleDeleteTask(task: VideoTask) {
           <EmptyState title="广场暂无视频" description="创作并公开你的视频作品" />
         </div>
       </a-spin>
-      <a-pagination v-if="galTotal>20" v-model:current="galPage" :total="galTotal" :page-size="20" size="small" class="pager" @change="fetchGal" />
+      <a-pagination v-if="galTotal > 20" v-model:current="galPage" :total="galTotal" :page-size="20" size="small"
+        class="pager" @change="fetchGal" />
     </div>
 
     <!-- 预览弹窗 -->
-    <a-modal v-model:visible="previewOpen" title="视频预览" :width="800" :footer="false" unmount-on-close modal-class="dark-modal">
+    <a-modal v-model:visible="previewOpen" title="视频预览" :width="800" :footer="false" unmount-on-close
+      modal-class="dark-modal">
       <video v-if="previewUrl" ref="previewVideoRef" :src="previewUrl" controls class="preview-video" />
       <div v-if="previewTask" class="detail-panel">
         <div class="detail-title">任务详情参数</div>
         <div class="detail-grid">
           <div class="detail-item"><span class="k">任务 ID</span><span class="v mono">{{ previewTask.id }}</span></div>
-          <div class="detail-item"><span class="k">服务商</span><span class="v">{{ previewTask.provider || '-' }}</span></div>
-          <div class="detail-item"><span class="k">任务类型</span><span class="v">{{ previewTask.taskType || '-' }}</span></div>
+          <div class="detail-item"><span class="k">服务商</span><span class="v">{{ previewTask.provider || '-' }}</span>
+          </div>
+          <div class="detail-item"><span class="k">任务类型</span><span class="v">{{ previewTask.taskType || '-' }}</span>
+          </div>
           <div class="detail-item"><span class="k">状态</span><span class="v">{{ previewTask.status || '-' }}</span></div>
-          <div class="detail-item"><span class="k">进度</span><span class="v">{{ previewTask.progress ?? 0 }}%</span></div>
-          <div class="detail-item"><span class="k">时长</span><span class="v">{{ previewTask.duration ?? '-' }}</span></div>
-          <div class="detail-item"><span class="k">创建时间</span><span class="v">{{ previewTask.createdAt || '-' }}</span></div>
-          <div class="detail-item"><span class="k">失败原因</span><span class="v">{{ previewTask.errorMessage || '-' }}</span></div>
+          <div class="detail-item"><span class="k">进度</span><span class="v">{{ previewTask.progress ?? 0 }}%</span>
+          </div>
+          <div class="detail-item"><span class="k">时长</span><span class="v">{{ previewTask.duration ?? '-' }}</span>
+          </div>
+          <div class="detail-item"><span class="k">创建时间</span><span class="v">{{ previewTask.createdAt || '-' }}</span>
+          </div>
+          <div class="detail-item"><span class="k">失败原因</span><span class="v">{{ previewTask.errorMessage || '-'
+              }}</span></div>
         </div>
         <div class="detail-block">
           <div class="kb">提示词</div>
@@ -988,9 +1036,9 @@ function handleDeleteTask(task: VideoTask) {
           <div class="kb">扩展参数（params）</div>
           <pre class="json-view">{{ formatTaskParams(previewTask) }}</pre>
         </div>
-        <div v-if="previewTask.status==='failed'" class="detail-actions">
-          <button class="retry-btn" :disabled="retryingId===previewTask.id" @click="handleRetry(previewTask)">
-            {{ retryingId===previewTask.id ? '重试中...' : '重新生成' }}
+        <div v-if="previewTask.status === 'failed'" class="detail-actions">
+          <button class="retry-btn" :disabled="retryingId === previewTask.id" @click="handleRetry(previewTask)">
+            {{ retryingId === previewTask.id ? '重试中...' : '重新生成' }}
           </button>
         </div>
       </div>
@@ -999,39 +1047,145 @@ function handleDeleteTask(task: VideoTask) {
 </template>
 
 <style scoped>
-.page { display:flex; flex-direction:column; height:100%; overflow:hidden; }
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
 
 /* 顶部 */
-.page-header { flex-shrink:0; display:flex; align-items:flex-end; justify-content:space-between; padding:var(--sp-6) var(--sp-8) var(--sp-4); }
-.page-title { margin:0; font-size:1.25rem; font-weight:700; font-family: 'Space Grotesk', 'Outfit', -apple-system, 'PingFang SC', sans-serif; letter-spacing: -0.02em; background:var(--gradient-primary); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-.page-desc { margin:4px 0 0; font-size: 0.82rem; color:var(--text-4); font-family: 'Outfit', -apple-system, 'PingFang SC', sans-serif; }
-.tab-group { display:flex; gap:4px; background:var(--bg-surface-2); border-radius:var(--radius-md); padding:3px; }
-.tab-btn { padding:6px 20px; border:none; border-radius:var(--radius-sm); background:transparent; color:var(--text-3); font-size: 0.82rem; cursor:pointer; transition:all var(--duration-fast); }
-.tab-btn.active { background:var(--primary); color:#fff; }
+.page-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: var(--sp-6) var(--sp-8) var(--sp-4);
+}
+
+.page-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-family: 'Space Grotesk', 'Outfit', -apple-system, 'PingFang SC', sans-serif;
+  letter-spacing: -0.02em;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.page-desc {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-4);
+  font-family: 'Outfit', -apple-system, 'PingFang SC', sans-serif;
+}
+
+.tab-group {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-surface-2);
+  border-radius: var(--radius-md);
+  padding: 3px;
+}
+
+.tab-btn {
+  padding: 6px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.tab-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
 
 /* 创作区 */
-.create-area { flex:1; display:flex; gap:var(--sp-6); padding:var(--sp-4) var(--sp-8) var(--sp-6); overflow:hidden; }
+.create-area {
+  flex: 1;
+  display: flex;
+  gap: var(--sp-6);
+  padding: var(--sp-4) var(--sp-8) var(--sp-6);
+  overflow: hidden;
+}
 
 /* 左侧表单 */
 .form-panel {
-  width:320px; flex-shrink:0; overflow-y:auto; display:flex; flex-direction:column; gap:var(--sp-3);
-  background:var(--glass-bg); backdrop-filter:var(--glass-blur); border:1px solid var(--glass-border);
-  border-radius:var(--radius-lg); padding:var(--sp-5);
+  width: 320px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
 }
-.fg { margin-bottom:var(--sp-1); }
+
+.fg {
+  margin-bottom: var(--sp-1);
+}
+
 .form-actions {
   margin-top: var(--sp-2);
   padding-bottom: 12px;
 }
-.form-actions :deep(.gen-btn:hover) { transform: translateY(-1px); }
-.fl { display:block; font-size:0.78rem; font-weight:600; color:var(--text-3); margin-bottom:var(--sp-2); text-transform:uppercase; letter-spacing:0.05em; }
-.fl-row { display:flex; align-items:center; gap:var(--sp-2); margin-bottom:var(--sp-2); }
-.fl-row .fl { margin-bottom:0; }
-.fl-count { font-size:0.72rem; color:var(--text-4); margin-left:auto; }
-.w-full { width:100%; }
-.hidden-input { display:none; }
-.mt-12 { margin-top:12px; }
-.upload-icon { opacity:0.72; color:var(--text-4); }
+
+.form-actions :deep(.gen-btn:hover) {
+  transform: translateY(-1px);
+}
+
+.fl {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-bottom: var(--sp-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fl-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+
+.fl-row .fl {
+  margin-bottom: 0;
+}
+
+.fl-count {
+  font-size: 0.72rem;
+  color: var(--text-4);
+  margin-left: auto;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.hidden-input {
+  display: none;
+}
+
+.mt-12 {
+  margin-top: 12px;
+}
+
+.upload-icon {
+  opacity: 0.72;
+  color: var(--text-4);
+}
+
 .ratio-outline {
   display: inline-block;
   margin-right: 4px;
@@ -1040,152 +1194,636 @@ function handleDeleteTask(task: VideoTask) {
   background: transparent;
   flex-shrink: 0;
 }
-.state-hint { margin-left:8px; }
-.kling-dot { background:#0ea5e9; }
+
+.state-hint {
+  margin-left: 8px;
+}
+
+.kling-dot {
+  background: #0ea5e9;
+}
 
 /* 下拉选项行 */
 
 /* 文生/图生 切换 */
-.mode-toggle { display:flex; gap:var(--sp-2); }
-.mode-btn {
-  flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
-  padding:var(--sp-2) var(--sp-3); background:var(--bg-surface-2);
-  border:1px solid var(--border-1); border-radius:var(--radius-md);
-  color:var(--text-3); font-size: 0.82rem; cursor:pointer; transition:all var(--duration-normal);
+.mode-toggle {
+  display: flex;
+  gap: var(--sp-2);
 }
-.mode-btn:hover { border-color:var(--border-3); }
-.mode-btn.active { border-color:var(--border-3); background:var(--color-fill-2); color:var(--text-1); }
+
+.mode-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  color: var(--text-3);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all var(--duration-normal);
+}
+
+.mode-btn:hover {
+  border-color: var(--border-3);
+}
+
+.mode-btn.active {
+  border-color: var(--border-3);
+  background: var(--color-fill-2);
+  color: var(--text-1);
+}
 
 /* 参考图 */
-.ref-grid { display:flex; flex-wrap:wrap; gap:var(--sp-2); }
-.ref-item { position:relative; width:72px; height:72px; border-radius:var(--radius-sm); overflow:hidden; border:1px solid var(--border-2); }
-.ref-item img { width:100%; height:100%; object-fit:cover; }
-.ref-del { position:absolute; top:2px; right:2px; width:18px; height:18px; border-radius:50%; background:rgba(0,0,0,0.7); border:none; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity var(--duration-fast); }
-.ref-item:hover .ref-del { opacity:1; }
-.ref-add { width:72px; height:72px; border-radius:var(--radius-sm); border:1px dashed var(--border-3); background:var(--bg-surface-2); color:var(--text-4); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all var(--duration-normal); }
-.ref-add:hover { border-color:var(--primary); color:var(--primary); }
+.ref-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.ref-item {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-2);
+}
+
+.ref-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ref-del {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--duration-fast);
+}
+
+.ref-item:hover .ref-del {
+  opacity: 1;
+}
+
+.ref-add {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-3);
+  background: var(--bg-surface-2);
+  color: var(--text-4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-normal);
+}
+
+.ref-add:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
 .dropzone {
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-  width:120px;
-  height:120px;
-  padding:10px;
-  border:1px dashed var(--border-3);
-  border-radius:var(--radius-md);
-  background:var(--bg-surface-2);
-  cursor:pointer;
-  text-align:center;
-  transition:all var(--duration-normal);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 270px;
+  padding: 10px;
+  border: 1px dashed var(--border-3);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-2);
+  cursor: pointer;
+  text-align: center;
+  transition: all var(--duration-normal);
 }
-.dropzone:hover { border-color:var(--border-3); background:var(--color-fill-1); }
+
+.dropzone:hover {
+  border-color: var(--border-3);
+  background: var(--color-fill-1);
+}
+
 .upload-plus {
-  color:var(--primary-light);
-  background:rgba(22, 93, 255, 0.14);
-  border:1px solid rgba(22, 93, 255, 0.36);
-  border-radius:10px;
-  padding:6px;
+  color: var(--primary-light);
+  background: rgba(22, 93, 255, 0.14);
+  border: 1px solid rgba(22, 93, 255, 0.36);
+  border-radius: 10px;
+  padding: 6px;
 }
-.dz-text { font-size: 0.75rem; color:var(--text-2); line-height:1.3; }
-.dz-hint { font-size:0.68rem; color:var(--text-4); line-height:1.25; }
-.fl-hint { font-weight:400; color:var(--text-4); text-transform:none; letter-spacing:0; font-size:0.7rem; }
-.dropzone-sm { display:flex; align-items:center; gap:8px; padding:14px 16px; border:1px dashed var(--border-3); border-radius:var(--radius-md); background:var(--bg-surface-2); cursor:pointer; font-size: 0.82rem; color:var(--text-3); transition:all var(--duration-normal); }
-.dropzone-sm:hover { border-color:var(--border-3); color:var(--text-1); background:var(--color-fill-1); }
-.frame-preview { position:relative; width:120px; height:80px; border-radius:var(--radius-sm); overflow:hidden; border:1px solid var(--border-2); }
-.frame-preview img { width:100%; height:100%; object-fit:cover; }
-.frame-preview video { width:100%; height:100%; object-fit:cover; }
-.frame-clear { position:absolute; top:3px; right:3px; width:18px; height:18px; border-radius:50%; background:rgba(0,0,0,0.5); border:none; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-.frame-clear:hover { background:var(--accent-red); }
-.model-hint { display:flex; align-items:flex-start; gap:8px; padding:10px 14px; background:var(--color-fill-1); border:1px solid var(--border-2); border-radius:var(--radius-md); font-size:0.78rem; color:var(--text-3); line-height:1.4; margin-bottom:var(--sp-2); }
-.hint-dot { width:6px; height:6px; border-radius:50%; background:var(--text-4); flex-shrink:0; margin-top:5px; }
-.form-warn { padding:10px 14px; background:rgba(245, 63, 63, 0.1); border:1px solid rgba(245, 63, 63, 0.18); border-radius:var(--radius-md); margin-bottom:var(--sp-2); }
-.warn-title { font-size:0.78rem; color:#fecaca; font-weight:600; margin-bottom:6px; }
-.warn-list { margin:0; padding-left:16px; color:#fca5a5; font-size:0.76rem; line-height:1.4; }
-.warn-list li { margin:2px 0; }
-.mode-warn { font-size:0.72rem; color:var(--accent-amber); margin-top:8px; }
+
+.dz-text {
+  font-size: 0.84rem;
+  color: var(--text-2);
+  line-height: 1.3;
+}
+
+.dz-hint {
+  font-size: 0.84rem;
+  color: var(--text-4);
+  line-height: 1.25;
+}
+
+.fl-hint {
+  font-weight: 400;
+  color: var(--text-4);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.7rem;
+}
+
+.dropzone-sm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px dashed var(--border-3);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-2);
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--text-3);
+  transition: all var(--duration-normal);
+}
+
+.dropzone-sm:hover {
+  border-color: var(--border-3);
+  color: var(--text-1);
+  background: var(--color-fill-1);
+}
+
+.frame-preview {
+  position: relative;
+  width: 120px;
+  height: 80px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-2);
+}
+
+.frame-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.frame-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.frame-clear {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.frame-clear:hover {
+  background: var(--accent-red);
+}
+
+.model-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--color-fill-1);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  color: var(--text-3);
+  line-height: 1.4;
+  margin-bottom: var(--sp-2);
+}
+
+.hint-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-4);
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.form-warn {
+  padding: 10px 14px;
+  background: rgba(245, 63, 63, 0.1);
+  border: 1px solid rgba(245, 63, 63, 0.18);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--sp-2);
+}
+
+.warn-title {
+  font-size: 0.78rem;
+  color: #fecaca;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.warn-list {
+  margin: 0;
+  padding-left: 16px;
+  color: #fca5a5;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.warn-list li {
+  margin: 2px 0;
+}
+
+.mode-warn {
+  font-size: 0.72rem;
+  color: var(--accent-amber);
+  margin-top: 8px;
+}
 
 /* 时长 */
-.dur-row { display:flex; gap:var(--sp-2); }
-.dur-btn { flex:1; padding:var(--sp-2); background:var(--bg-surface-2); border:1px solid var(--border-1); border-radius:var(--radius-sm); color:var(--text-3); font-size: 0.82rem; cursor:pointer; text-align:center; transition:all var(--duration-fast); }
-.dur-btn:hover { border-color:var(--border-3); }
-.dur-btn.active { border-color:var(--border-3); background:var(--color-fill-2); color:var(--text-1); }
+.dur-row {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.dur-btn {
+  flex: 1;
+  padding: var(--sp-2);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-align: center;
+  transition: all var(--duration-fast);
+}
+
+.dur-btn:hover {
+  border-color: var(--border-3);
+}
+
+.dur-btn.active {
+  border-color: var(--border-3);
+  background: var(--color-fill-2);
+  color: var(--text-1);
+}
 
 /* 生成按钮 */
 /* 生成按钮 → 使用 GenerateButton 组件 */
 
 /* 右侧作品 */
-.works { flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
-.works-spin { flex:1; min-height:200px; display:flex; overflow:hidden; width:100%; }
-.works-spin :deep(.arco-spin) { flex:1; min-height:0; display:flex; }
-.works-spin :deep(.arco-spin-children) { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
-.works-head { display:flex; align-items:center; gap:var(--sp-2); margin-bottom:var(--sp-3); flex-shrink:0; }
-.works-title { margin:0; font-size:1rem; font-weight:600; color:var(--text-1); }
-.badge { background:var(--primary); color:#fff; font-size:0.7rem; font-weight:600; padding:1px 8px; border-radius:var(--radius-full); }
-.works-empty { flex:1; min-height:260px; display:flex; align-items:center; justify-content:center; }
-.works-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:var(--sp-4); overflow-y:auto; flex:1; padding-bottom:var(--sp-4); align-content:start; grid-auto-rows:max-content; }
+.works {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.works-spin {
+  flex: 1;
+  min-height: 200px;
+  display: flex;
+  overflow: hidden;
+  width: 100%;
+}
+
+.works-spin :deep(.arco-spin) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.works-spin :deep(.arco-spin-children) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.works-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+  flex-shrink: 0;
+}
+
+.works-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.badge {
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+}
+
+.works-empty {
+  flex: 1;
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.works-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--sp-4);
+  overflow-y: auto;
+  flex: 1;
+  padding-bottom: var(--sp-4);
+  align-content: start;
+  grid-auto-rows: max-content;
+}
 
 /* 视频卡片 */
-.vcard { background:var(--bg-surface-2); border:1px solid var(--border-1); border-radius:var(--radius-lg); overflow:hidden; cursor:pointer; transition:all var(--duration-normal) var(--ease-out); display:flex; flex-direction:column; min-height:0; align-self:start; }
-.vcard:hover { transform:translateY(-3px); box-shadow:var(--shadow-glow); border-color:var(--border-3); }
-.vcard-media { position:relative; overflow:hidden; background:var(--bg-surface-3); flex-shrink:0; height:196px; }
-.vcard-video,.vcard-thumb { width:100%; height:100%; object-fit:cover; transition:transform var(--duration-normal) var(--ease-out); }
-.vcard:hover .vcard-video,.vcard:hover .vcard-thumb { transform:scale(1.04); }
-.vcard-ph { display:flex; align-items:center; justify-content:center; height:100%; }
+.vcard {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-out);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  align-self: start;
+}
+
+.vcard:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-glow);
+  border-color: var(--border-3);
+}
+
+.vcard-media {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-surface-3);
+  flex-shrink: 0;
+  height: 196px;
+}
+
+.vcard-video,
+.vcard-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.vcard:hover .vcard-video,
+.vcard:hover .vcard-thumb {
+  transform: scale(1.04);
+}
+
+.vcard-ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
 
 /* 进度步骤 */
-.step-ov { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(5,10,22,0.74); gap:var(--sp-2); overflow:hidden; }
+.step-ov {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 10, 22, 0.74);
+  gap: var(--sp-2);
+  overflow: hidden;
+}
+
 .step-ov::before {
-  content:'';
-  position:absolute; inset:-30%;
-  background:radial-gradient(circle at 50% 50%, rgba(22, 93, 255, 0.1)), transparent 60%);
-  animation:ovPulse 2s ease-in-out infinite;
+  content: '';
+  position: absolute;
+  inset: -30%;
+  background: radial-gradient(circle at 50% 50%, rgba(22, 93, 255, 0.1), transparent 60%);
+  animation: ovPulse 2s ease-in-out infinite;
 }
-.step-stage { position:relative; z-index:1; font-size:0.72rem; color:rgba(255,255,255,0.9); letter-spacing:0.02em; }
-.steps { display:flex; align-items:center; gap:4px; }
-.st { display:flex; align-items:center; gap:4px; font-size:0.7rem; color:var(--text-4); }
-.st.on { color:var(--primary-light); }
-.st-dot { width:8px; height:8px; border-radius:50%; background:var(--bg-surface-3); }
-.st.on .st-dot { background:var(--primary); box-shadow:0 0 6px var(--primary); }
-.st-line { width:20px; height:2px; background:var(--bg-surface-3); }
-.st-line.on { background:var(--primary); }
-.st-pct { position:relative; z-index:1; font-size: 0.78rem; font-weight:600; color:#fff; }
-.st-progress { position:relative; z-index:1; width:140px; height:4px; border-radius:999px; background:rgba(255,255,255,0); overflow:hidden; }
-.st-progress-fill { height:100%; border-radius:inherit; background:linear-gradient(90deg,#165DFF,#4080FF); transition:width var(--duration-normal) ease; }
-.st-dots { position:relative; z-index:1; display:flex; gap:4px; margin-top:2px; }
-.st-dots span { width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,0.7); animation:dotPulse 1s ease-in-out infinite; }
-.st-dots span:nth-child(2){ animation-delay:0s; }
-.st-dots span:nth-child(3){ animation-delay:0.3s; }
-@keyframes ovPulse { 0%,100%{ transform:scale(1); opacity:0.9 } 50%{ transform:scale(1.06); opacity:1 } }
-@keyframes dotPulse { 0%,100%{ opacity:0; transform:translateY(0) } 50%{ opacity:1; transform:translateY(-2px) } }
 
-.sbadge { position:absolute; top:var(--sp-2); left:var(--sp-2); padding:2px 10px; border-radius:var(--radius-full); font-size:0.7rem; color:#fff; font-weight:500; }
-.play-ov { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.5); opacity:0; transition:opacity var(--duration-normal); background:rgba(0,0,0,0); }
-.vcard:hover .play-ov { opacity:1; }
+.step-stage {
+  position: relative;
+  z-index: 1;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.02em;
+}
+
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.st {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: var(--text-4);
+}
+
+.st.on {
+  color: var(--primary-light);
+}
+
+.st-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bg-surface-3);
+}
+
+.st.on .st-dot {
+  background: var(--primary);
+  box-shadow: 0 0 6px var(--primary);
+}
+
+.st-line {
+  width: 20px;
+  height: 2px;
+  background: var(--bg-surface-3);
+}
+
+.st-line.on {
+  background: var(--primary);
+}
+
+.st-pct {
+  position: relative;
+  z-index: 1;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.st-progress {
+  position: relative;
+  z-index: 1;
+  width: 140px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0);
+  overflow: hidden;
+}
+
+.st-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #165DFF, #4080FF);
+  transition: width var(--duration-normal) ease;
+}
+
+.st-dots {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.st-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  animation: dotPulse 1s ease-in-out infinite;
+}
+
+.st-dots span:nth-child(2) {
+  animation-delay: 0s;
+}
+
+.st-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes ovPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9
+  }
+
+  50% {
+    transform: scale(1.06);
+    opacity: 1
+  }
+}
+
+@keyframes dotPulse {
+
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(0)
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-2px)
+  }
+}
+
+.sbadge {
+  position: absolute;
+  top: var(--sp-2);
+  left: var(--sp-2);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  color: #fff;
+  font-weight: 500;
+}
+
+.play-ov {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  transition: opacity var(--duration-normal);
+  background: rgba(0, 0, 0, 0);
+}
+
+.vcard:hover .play-ov {
+  opacity: 1;
+}
+
 .vcard-prompt {
-  margin:0;
-  padding:var(--sp-2) var(--sp-3);
-  font-size:0.78rem;
-  color:var(--text-3);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 0.78rem;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.vcard-error{
-  margin:0;
-  padding:0 var(--sp-3) var(--sp-2);
-  font-size:0.75rem;
-  color:var(--accent-red, #F53F3F);
-  cursor:pointer;
-  display:-webkit-box;
-  -webkit-line-clamp:3;
-  -webkit-box-orient:vertical;
-  overflow:hidden;
-  word-break:break-word;
+.vcard-error {
+  margin: 0;
+  padding: 0 var(--sp-3) var(--sp-2);
+  font-size: 0.75rem;
+  color: var(--accent-red, #F53F3F);
+  cursor: pointer;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 }
-.vcard-actions { display:flex; gap:8px; padding: 0 var(--sp-3) var(--sp-3); margin-top:auto; }
+
+.vcard-actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 var(--sp-3) var(--sp-3);
+  margin-top: auto;
+}
+
 .retry-btn {
   border: 1px solid var(--border-2);
   background: var(--color-fill-2);
@@ -1194,36 +1832,160 @@ function handleDeleteTask(task: VideoTask) {
   padding: 4px 12px;
   font-size: 0.74rem;
   cursor: pointer;
-  display:flex;
-  align-items:center;
-  gap:6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
-.retry-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.retry-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .retry-btn.danger {
   border-color: rgba(245, 63, 63, 0.1);
   background: rgba(245, 63, 63, 0.1);
   color: #fecaca;
 }
-.pager { flex-shrink:0; margin-top:var(--sp-3); display:flex; justify-content:center; }
+
+.pager {
+  flex-shrink: 0;
+  margin-top: var(--sp-3);
+  display: flex;
+  justify-content: center;
+}
 
 /* 广场 */
-.gal-area { flex:1; padding:var(--sp-4) var(--sp-8) var(--sp-6); overflow-y:auto; }
-.gal-spin { width:100%; min-height:200px; }
-.gal-empty { min-height:340px; display:flex; align-items:center; justify-content:center; }
-.gal-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:var(--sp-4); align-content:start; grid-auto-rows:max-content; }
-.gcard { background:var(--bg-surface-2); border:1px solid var(--border-1); border-radius:var(--radius-lg); overflow:hidden; cursor:pointer; transition:all var(--duration-normal); }
-.gcard:hover { transform:translateY(-3px); box-shadow:var(--shadow-glow); border-color:var(--border-3); }
-.gcard-media { position:relative; height:196px; overflow:hidden; background:var(--bg-surface-3); }
-.gcard-vid { width:100%; height:100%; object-fit:cover; transition:transform var(--duration-normal) var(--ease-out); }
-.gcard:hover .gcard-vid { transform:scale(1.04); }
-.gcard-hover { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; background:rgba(0,0,0,0); opacity:0; transition:opacity var(--duration-normal); }
-.gcard:hover .gcard-hover { opacity:1; }
-.gcard-info { padding:var(--sp-3); }
-.gcard-prompt { margin:0 0 var(--sp-2); font-size: 0.75rem; color:var(--text-2); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.gcard-meta { display:flex; align-items:center; gap:var(--sp-2); font-size:0.72rem; color:var(--text-4); }
-.author-dot { width:20px; height:20px; border-radius:50%; background:var(--gradient-primary); color:#fff; font-size: 0.75rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.copy-btn { display:flex; align-items:center; gap:4px; margin-left:auto; padding:2px 8px; background:transparent; border:1px solid var(--border-2); border-radius:6px; color:var(--text-3); font-size:0.72rem; cursor:pointer; transition:all var(--duration-fast); }
-.copy-btn:hover { background:var(--bg-surface-3); color:var(--text-1); border-color:var(--border-3); }
+.gal-area {
+  flex: 1;
+  padding: var(--sp-4) var(--sp-8) var(--sp-6);
+  overflow-y: auto;
+}
+
+.gal-spin {
+  width: 100%;
+  min-height: 200px;
+}
+
+.gal-empty {
+  min-height: 340px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--sp-4);
+  align-content: start;
+  grid-auto-rows: max-content;
+}
+
+.gcard {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all var(--duration-normal);
+}
+
+.gcard:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-glow);
+  border-color: var(--border-3);
+}
+
+.gcard-media {
+  position: relative;
+  height: 196px;
+  overflow: hidden;
+  background: var(--bg-surface-3);
+}
+
+.gcard-vid {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.gcard:hover .gcard-vid {
+  transform: scale(1.04);
+}
+
+.gcard-hover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(0, 0, 0, 0);
+  opacity: 0;
+  transition: opacity var(--duration-normal);
+}
+
+.gcard:hover .gcard-hover {
+  opacity: 1;
+}
+
+.gcard-info {
+  padding: var(--sp-3);
+}
+
+.gcard-prompt {
+  margin: 0 0 var(--sp-2);
+  font-size: 0.75rem;
+  color: var(--text-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gcard-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 0.72rem;
+  color: var(--text-4);
+}
+
+.author-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  color: #fff;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  color: var(--text-3);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.copy-btn:hover {
+  background: var(--bg-surface-3);
+  color: var(--text-1);
+  border-color: var(--border-3);
+}
 
 .detail-panel {
   margin-top: var(--sp-4);
@@ -1232,14 +1994,54 @@ function handleDeleteTask(task: VideoTask) {
   border: 1px solid var(--border-1);
   background: var(--bg-surface-2);
 }
-.detail-title { font-size: 0.86rem; color: var(--text-2); font-weight: 600; margin-bottom: var(--sp-3); }
-.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
-.detail-item { display: flex; gap: 8px; min-width: 0; }
-.detail-item .k { color: var(--text-4); font-size: 0.76rem; white-space: nowrap; }
-.detail-item .v { color: var(--text-2); font-size: 0.76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-.detail-block { margin-top: var(--sp-3); }
-.kb { font-size: 0.76rem; color: var(--text-4); margin-bottom: 6px; }
+
+.detail-title {
+  font-size: 0.86rem;
+  color: var(--text-2);
+  font-weight: 600;
+  margin-bottom: var(--sp-3);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px;
+}
+
+.detail-item {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.detail-item .k {
+  color: var(--text-4);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.detail-item .v {
+  color: var(--text-2);
+  font-size: 0.76rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.detail-block {
+  margin-top: var(--sp-3);
+}
+
+.kb {
+  font-size: 0.76rem;
+  color: var(--text-4);
+  margin-bottom: 6px;
+}
+
 .json-view {
   margin: 0;
   white-space: pre-wrap;
@@ -1252,11 +2054,63 @@ function handleDeleteTask(task: VideoTask) {
   font-size: 0.74rem;
   line-height: 1.5;
 }
-.detail-actions { margin-top: var(--sp-3); display: flex; justify-content: flex-end; }
-.preview-video { width:100%; border-radius:12px; }
-.placeholder-icon { opacity:0.5; color:var(--text-4); }
 
-@media(max-width:900px) { .create-area { flex-direction:column; } .form-panel { width:100%; max-height:45vh; } .works-grid { grid-template-columns:repeat(2,1fr); } }
-@media(max-width:600px) { .page-header { flex-direction:column; align-items:flex-start; gap:var(--sp-3); padding:var(--sp-4); } .create-area,.gal-area { padding:var(--sp-3); } .works-grid,.gal-grid { grid-template-columns:repeat(2,1fr); gap:var(--sp-3); } }
-@media(max-width:420px) { .works-grid,.gal-grid { grid-template-columns:1fr; } }
+.detail-actions {
+  margin-top: var(--sp-3);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.preview-video {
+  width: 100%;
+  border-radius: 12px;
+}
+
+.placeholder-icon {
+  opacity: 0.5;
+  color: var(--text-4);
+}
+
+@media(max-width:900px) {
+  .create-area {
+    flex-direction: column;
+  }
+
+  .form-panel {
+    width: 100%;
+    max-height: 45vh;
+  }
+
+  .works-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media(max-width:600px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+  }
+
+  .create-area,
+  .gal-area {
+    padding: var(--sp-3);
+  }
+
+  .works-grid,
+  .gal-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-3);
+  }
+}
+
+@media(max-width:420px) {
+
+  .works-grid,
+  .gal-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

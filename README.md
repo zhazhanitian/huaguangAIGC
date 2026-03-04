@@ -1,6 +1,6 @@
-# 华光 AIGC 创作平台
+# 华光人工智能 创作平台
 
-基于 NestJS + Vue3 + MySQL 的全功能 AIGC 平台，支持 AI 对话、AI 绘画、AI 视频、AI 音乐、AIPPT、智能体、知识库、数字人等功能。
+基于 NestJS + Vue3 + MySQL 的全功能人工智能平台，支持 AI 对话、AI 绘画、AI 视频、AI 音乐、AIPPT、智能体、知识库、数字人等功能。
 
 ## 功能列表
 

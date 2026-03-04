@@ -115,7 +115,7 @@ async function handleBatchDownload() {
     Message.warning('选中的作品中没有可下载的文件')
     return
   }
-  
+
   try {
     Message.info({ content: `开始下载 ${selected.length} 个文件，请稍候...`, duration: 2000 })
     for (let i = 0; i < selected.length; i++) {
@@ -435,8 +435,8 @@ const providers = computed(() =>
   providersDef.map(p => {
     const modelNameForPoints =
       p.value === 'flux' ? selectedFluxSubModel.value :
-      p.value === 'qwen' ? selectedQwenSubModel.value :
-      p.value
+        p.value === 'qwen' ? selectedQwenSubModel.value :
+          p.value
     return {
       ...p,
       points: modelPointsMap.value[modelNameForPoints] ?? 0,
@@ -937,7 +937,7 @@ watch(realtimeConnected, (connected) => {
             if (idx >= 0) myTasks.value[idx] = { ...myTasks.value[idx], ...u }
           }
         })
-        .catch(() => {})
+        .catch(() => { })
     }
   } else if (hasPending.value) startPolling()
 })
@@ -1160,37 +1160,37 @@ async function handleGenerate(forceGenerate = false) {
         ow: mjTaskType.value === 'mj_omni_reference' ? mjOw.value : undefined,
       }
     } else
-    if (provider === 'doubao-seedance-4-5') {
-      payload.params = {
-        model: 'doubao-seedance-4-5',
-        size: selectedRatio.value,
-        resolution: selectedResolution.value,
-        n: selectedVariants.value,
-        imageUrls: uploadedImageUrls,
+      if (provider === 'doubao-seedance-4-5') {
+        payload.params = {
+          model: 'doubao-seedance-4-5',
+          size: selectedRatio.value,
+          resolution: selectedResolution.value,
+          n: selectedVariants.value,
+          imageUrls: uploadedImageUrls,
+        }
+      } else if (provider === 'flux-2-pro') {
+        payload.params = {
+          model: 'flux-2-pro',
+          size: selectedRatio.value,
+          resolution: selectedResolution.value,
+          imageUrls: uploadedImageUrls,
+        }
+      } else if (provider === 'flux-kontext-pro' || provider === 'flux-kontext-max') {
+        payload.params = {
+          model: provider,
+          size: selectedRatio.value,
+          responseFormat: selectedResponseFormat.value,
+          imageUrls: uploadedImageUrls.slice(0, 1),
+        }
+      } else {
+        payload.params = {
+          model: selectedSubModel.value || provider,
+          aspectRatio: selectedRatio.value,
+          imageSize: selectedImageSize.value,
+          variants: selectedVariants.value,
+          urls: uploadedImageUrls,
+        }
       }
-    } else if (provider === 'flux-2-pro') {
-      payload.params = {
-        model: 'flux-2-pro',
-        size: selectedRatio.value,
-        resolution: selectedResolution.value,
-        imageUrls: uploadedImageUrls,
-      }
-    } else if (provider === 'flux-kontext-pro' || provider === 'flux-kontext-max') {
-      payload.params = {
-        model: provider,
-        size: selectedRatio.value,
-        responseFormat: selectedResponseFormat.value,
-        imageUrls: uploadedImageUrls.slice(0, 1),
-      }
-    } else {
-      payload.params = {
-        model: selectedSubModel.value || provider,
-        aspectRatio: selectedRatio.value,
-        imageSize: selectedImageSize.value,
-        variants: selectedVariants.value,
-        urls: uploadedImageUrls,
-      }
-    }
 
     const { data } = await createDrawTask(payload)
     if (data) {
@@ -1224,8 +1224,8 @@ async function handleGenerate(forceGenerate = false) {
 }
 
 function isCompleted(s: string) { return s === 'done' || s === 'completed' }
-function statusText(s: string) { return ({ pending: '排队中', processing: '生成中', done: '已完成', completed: '已完成', failed: '失败' } as Record<string,string>)[s] ?? s }
-function statusColor(s: string) { return ({ pending: '#6B7785', processing: '#FF7D00', done: '#00B42A', completed: '#00B42A', failed: '#F53F3F' } as Record<string,string>)[s] ?? '#6B7785' }
+function statusText(s: string) { return ({ pending: '排队中', processing: '生成中', done: '已完成', completed: '已完成', failed: '失败' } as Record<string, string>)[s] ?? s }
+function statusColor(s: string) { return ({ pending: '#6B7785', processing: '#FF7D00', done: '#00B42A', completed: '#00B42A', failed: '#F53F3F' } as Record<string, string>)[s] ?? '#6B7785' }
 function drawStageText(task: { status: string; progress?: number }) {
   if (task.status === 'pending') return '正在排队中...'
   const p = task.progress ?? 0
@@ -1289,10 +1289,12 @@ async function handleTogglePublic(task: DrawTask) {
   catch { Message.error('操作失败') }
 }
 async function handleDelete(task: DrawTask) {
-  Modal.confirm({ title: '删除', content: '确定删除这幅作品吗？', onOk: async () => {
-    try { await deleteTask(task.id); myTasks.value = myTasks.value.filter(t => t.id !== task.id); Message.success('已删除') }
-    catch { Message.error('删除失败') }
-  }})
+  Modal.confirm({
+    title: '删除', content: '确定删除这幅作品吗？', onOk: async () => {
+      try { await deleteTask(task.id); myTasks.value = myTasks.value.filter(t => t.id !== task.id); Message.success('已删除') }
+      catch { Message.error('删除失败') }
+    }
+  })
 }
 async function handleRetry(task: DrawTask) {
   if (task.status !== 'failed') return
@@ -1351,17 +1353,13 @@ function handleDownload(url?: string) {
     <!-- 顶部标题区 -->
     <header class="page-header">
       <div>
-        <h1 class="page-title">AI 绘画</h1>
+        <h1 class="page-title">绘画创作</h1>
         <p class="page-desc">描述你的想象，AI 为你生成画作</p>
       </div>
       <div class="tab-group">
-        <button
-          v-for="tab in [{ key:'create', label:'创作' }, { key:'gallery', label:'广场' }]"
-          :key="tab.key"
-          class="tab-btn"
-          :class="{ active: activeTab === tab.key }"
-          @click="activeTab = tab.key"
-        >{{ tab.label }}</button>
+        <button v-for="tab in [{ key: 'create', label: '创作' }, { key: 'gallery', label: '广场' }]" :key="tab.key"
+          class="tab-btn" :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">{{ tab.label
+          }}</button>
       </div>
     </header>
 
@@ -1421,12 +1419,8 @@ function handleDownload(url?: string) {
         <!-- 提示词 -->
         <section class="form-group">
           <label class="group-label">提示词</label>
-          <a-textarea
-            v-model="form.prompt"
-            placeholder="描述你想生成的图像，越详细越好..."
-            :auto-size="{ minRows: 4, maxRows: 8 }"
-            class="prompt-input"
-          />
+          <a-textarea v-model="form.prompt" placeholder="描述你想生成的图像，越详细越好..." :auto-size="{ minRows: 4, maxRows: 8 }"
+            class="prompt-input" />
         </section>
 
         <!-- 参考图（图生图） -->
@@ -1441,41 +1435,27 @@ function handleDownload(url?: string) {
           <div v-if="refImages.length > 0" class="ref-thumbs">
             <div v-for="img in refImages" :key="img.id" class="ref-thumb">
               <img :src="img.url" alt="" />
-              <button class="ref-remove" @click="removeRefImage(img.id)"><IconClose :size="12" /></button>
+              <button class="ref-remove" @click="removeRefImage(img.id)">
+                <IconClose :size="12" />
+              </button>
             </div>
             <!-- 添加更多按钮 -->
-            <button
-              v-if="refImages.length < maxRefImages"
-              class="ref-add-btn"
-              @click="refInputRef?.click()"
-            >
+            <button v-if="refImages.length < maxRefImages" class="ref-add-btn" @click="refInputRef?.click()">
               <IconPlus :size="20" />
             </button>
           </div>
 
           <!-- 拖拽上传区域（没有图片时显示大区域，有图片时隐藏） -->
-          <div
-            v-if="refImages.length === 0"
-            class="ref-dropzone"
-            :class="{ dragover: refDragOver }"
-            @dragover.prevent="refDragOver = true"
-            @dragleave="refDragOver = false"
-            @drop="handleRefDrop"
-            @click="refInputRef?.click()"
-          >
-            <IconPlus :size="28" class="dropzone-plus" />
+          <div v-if="refImages.length === 0" class="ref-dropzone" :class="{ dragover: refDragOver }"
+            @dragover.prevent="refDragOver = true" @dragleave="refDragOver = false" @drop="handleRefDrop"
+            @click="refInputRef?.click()">
+            <IconPlus :size="44" class="dropzone-plus" />
             <span class="dropzone-text">点击或拖拽上传参考图</span>
             <span class="dropzone-hint">支持 JPG / PNG / WebP，最多 {{ maxRefImages }} 张</span>
           </div>
 
-          <input
-            ref="refInputRef"
-            type="file"
-            accept="image/*"
-            multiple
-            style="display:none"
-            @change="handleRefSelect"
-          />
+          <input ref="refInputRef" type="file" accept="image/*" multiple style="display:none"
+            @change="handleRefSelect" />
         </section>
 
         <!-- 反向提示词（可折叠）-->
@@ -1484,12 +1464,8 @@ function handleDownload(url?: string) {
           <span class="toggle-arrow" :class="{ open: showNegative }">▾</span>
         </button>
         <div v-show="showNegative" class="form-group">
-          <a-textarea
-            v-model="form.negativePrompt"
-            placeholder="不想出现的元素..."
-            :auto-size="{ minRows: 2, maxRows: 4 }"
-            class="prompt-input"
-          />
+          <a-textarea v-model="form.negativePrompt" placeholder="不想出现的元素..." :auto-size="{ minRows: 2, maxRows: 4 }"
+            class="prompt-input" />
         </div>
 
         <!-- Midjourney 参数 -->
@@ -1528,15 +1504,18 @@ function handleDownload(url?: string) {
             </div>
             <div class="mj-item">
               <div class="mj-label">风格化程度 <span class="mj-range">0~1000</span></div>
-              <a-input-number v-model="mjStylization" :min="0" :max="1000" :step="50" class="param-number" placeholder="值越大风格越强" />
+              <a-input-number v-model="mjStylization" :min="0" :max="1000" :step="50" class="param-number"
+                placeholder="值越大风格越强" />
             </div>
             <div class="mj-item">
               <div class="mj-label">奇异度 <span class="mj-range">0~3000</span></div>
-              <a-input-number v-model="mjWeirdness" :min="0" :max="3000" :step="100" class="param-number" placeholder="值越大越天马行空" />
+              <a-input-number v-model="mjWeirdness" :min="0" :max="3000" :step="100" class="param-number"
+                placeholder="值越大越天马行空" />
             </div>
             <div class="mj-item">
               <div class="mj-label">多样性 <span class="mj-range">0~100</span></div>
-              <a-input-number v-model="mjVariety" :min="0" :max="100" :step="5" class="param-number" placeholder="值越大结果差异越大" />
+              <a-input-number v-model="mjVariety" :min="0" :max="100" :step="5" class="param-number"
+                placeholder="值越大结果差异越大" />
             </div>
             <div class="mj-item mj-wide">
               <div class="mj-label">水印文字</div>
@@ -1544,7 +1523,8 @@ function handleDownload(url?: string) {
             </div>
             <div v-if="mjTaskType === 'mj_omni_reference'" class="mj-item">
               <div class="mj-label">参考强度 <span class="mj-range">1~1000</span></div>
-              <a-input-number v-model="mjOw" :min="1" :max="1000" :step="50" class="param-number" placeholder="值越大越贴近参考图" />
+              <a-input-number v-model="mjOw" :min="1" :max="1000" :step="50" class="param-number"
+                placeholder="值越大越贴近参考图" />
             </div>
           </div>
           <div class="mj-tip">提示：图片生图、视频、风格/万能参考模式需要先上传参考图；风格化和奇异度建议用推荐步长调整。</div>
@@ -1587,36 +1567,19 @@ function handleDownload(url?: string) {
               <a-switch v-model="qwenEnableSafetyChecker" />
             </div>
             <div class="qwen-item">
-              <div class="qwen-label">推理步数 <span class="qwen-range">{{ isQwenImageEdit ? '2~49' : '2~250' }}</span></div>
-              <a-input-number
-                v-model="qwenNumInferenceSteps"
-                :min="2"
-                :max="isQwenImageEdit ? 49 : 250"
-                :step="1"
-                class="param-number"
-                placeholder="步数越多细节越丰富"
-              />
+              <div class="qwen-label">推理步数 <span class="qwen-range">{{ isQwenImageEdit ? '2~49' : '2~250' }}</span>
+              </div>
+              <a-input-number v-model="qwenNumInferenceSteps" :min="2" :max="isQwenImageEdit ? 49 : 250" :step="1"
+                class="param-number" placeholder="步数越多细节越丰富" />
             </div>
             <div class="qwen-item">
               <div class="qwen-label">引导强度 <span class="qwen-range">0~20</span></div>
-              <a-input-number
-                v-model="qwenGuidanceScale"
-                :min="0"
-                :max="20"
-                :step="0.1"
-                class="param-number"
-                placeholder="越大越贴合描述"
-              />
+              <a-input-number v-model="qwenGuidanceScale" :min="0" :max="20" :step="0.1" class="param-number"
+                placeholder="越大越贴合描述" />
             </div>
             <div class="qwen-item">
               <div class="qwen-label">随机种子</div>
-              <a-input-number
-                v-model="qwenSeed"
-                :min="0"
-                :step="1"
-                placeholder="不填则随机"
-                class="param-number"
-              />
+              <a-input-number v-model="qwenSeed" :min="0" :step="1" placeholder="不填则随机" class="param-number" />
             </div>
             <div class="qwen-item qwen-wide">
               <div class="qwen-label">排除元素</div>
@@ -1624,24 +1587,14 @@ function handleDownload(url?: string) {
             </div>
             <div v-if="isQwenImageToImage" class="qwen-item">
               <div class="qwen-label">转换强度 <span class="qwen-range">0~1</span></div>
-              <a-input-number
-                v-model="qwenStrength"
-                :min="0"
-                :max="1"
-                :step="0.05"
-                class="param-number"
-                placeholder="越大改动越大"
-              />
+              <a-input-number v-model="qwenStrength" :min="0" :max="1" :step="0.05" class="param-number"
+                placeholder="越大改动越大" />
             </div>
             <div v-if="isQwenImageEdit" class="qwen-item qwen-wide">
               <div class="qwen-label">生成数量</div>
               <div class="size-group">
-                <button
-                  v-for="n in qwenNumImageOptions" :key="n"
-                  class="size-btn"
-                  :class="{ active: qwenNumImages === n }"
-                  @click="qwenNumImages = n"
-                >
+                <button v-for="n in qwenNumImageOptions" :key="n" class="size-btn"
+                  :class="{ active: qwenNumImages === n }" @click="qwenNumImages = n">
                   <span class="size-label">{{ n }} 张</span>
                 </button>
               </div>
@@ -1689,12 +1642,8 @@ function handleDownload(url?: string) {
         <section v-if="currentConfig.variants" class="form-group">
           <label class="group-label">生成数量</label>
           <div class="size-group">
-            <button
-              v-for="v in currentConfig.variants" :key="v"
-              class="size-btn"
-              :class="{ active: selectedVariants === v }"
-              @click="selectedVariants = v"
-            >
+            <button v-for="v in currentConfig.variants" :key="v" class="size-btn"
+              :class="{ active: selectedVariants === v }" @click="selectedVariants = v">
               <span class="size-label">{{ v }} 张</span>
             </button>
           </div>
@@ -1721,60 +1670,37 @@ function handleDownload(url?: string) {
             <span v-if="myTasksTotal > 0" class="works-count">{{ myTasksTotal }}</span>
           </div>
           <div class="works-header-right">
-            <a-button
-              v-if="myTasks.length > 0"
-              type="text"
-              size="small"
-              class="batch-btn batch-toggle"
-              :class="{ active: batchMode }"
-              @click="toggleBatchMode"
-            >
+            <a-button v-if="myTasks.length > 0" type="text" size="small" class="batch-btn batch-toggle"
+              :class="{ active: batchMode }" @click="toggleBatchMode">
               <template #icon>
                 <IconSettings />
               </template>
               {{ batchMode ? '退出批量' : '批量管理' }}
             </a-button>
-            <button
-              v-if="failedCount > 0"
-              class="retry-all-btn"
-              :disabled="retryAllLoading"
-              @click="handleRetryAllFailed"
-            >
+            <button v-if="failedCount > 0" class="retry-all-btn" :disabled="retryAllLoading"
+              @click="handleRetryAllFailed">
               {{ retryAllLoading ? '重试中...' : `重试全部失败（${failedCount}）` }}
             </button>
           </div>
         </div>
         <div v-if="batchMode && myTasks.length > 0" class="batch-controls">
           <div class="batch-select">
-            <a-checkbox
-              class="batch-check"
-              :model-value="selectedWorkIds.size === myTasks.length && myTasks.length > 0"
+            <a-checkbox class="batch-check" :model-value="selectedWorkIds.size === myTasks.length && myTasks.length > 0"
               :indeterminate="selectedWorkIds.size > 0 && selectedWorkIds.size < myTasks.length"
-              @change="toggleSelectAll"
-            >
+              @change="toggleSelectAll">
               全选 ({{ selectedWorkIds.size }}/{{ myTasks.length }})
             </a-checkbox>
           </div>
           <a-space size="small" class="batch-actions">
-            <a-button
-              type="text"
-              size="small"
-              class="batch-btn batch-download"
-              :disabled="selectedWorkIds.size === 0"
-              @click="handleBatchDownload"
-            >
+            <a-button type="text" size="small" class="batch-btn batch-download" :disabled="selectedWorkIds.size === 0"
+              @click="handleBatchDownload">
               <template #icon>
                 <IconDownload />
               </template>
               下载 ({{ selectedWorkIds.size }})
             </a-button>
-            <a-button
-              type="text"
-              size="small"
-              class="batch-btn batch-delete"
-              :disabled="selectedWorkIds.size === 0"
-              @click="handleBatchDelete"
-            >
+            <a-button type="text" size="small" class="batch-btn batch-delete" :disabled="selectedWorkIds.size === 0"
+              @click="handleBatchDelete">
               <template #icon>
                 <IconDelete />
               </template>
@@ -1785,30 +1711,18 @@ function handleDownload(url?: string) {
 
         <a-spin :loading="myTasksLoading" class="works-spin">
           <div v-if="myTasks.length > 0" class="works-grid waterfall">
-            <div
-              v-for="(task, idx) in myTasks" :key="task.id"
-              class="work-card"
+            <div v-for="(task, idx) in myTasks" :key="task.id" class="work-card"
               :class="{ 'batch-mode': batchMode, 'selected': selectedWorkIds.has(task.id) }"
-              @click="isCompleted(task.status) && thumb(task) && !batchMode ? openPreview(thumb(task), task.prompt, task) : null"
-            >
+              @click="isCompleted(task.status) && thumb(task) && !batchMode ? openPreview(thumb(task), task.prompt, task) : null">
               <!-- 批量选择复选框 -->
               <div v-if="batchMode" class="batch-checkbox" @click.stop>
-                <a-checkbox
-                  class="batch-check"
-                  :model-value="selectedWorkIds.has(task.id)"
-                  @change="() => toggleWorkSelection(task.id)"
-                />
+                <a-checkbox class="batch-check" :model-value="selectedWorkIds.has(task.id)"
+                  @change="() => toggleWorkSelection(task.id)" />
               </div>
               <!-- 图片区域（正方形封面） -->
               <div class="work-img-box">
-                <img
-                  v-if="thumb(task) && !isImageBroken(`my-${task.id}`)"
-                  :src="thumb(task)"
-                  alt=""
-                  :loading="idx >= 200 ? 'lazy' : 'eager'"
-                  class="work-img"
-                  @error="markImageBroken(`my-${task.id}`)"
-                />
+                <img v-if="thumb(task) && !isImageBroken(`my-${task.id}`)" :src="thumb(task)" alt=""
+                  :loading="idx >= 200 ? 'lazy' : 'eager'" class="work-img" @error="markImageBroken(`my-${task.id}`)" />
                 <div v-else class="work-placeholder">
                   <IconImage :size="32" style="opacity:0.3" />
                 </div>
@@ -1819,11 +1733,14 @@ function handleDownload(url?: string) {
                   <svg viewBox="0 0 48 48" class="progress-svg">
                     <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3" />
                     <circle cx="24" cy="24" r="20" fill="none" stroke="url(#grad)" stroke-width="3"
-                      stroke-linecap="round"
-                      :stroke-dasharray="`${(task.progress ?? 0) * 1.56} 125`"
-                      transform="rotate(-90 24 24)"
-                    />
-                    <defs><linearGradient id="grad"><stop offset="0%" stop-color="#165DFF" /><stop offset="100%" stop-color="#4080FF" /></linearGradient></defs>
+                      stroke-linecap="round" :stroke-dasharray="`${(task.progress ?? 0) * 1.56} 125`"
+                      transform="rotate(-90 24 24)" />
+                    <defs>
+                      <linearGradient id="grad">
+                        <stop offset="0%" stop-color="#165DFF" />
+                        <stop offset="100%" stop-color="#4080FF" />
+                      </linearGradient>
+                    </defs>
                   </svg>
                   <span class="progress-text">{{ task.progress ?? 0 }}%</span>
                   <div class="progress-track">
@@ -1835,7 +1752,8 @@ function handleDownload(url?: string) {
                 <div v-if="task.status === 'failed'" class="failed-overlay">
                   <div class="failed-content">
                     <div class="failed-msg">{{ task.errorMessage || '生成失败，请重试' }}</div>
-                    <button class="failed-detail-btn" @click.stop="showFullError(task.errorMessage || '生成失败，请重试')">查看详情</button>
+                    <button class="failed-detail-btn"
+                      @click.stop="showFullError(task.errorMessage || '生成失败，请重试')">查看详情</button>
                   </div>
                 </div>
 
@@ -1883,7 +1801,7 @@ function handleDownload(url?: string) {
             <div ref="worksSentinelRef" class="infinite-sentinel"></div>
           </div>
           <div v-else-if="!myTasksLoading" class="works-empty">
-            <EmptyState title="暂无作品" description="输入提示词，开始你的第一幅 AI 画作" />
+            <EmptyState title="暂无作品" description="输入提示词，开始你的第一幅 人工智能 画作" />
           </div>
         </a-spin>
       </section>
@@ -1893,15 +1811,11 @@ function handleDownload(url?: string) {
     <div v-show="activeTab === 'gallery'" class="gallery-area" ref="galleryScrollRef" @scroll="onGalleryScroll">
       <a-spin :loading="galleryLoading" style="width:100%; min-height:200px">
         <div v-if="galleryItems.length > 0" class="gallery-grid waterfall">
-          <div v-for="(item, idx) in galleryItems" :key="item.id" class="gallery-card" @click="openPreview(item.imageUrl || '', item.prompt, item as any)">
+          <div v-for="(item, idx) in galleryItems" :key="item.id" class="gallery-card"
+            @click="openPreview(item.imageUrl || '', item.prompt, item as any)">
             <div class="gallery-img-box">
-              <img
-                v-if="item.imageUrl && !isImageBroken(`gal-${item.id}`)"
-                :src="item.imageUrl"
-                alt=""
-                :loading="idx >= 200 ? 'lazy' : 'eager'"
-                @error="markImageBroken(`gal-${item.id}`)"
-              />
+              <img v-if="item.imageUrl && !isImageBroken(`gal-${item.id}`)" :src="item.imageUrl" alt=""
+                :loading="idx >= 200 ? 'lazy' : 'eager'" @error="markImageBroken(`gal-${item.id}`)" />
               <div v-else class="work-placeholder">
                 <IconImage :size="32" style="opacity:0.3" />
               </div>
@@ -1940,19 +1854,24 @@ function handleDownload(url?: string) {
           <!-- 左：图片 + 操作 + 提示词 -->
           <div class="preview-left">
             <div v-if="previewTask" class="preview-actions" @click.stop>
-              <WorkCardActionButton shape="pill" title="复制提示词" :disabled="!(previewTask.prompt || previewPrompt)" @click="copyPrompt(previewTask.prompt || previewPrompt)">
+              <WorkCardActionButton shape="pill" title="复制提示词" :disabled="!(previewTask.prompt || previewPrompt)"
+                @click="copyPrompt(previewTask.prompt || previewPrompt)">
                 <IconCopy /><span>复制提示词</span>
               </WorkCardActionButton>
-              <WorkCardActionButton shape="pill" title="一键同款" :disabled="!previewTask.prompt" @click="applySameAsTask(previewTask)">
+              <WorkCardActionButton shape="pill" title="一键同款" :disabled="!previewTask.prompt"
+                @click="applySameAsTask(previewTask)">
                 <IconPlus /><span>一键同款</span>
               </WorkCardActionButton>
-              <WorkCardActionButton shape="pill" title="下载" :disabled="!previewTask.resultUrl" @click="handleDownload(previewTask.resultUrl)">
+              <WorkCardActionButton shape="pill" title="下载" :disabled="!previewTask.resultUrl"
+                @click="handleDownload(previewTask.resultUrl)">
                 <IconDownload /><span>下载</span>
               </WorkCardActionButton>
-              <WorkCardActionButton shape="pill" :title="previewTask.isPublic ? '设为私密' : '设为公开'" @click="handleTogglePublic(previewTask)">
+              <WorkCardActionButton shape="pill" :title="previewTask.isPublic ? '设为私密' : '设为公开'"
+                @click="handleTogglePublic(previewTask)">
                 <IconSwap /><span>{{ previewTask.isPublic ? '设为私密' : '设为公开' }}</span>
               </WorkCardActionButton>
-              <WorkCardActionButton v-if="previewTask.status === 'failed'" shape="pill" title="重试" @click="handleRetry(previewTask)">
+              <WorkCardActionButton v-if="previewTask.status === 'failed'" shape="pill" title="重试"
+                @click="handleRetry(previewTask)">
                 <IconRefresh /><span>重试</span>
               </WorkCardActionButton>
               <WorkCardActionButton danger shape="pill" title="删除" @click="handleDelete(previewTask)">
@@ -1968,14 +1887,27 @@ function handleDownload(url?: string) {
             <div class="detail-panel">
               <div class="detail-title">任务详情参数</div>
               <div class="detail-grid">
-                <div class="detail-item"><span class="k">任务 ID</span><span class="v mono">{{ previewTask.id }}</span></div>
-                <div class="detail-item"><span class="k">服务商</span><span class="v">{{ getModelTag(previewTask as any)?.label || previewTask.provider || '-' }}</span></div>
-                <div class="detail-item"><span class="k">任务类型</span><span class="v">{{ previewTask.taskType || '-' }}</span></div>
-                <div class="detail-item"><span class="k">状态</span><span class="v">{{ statusText(previewTask.status) || '-' }}</span></div>
-                <div class="detail-item"><span class="k">进度</span><span class="v">{{ previewTask.progress ?? 0 }}%</span></div>
-                <div class="detail-item"><span class="k">公开状态</span><span class="v">{{ previewTask.isPublic ? '公开' : '私密' }}</span></div>
-                <div class="detail-item"><span class="k">创建时间</span><span class="v">{{ previewTask.createdAt ? new Date(previewTask.createdAt).toLocaleString() : '-' }}</span></div>
-                <div class="detail-item" v-if="previewTask.errorMessage"><span class="k">失败原因</span><span class="v" style="color: var(--accent-red)">{{ previewTask.errorMessage }}</span></div>
+                <div class="detail-item"><span class="k">任务 ID</span><span class="v mono">{{ previewTask.id }}</span>
+                </div>
+                <div class="detail-item"><span class="k">服务商</span><span class="v">{{ getModelTag(previewTask as
+                  any)?.label
+                  || previewTask.provider || '-' }}</span></div>
+                <div class="detail-item"><span class="k">任务类型</span><span class="v">{{ previewTask.taskType || '-'
+                    }}</span>
+                </div>
+                <div class="detail-item"><span class="k">状态</span><span class="v">{{ statusText(previewTask.status) ||
+                  '-'
+                    }}</span></div>
+                <div class="detail-item"><span class="k">进度</span><span class="v">{{ previewTask.progress ?? 0
+                    }}%</span>
+                </div>
+                <div class="detail-item"><span class="k">公开状态</span><span class="v">{{ previewTask.isPublic ? '公开' :
+                  '私密'
+                    }}</span></div>
+                <div class="detail-item"><span class="k">创建时间</span><span class="v">{{ previewTask.createdAt ? new
+                  Date(previewTask.createdAt).toLocaleString() : '-' }}</span></div>
+                <div class="detail-item" v-if="previewTask.errorMessage"><span class="k">失败原因</span><span class="v"
+                    style="color: var(--accent-red)">{{ previewTask.errorMessage }}</span></div>
               </div>
               <div class="detail-block" v-if="previewTask.negativePrompt">
                 <div class="kb">反向提示词</div>
@@ -1984,7 +1916,8 @@ function handleDownload(url?: string) {
               <div class="detail-block">
                 <div class="kb">扩展参数（params）</div>
                 <div v-if="previewParamItems.length" class="params-grid">
-                  <div v-for="item in previewParamItems" :key="item.key" class="params-item" :class="{ long: item.long }">
+                  <div v-for="item in previewParamItems" :key="item.key" class="params-item"
+                    :class="{ long: item.long }">
                     <span class="pk">{{ item.label }}</span>
                     <span class="pv mono">{{ item.value }}</span>
                   </div>
@@ -2005,48 +1938,124 @@ function handleDownload(url?: string) {
 
 <style scoped>
 /* === 页面容器 === */
-.page { display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
 
 /* === 顶部 === */
 .page-header {
-  flex-shrink:0; display:flex; align-items:flex-end; justify-content:space-between;
-  padding:var(--sp-6) var(--sp-8) var(--sp-4);
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: var(--sp-6) var(--sp-8) var(--sp-4);
 }
+
 .page-title {
-  margin:0; font-size:1.25rem; font-weight:700;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
   font-family: 'Space Grotesk', 'Outfit', -apple-system, 'PingFang SC', sans-serif;
   letter-spacing: -0.02em;
-  background:var(--gradient-primary); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
-.page-desc { margin:4px 0 0; font-size: 0.82rem; color:var(--text-4); font-family: 'Outfit', -apple-system, 'PingFang SC', sans-serif; }
-.tab-group { display:flex; gap:4px; background:var(--bg-surface-2); border-radius:var(--radius-md); padding:3px; }
+
+.page-desc {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-4);
+  font-family: 'Outfit', -apple-system, 'PingFang SC', sans-serif;
+}
+
+.tab-group {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-surface-2);
+  border-radius: var(--radius-md);
+  padding: 3px;
+}
+
 .tab-btn {
-  padding:6px 20px; border:none; border-radius:var(--radius-sm); background:transparent;
-  color:var(--text-3); font-size: 0.82rem; cursor:pointer; transition:all var(--duration-fast);
+  padding: 6px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all var(--duration-fast);
 }
-.tab-btn.active { background:var(--primary); color:#fff; }
-.tab-btn:hover:not(.active) { color:var(--text-1); }
+
+.tab-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.tab-btn:hover:not(.active) {
+  color: var(--text-1);
+}
 
 /* === 创作区 === */
-.create-area { flex:1; display:flex; gap:var(--sp-6); padding:var(--sp-4) var(--sp-6) var(--sp-6); min-height:0; }
+.create-area {
+  flex: 1;
+  display: flex;
+  gap: var(--sp-6);
+  padding: var(--sp-4) var(--sp-6) var(--sp-6);
+  min-height: 0;
+}
 
 /* 左侧表单面板 */
 .form-panel {
-  width:320px; flex-shrink:0; overflow-y:auto; display:flex; flex-direction:column; gap:var(--sp-2);
-  background:var(--glass-bg); backdrop-filter:var(--glass-blur);
-  border:1px solid var(--glass-border); border-radius:var(--radius-lg); padding:var(--sp-5);
+  width: 320px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
 }
+
 .form-actions {
   margin-top: var(--sp-2);
   padding-bottom: 12px;
 }
-.form-actions :deep(.gen-btn:hover) { transform: translateY(-1px); }
-.form-group { margin-bottom:var(--sp-2); }
-.group-label { display:block; font-size: 0.75rem; font-weight:600; color:var(--text-3); margin-bottom:var(--sp-2); text-transform:uppercase; letter-spacing:0.05em; }
+
+.form-actions :deep(.gen-btn:hover) {
+  transform: translateY(-1px);
+}
+
+.form-group {
+  margin-bottom: var(--sp-2);
+}
+
+.group-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-bottom: var(--sp-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
 
 /* 模型下拉框 */
-.model-select { width:100%; }
-.param-select { width: 100%; }
+.model-select {
+  width: 100%;
+}
+
+.param-select {
+  width: 100%;
+}
 
 /* Qwen 参数区 */
 .qwen-grid {
@@ -2054,19 +2063,31 @@ function handleDownload(url?: string) {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
-.qwen-item { min-width: 0; }
-.qwen-wide { grid-column: 1 / -1; }
+
+.qwen-item {
+  min-width: 0;
+}
+
+.qwen-wide {
+  grid-column: 1 / -1;
+}
+
 .qwen-label {
   font-size: 0.72rem;
   color: var(--text-4);
   margin-bottom: 6px;
 }
+
 .qwen-range {
   font-size: 0.78rem;
   color: var(--text-5, #888);
   margin-left: 4px;
 }
-.param-number { width: 100%; }
+
+.param-number {
+  width: 100%;
+}
+
 .qwen-tip {
   margin-top: 8px;
   font-size: 0.72rem;
@@ -2080,18 +2101,27 @@ function handleDownload(url?: string) {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
-.mj-item { min-width: 0; }
-.mj-wide { grid-column: 1 / -1; }
+
+.mj-item {
+  min-width: 0;
+}
+
+.mj-wide {
+  grid-column: 1 / -1;
+}
+
 .mj-label {
   font-size: 0.72rem;
   color: var(--text-4);
   margin-bottom: 6px;
 }
+
 .mj-range {
   font-size: 0.78rem;
   color: var(--text-5, #888);
   margin-left: 4px;
 }
+
 .mj-tip {
   margin-top: 8px;
   font-size: 0.72rem;
@@ -2100,115 +2130,329 @@ function handleDownload(url?: string) {
 }
 
 /* 模型提示 & 标签 */
-.label-badge { font-size: 0.72rem; font-weight:400; color:var(--primary-light); background:rgba(22, 93, 255, 0.04); padding:1px 7px; border-radius:var(--radius-full); margin-left:6px; text-transform:none; letter-spacing:0; }
-.variant-tip { font-size:0.72rem; color:var(--accent-amber); margin-top:6px; }
-.param-tag { font-size:0.78rem; color:var(--text-3); margin-bottom:var(--sp-2); padding:0 2px; }
-.param-tag strong { color:var(--text-1); font-weight:600; }
-.model-hint { display:flex; align-items:flex-start; gap:8px; padding:10px 14px; background:rgba(22, 93, 255, 0.04); border:1px solid rgba(22, 93, 255, 0.1); border-radius:var(--radius-md); font-size:0.78rem; color:var(--text-3); line-height:1; margin-bottom:var(--sp-2); }
-.hint-dot { width:6px; height:6px; border-radius:50%; background:var(--primary); flex-shrink:0; margin-top:5px; }
+.label-badge {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--primary-light);
+  background: rgba(22, 93, 255, 0.04);
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  margin-left: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.variant-tip {
+  font-size: 0.72rem;
+  color: var(--accent-amber);
+  margin-top: 6px;
+}
+
+.param-tag {
+  font-size: 0.78rem;
+  color: var(--text-3);
+  margin-bottom: var(--sp-2);
+  padding: 0 2px;
+}
+
+.param-tag strong {
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+.model-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(22, 93, 255, 0.04);
+  border: 1px solid rgba(22, 93, 255, 0.1);
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  color: var(--text-3);
+  line-height: 1;
+  margin-bottom: var(--sp-2);
+}
+
+.hint-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+  margin-top: 5px;
+}
 
 /* 提示词输入 */
-.prompt-input :deep(.arco-textarea) { background:var(--bg-surface-2) !important; border-radius:var(--radius-md) !important; }
+.prompt-input :deep(.arco-textarea) {
+  background: var(--bg-surface-2) !important;
+  border-radius: var(--radius-md) !important;
+}
 
 /* === 参考图上传 === */
-.group-label-row { display:flex; align-items:center; gap:var(--sp-2); margin-bottom:var(--sp-2); }
-.group-label-row .group-label { margin-bottom:0; }
-.ref-count { font-size:0.75rem; color:var(--text-4); margin-left:auto; }
-.clear-ref-btn {
-  font-size:0.75rem; color:var(--accent-red); background:none; border:none;
-  cursor:pointer; padding:0; text-decoration:underline; opacity:0;
+.group-label-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
 }
-.clear-ref-btn:hover { opacity:1; }
+
+.group-label-row .group-label {
+  margin-bottom: 0;
+}
+
+.ref-count {
+  font-size: 0.75rem;
+  color: var(--text-4);
+  margin-left: auto;
+}
+
+.clear-ref-btn {
+  font-size: 0.75rem;
+  color: var(--accent-red);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  opacity: 0;
+}
+
+.clear-ref-btn:hover {
+  opacity: 1;
+}
 
 /* 缩略图网格 */
-.ref-thumbs { display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-bottom:var(--sp-2); }
+.ref-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+
 .ref-thumb {
-  position:relative; width:72px; height:72px; border-radius:var(--radius-sm);
-  overflow:hidden; border:1px solid var(--border-2);
-  transition:border-color var(--duration-fast);
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-2);
+  transition: border-color var(--duration-fast);
 }
-.ref-thumb:hover { border-color:var(--border-focus); }
-.ref-thumb img { width:100%; height:100%; object-fit:cover; }
+
+.ref-thumb:hover {
+  border-color: var(--border-focus);
+}
+
+.ref-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .ref-remove {
-  position:absolute; top:2px; right:2px; width:18px; height:18px;
-  border-radius:50%; background:rgba(0,0,0,0.5); border:none;
-  color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;
-  opacity:0; transition:opacity var(--duration-fast);
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--duration-fast);
 }
-.ref-thumb:hover .ref-remove { opacity:1; }
-.ref-remove:hover { background:var(--accent-red); }
+
+.ref-thumb:hover .ref-remove {
+  opacity: 1;
+}
+
+.ref-remove:hover {
+  background: var(--accent-red);
+}
 
 /* 添加更多按钮 */
 .ref-add-btn {
-  width:72px; height:72px; border-radius:var(--radius-sm);
-  border:1px dashed var(--border-3); background:var(--bg-surface-2);
-  color:var(--text-4); cursor:pointer; display:flex; align-items:center; justify-content:center;
-  transition:all var(--duration-normal);
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-3);
+  background: var(--bg-surface-2);
+  color: var(--text-4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-normal);
 }
-.ref-add-btn:hover { border-color:var(--primary); color:var(--primary); background:rgba(22, 93, 255, 0.06); }
-.ref-add-btn :deep(svg) { stroke-width:2.4; }
+
+.ref-add-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(22, 93, 255, 0.06);
+}
+
+.ref-add-btn :deep(svg) {
+  stroke-width: 2.4;
+}
 
 /* 拖拽上传区域 */
 .ref-dropzone {
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
-  width:120px; height:120px; padding:10px; border:1px dashed var(--border-3);
-  border-radius:var(--radius-md); background:var(--bg-surface-2);
-  cursor:pointer; transition:all var(--duration-normal);
-  text-align:center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 272px;
+  padding: 10px;
+  border: 1px dashed var(--border-3);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-2);
+  cursor: pointer;
+  transition: all var(--duration-normal);
+  text-align: center;
 }
-.ref-dropzone:hover, .ref-dropzone.dragover {
-  border-color:var(--primary); background:rgba(22, 93, 255, 0.06);
+
+.ref-dropzone:hover,
+.ref-dropzone.dragover {
+  border-color: var(--primary);
+  background: rgba(22, 93, 255, 0.06);
 }
-.ref-dropzone.dragover { box-shadow:0 0 16px rgba(22, 93, 255, 0.1); }
+
+.ref-dropzone.dragover {
+  box-shadow: 0 0 16px rgba(22, 93, 255, 0.1);
+}
+
 .dropzone-plus {
-  color:var(--primary-light);
-  background:rgba(22, 93, 255, 0.14);
-  border:1px solid rgba(22, 93, 255, 0.36);
-  border-radius:10px;
-  padding:6px;
+  color: var(--primary-light);
+  background: rgba(22, 93, 255, 0.14);
+  border: 1px solid rgba(22, 93, 255, 0.36);
+  border-radius: 10px;
+  padding: 6px;
 }
-.dropzone-text { font-size: 0.75rem; color:var(--text-2); line-height:1.3; }
-.dropzone-hint { font-size:0.68rem; color:var(--text-4); line-height:1.25; }
+
+.dropzone-text {
+  font-size: 0.84rem;
+  color: var(--text-2);
+  line-height: 1.3;
+}
+
+.dropzone-hint {
+  font-size: 0.84rem;
+  color: var(--text-4);
+  line-height: 1.25;
+}
 
 /* 折叠按钮 */
 .toggle-btn {
-  display:flex; align-items:center; gap:6px; margin-bottom:var(--sp-2);
-  background:none; border:none; color:var(--text-4); font-size: 0.75rem; cursor:pointer; padding:0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--sp-2);
+  background: none;
+  border: none;
+  color: var(--text-4);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0;
 }
-.toggle-btn:hover { color:var(--text-2); }
-.toggle-arrow { transition:transform 0s; display:inline-block; }
-.toggle-arrow.open { transform:rotate(180deg); }
+
+.toggle-btn:hover {
+  color: var(--text-2);
+}
+
+.toggle-arrow {
+  transition: transform 0s;
+  display: inline-block;
+}
+
+.toggle-arrow.open {
+  transform: rotate(180deg);
+}
 
 /* 敏感词提示弹窗 */
-.badword-modal { display:flex; flex-direction:column; gap:10px; }
-.badword-desc { font-size: 0.82rem; color:var(--text-2); }
-.badword-tags { display:flex; flex-wrap:wrap; gap:8px; }
-.badword-more { font-size:0.75rem; color:var(--text-4); align-self:center; }
-.badword-modal-wrap :deep(.arco-modal) { border-radius:var(--radius-lg); }
-.badword-modal-wrap :deep(.arco-modal-body) { padding-top: 8px; }
-.badword-modal-wrap :deep(.arco-tag) {
-  border-radius:var(--radius-full);
-  font-size:0.75rem;
-  padding:2px 8px;
+.badword-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
+
+.badword-desc {
+  font-size: 0.82rem;
+  color: var(--text-2);
+}
+
+.badword-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.badword-more {
+  font-size: 0.75rem;
+  color: var(--text-4);
+  align-self: center;
+}
+
+.badword-modal-wrap :deep(.arco-modal) {
+  border-radius: var(--radius-lg);
+}
+
+.badword-modal-wrap :deep(.arco-modal-body) {
+  padding-top: 8px;
+}
+
+.badword-modal-wrap :deep(.arco-tag) {
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  padding: 2px 8px;
+}
+
 .badword-modal-wrap :deep(.arco-modal-footer .arco-btn) {
   min-width: 92px;
   border-radius: var(--radius-full);
 }
+
 .badword-modal-wrap :deep(.arco-modal-footer .arco-btn + .arco-btn) {
   margin-left: 10px;
 }
 
 /* 参数按钮组（支持 wrap） */
-.size-group { display:flex; flex-wrap:wrap; gap:6px; }
-.size-btn {
-  display:flex; align-items:center; gap:4px;
-  padding:6px 14px; background:var(--bg-surface-2);
-  border:1px solid var(--border-1); border-radius:var(--radius-full);
-  cursor:pointer; transition:all var(--duration-normal); font-size:0.78rem;
+.size-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
-.size-btn:hover { border-color:var(--border-3); }
-.size-btn.active { border-color:var(--primary); background:rgba(22, 93, 255, 0.1); color:var(--primary-light); }
+
+.size-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--duration-normal);
+  font-size: 0.78rem;
+}
+
+.size-btn:hover {
+  border-color: var(--border-3);
+}
+
+.size-btn.active {
+  border-color: var(--primary);
+  background: rgba(22, 93, 255, 0.1);
+  color: var(--primary-light);
+}
+
 .ratio-outline {
   display: inline-block;
   border: 1.5px solid var(--border-3);
@@ -2216,8 +2460,15 @@ function handleDownload(url?: string) {
   background: transparent;
   flex-shrink: 0;
 }
-.size-label { color:var(--text-3); }
-.size-btn.active .size-label { color:var(--primary-light); }
+
+.size-label {
+  color: var(--text-3);
+}
+
+.size-btn.active .size-label {
+  color: var(--primary-light);
+}
+
 .size-btn.active .ratio-outline {
   border-color: var(--primary-light);
 }
@@ -2234,22 +2485,26 @@ function handleDownload(url?: string) {
   overflow-y: auto;
   padding-right: 4px;
 }
+
 .works-spin {
   flex: 1;
   min-height: 0;
   display: flex;
 }
+
 .works-spin :deep(.arco-spin) {
   flex: 1;
   min-height: 0;
   display: flex;
 }
+
 .works-spin :deep(.arco-spin-children) {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
+
 .works-empty {
   flex: 1;
   min-height: 0;
@@ -2257,99 +2512,143 @@ function handleDownload(url?: string) {
   align-items: center;
   justify-content: center;
 }
+
 .works-header {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:var(--sp-2);
-  margin-bottom:var(--sp-3);
-  flex-shrink:0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+  flex-shrink: 0;
 }
-.works-header-left { display:flex; align-items:center; gap:var(--sp-2); }
-.works-header-right { display:flex; align-items:center; gap:var(--sp-2); }
+
+.works-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.works-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
 .batch-controls {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:var(--sp-3);
-  padding:10px 12px;
-  background:var(--glass-bg);
-  backdrop-filter:var(--glass-blur);
-  border:1px solid var(--glass-border);
-  border-radius:var(--radius-lg);
-  margin-bottom:var(--sp-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 10px 12px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--sp-3);
 }
+
 .batch-select {
-  display:flex;
-  align-items:center;
+  display: flex;
+  align-items: center;
 }
-.batch-actions { display:flex; gap:var(--sp-2); }
+
+.batch-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+
 .batch-btn.arco-btn {
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  height:30px;
-  padding:0 12px;
-  border-radius:var(--radius-full);
-  border:1px solid var(--border-2);
-  background:var(--bg-surface-2);
-  color:var(--text-2);
-  font-size:0.75rem;
-  transition:all var(--duration-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-2);
+  background: var(--bg-surface-2);
+  color: var(--text-2);
+  font-size: 0.75rem;
+  transition: all var(--duration-fast);
 }
+
 .batch-btn.arco-btn:hover:not(.arco-btn-disabled) {
-  border-color:var(--border-focus);
-  color:var(--text-1);
+  border-color: var(--border-focus);
+  color: var(--text-1);
   transform: translateY(-1px);
 }
-.batch-btn.arco-btn.arco-btn-disabled { opacity:0.45; }
+
+.batch-btn.arco-btn.arco-btn-disabled {
+  opacity: 0.45;
+}
+
 .batch-btn.active.arco-btn {
-  background:var(--primary);
-  border-color:var(--primary);
-  color:#fff;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
 }
+
 .batch-btn.batch-download.arco-btn {
-  background:var(--gradient-primary);
-  color:#fff;
-  border:none;
+  background: var(--gradient-primary);
+  color: #fff;
+  border: none;
 }
+
 .batch-btn.batch-delete.arco-btn {
-  background:rgba(245, 63, 63, 0.1);
-  border-color:rgba(245, 63, 63, 0.1);
-  color:var(--accent-red);
+  background: rgba(245, 63, 63, 0.1);
+  border-color: rgba(245, 63, 63, 0.1);
+  color: var(--accent-red);
 }
+
 .batch-btn.batch-delete.arco-btn:hover:not(.arco-btn-disabled) {
-  background:rgba(245, 63, 63, 0.1);
-  border-color:rgba(245, 63, 63, 0.1);
+  background: rgba(245, 63, 63, 0.1);
+  border-color: rgba(245, 63, 63, 0.1);
 }
+
 .batch-check :deep(.arco-checkbox-label) {
-  color:var(--text-2);
+  color: var(--text-2);
   font-size: 0.75rem;
 }
+
 .batch-check :deep(.arco-checkbox-icon) {
-  width:18px;
-  height:18px;
-  border-radius:6px;
-  border-color:var(--border-2);
-  background:var(--bg-surface-2);
-  box-shadow:0 0 0 2px rgba(35, 35, 36, 0.5);
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border-color: var(--border-2);
+  background: var(--bg-surface-2);
+  box-shadow: 0 0 0 2px rgba(35, 35, 36, 0.5);
 }
+
 .batch-check :deep(.arco-checkbox-input:checked + .arco-checkbox-icon) {
-  border-color:var(--primary);
-  background:var(--primary);
+  border-color: var(--primary);
+  background: var(--primary);
 }
+
 .batch-check :deep(.arco-checkbox-input:indeterminate + .arco-checkbox-icon) {
-  border-color:var(--primary);
-  background:var(--primary);
+  border-color: var(--primary);
+  background: var(--primary);
 }
+
 .batch-check :deep(.arco-checkbox-input:indeterminate + .arco-checkbox-icon::after) {
-  background:#fff;
+  background: #fff;
 }
-.works-title { margin:0; font-size:1rem; font-weight:600; color:var(--text-1); }
+
+.works-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
 .works-count {
-  background:var(--primary); color:#fff; font-size:0.7rem; font-weight:600;
-  padding:1px 8px; border-radius:var(--radius-full); line-height:1;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  line-height: 1;
 }
+
 .retry-all-btn {
   margin-left: auto;
   border: 1px solid rgba(22, 93, 255, 0.1);
@@ -2361,11 +2660,16 @@ function handleDownload(url?: string) {
   cursor: pointer;
   transition: all var(--duration-fast);
 }
+
 .retry-all-btn:hover:not(:disabled) {
   background: rgba(22, 93, 255, 0.1);
   border-color: rgba(22, 93, 255, 0.5);
 }
-.retry-all-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.retry-all-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 /* 横向网格（按时间顺序从左到右） */
 .waterfall {
@@ -2378,73 +2682,123 @@ function handleDownload(url?: string) {
 
 /* 单张作品卡片 */
 .work-card {
-  background:var(--bg-surface-2); border:1px solid var(--border-1); border-radius:var(--radius-lg);
-  overflow:hidden; cursor:pointer; transition:box-shadow 0s, border-color 0s, transform 0s;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow 0s, border-color 0s, transform 0s;
   position: relative;
 }
-.work-card:hover { box-shadow:var(--shadow-glow); border-color:var(--border-3); transform: translateY(-2px); }
-.work-card.batch-mode { cursor:default; }
-.work-card.batch-mode:hover { transform: none; }
+
+.work-card:hover {
+  box-shadow: var(--shadow-glow);
+  border-color: var(--border-3);
+  transform: translateY(-2px);
+}
+
+.work-card.batch-mode {
+  cursor: default;
+}
+
+.work-card.batch-mode:hover {
+  transform: none;
+}
+
 .work-card.selected {
-  border-color:var(--primary);
-  box-shadow:0 0 0 2px rgba(22, 93, 255, 0.1);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.1);
 }
+
 .batch-checkbox {
-  position:absolute;
-  top:10px;
-  left:10px;
-  z-index:10;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
 }
+
 .batch-checkbox :deep(.arco-checkbox) {
-  display:inline-flex;
-  align-items:center;
-  gap:0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
 }
+
 .batch-checkbox :deep(.arco-checkbox-label) {
-  display:none;
+  display: none;
 }
 
 .work-img-box {
-  position:relative;
-  width:100%;
+  position: relative;
+  width: 100%;
   aspect-ratio: 1 / 1;
-  overflow:hidden;
-  background:var(--bg-surface-3);
+  overflow: hidden;
+  background: var(--bg-surface-3);
 }
+
 .work-img {
-  width:100%; height:100%;
-  object-fit:cover; display:block;
-  transition:transform 0s var(--ease-out);
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0s var(--ease-out);
 }
-.work-card:hover .work-img { transform:scale(1.05); }
+
+.work-card:hover .work-img {
+  transform: scale(1.05);
+}
+
 .work-placeholder {
-  position:absolute; inset:0;
-  display:flex; align-items:center; justify-content:center;
-  background:var(--bg-surface-3);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface-3);
 }
 
 /* 进度环 (SVG) */
 .progress-ring-overlay {
-  position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  background:rgba(7,10,20,0.2);
-  overflow:hidden;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7, 10, 20, 0.2);
+  overflow: hidden;
 }
+
 .progress-ring-overlay::before {
-  content:'';
-  position:absolute; inset:-50% -20%;
-  background:linear-gradient(120deg, transparent 35%, rgba(22, 93, 255, 0.4) 50%, transparent 65%);
-  animation:scanSweep 2s linear infinite;
+  content: '';
+  position: absolute;
+  inset: -50% -20%;
+  background: linear-gradient(120deg, transparent 35%, rgba(22, 93, 255, 0.4) 50%, transparent 65%);
+  animation: scanSweep 2s linear infinite;
 }
-.progress-svg { width:56px; height:56px; }
+
+.progress-svg {
+  width: 56px;
+  height: 56px;
+}
+
 .progress-stage {
   position: relative;
   z-index: 1;
   margin-bottom: 8px;
   font-size: 0.72rem;
-  color: rgba(255,255,255,0.9);
+  color: rgba(255, 255, 255, 0.9);
   letter-spacing: 0.02em;
 }
-.progress-text { position:relative; z-index:1; font-size:0.75rem; color:#fff; font-weight:600; margin-top:4px; }
+
+.progress-text {
+  position: relative;
+  z-index: 1;
+  font-size: 0.75rem;
+  color: #fff;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
 .progress-track {
   position: relative;
   z-index: 1;
@@ -2452,106 +2806,181 @@ function handleDownload(url?: string) {
   height: 4px;
   border-radius: 999px;
   margin-top: 8px;
-  background: rgba(255,255,255,0);
+  background: rgba(255, 255, 255, 0);
   overflow: hidden;
 }
+
 .progress-fill {
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #165DFF, #4080FF);
   transition: width 0s ease;
 }
-@keyframes scanSweep { from { transform: translateX(-30%); } to { transform: translateX(30%); } }
+
+@keyframes scanSweep {
+  from {
+    transform: translateX(-30%);
+  }
+
+  to {
+    transform: translateX(30%);
+  }
+}
 
 /* 状态标签 */
 .status-badge {
-  position:absolute; top:var(--sp-2); left:var(--sp-2);
-  padding:2px 10px; border-radius:var(--radius-full); font-size:0.7rem; color:#fff; font-weight:500;
+  position: absolute;
+  top: var(--sp-2);
+  left: var(--sp-2);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  color: #fff;
+  font-weight: 500;
   z-index: 5;
 }
 
 /* Hover 操作层 */
 .hover-actions {
-  position:absolute; bottom:0; left:0; right:0;
-  display:flex; justify-content:center; gap:var(--sp-2); padding:var(--sp-3);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
   flex-wrap: wrap;
-  background:linear-gradient(transparent, rgba(0,0,0,0));
-  opacity:0; transform:translateY(4px);
-  transition:all var(--duration-normal) var(--ease-out);
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0));
+  opacity: 0;
+  transform: translateY(4px);
+  transition: all var(--duration-normal) var(--ease-out);
   z-index: 2;
 }
+
 .hover-actions :deep(.wca-btn) {
   background: rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
 .hover-actions :deep(.wca-btn:hover:not(:disabled)) {
   background: rgba(0, 0, 0, 0.1);
   border-color: rgba(255, 255, 255, 0.3);
 }
-.work-card:hover .hover-actions { opacity:1; transform:translateY(0); }
-.action-icon {
-  width:32px; height:32px; border:none; border-radius:50%;
-  background:rgba(255,255,255,0); backdrop-filter:none;
-  color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center;
-  transition:all var(--duration-fast);
+
+.work-card:hover .hover-actions {
+  opacity: 1;
+  transform: translateY(0);
 }
-.action-icon:hover { background:rgba(255,255,255,0.3); transform:scale(1.1); }
-.action-icon.danger:hover { background:rgba(245, 63, 63, 0.1); }
+
+.action-icon {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0);
+  backdrop-filter: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast);
+}
+
+.action-icon:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.action-icon.danger:hover {
+  background: rgba(245, 63, 63, 0.1);
+}
 
 /* 卡片底部信息区 */
 .work-info {
-  padding:var(--sp-3);
+  padding: var(--sp-3);
   background: var(--bg-surface-2);
 }
+
 .work-prompt {
-  margin:0 0 6px 0; font-size: 0.75rem; color:var(--text-2);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  line-height:1;
+  margin: 0 0 6px 0;
+  font-size: 0.75rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
 }
 
 .failed-overlay {
-  position:absolute; inset:0;
-  display:flex; align-items:center; justify-content:center;
-  background:var(--bg-surface-3); /* Dark background to cover placeholder */
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface-3);
+  /* Dark background to cover placeholder */
   z-index: 2;
 }
+
 .failed-content {
-  display:flex; flex-direction:column; align-items:center; gap:12px;
-  padding: 0 16px; width: 100%; box-sizing: border-box;
-}
-.failed-msg {
-  font-size: 0.75rem; color:var(--text-3); text-align:center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
   width: 100%;
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+  box-sizing: border-box;
+}
+
+.failed-msg {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  text-align: center;
+  width: 100%;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
   line-height: 1;
 }
+
 .failed-detail-btn {
-  background: rgba(245, 63, 63, 0.1); border: 1px solid rgba(245, 63, 63, 0.3);
-  color: var(--accent-red); padding: 4px 14px; border-radius: var(--radius-full);
-  font-size: 0.75rem; cursor: pointer; transition: all 0s;
+  background: rgba(245, 63, 63, 0.1);
+  border: 1px solid rgba(245, 63, 63, 0.3);
+  color: var(--accent-red);
+  padding: 4px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0s;
 }
-.failed-detail-btn:hover { background: rgba(245, 63, 63, 0.1); border-color: rgba(245, 63, 63, 0.1); }
+
+.failed-detail-btn:hover {
+  background: rgba(245, 63, 63, 0.1);
+  border-color: rgba(245, 63, 63, 0.1);
+}
 
 .work-model-tag {
-  margin:0 0 6px 0;
-  display:flex;
-  align-items:center;
-  white-space:nowrap;
+  margin: 0 0 6px 0;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
 }
 
 .load-more-hint {
   grid-column: 1 / -1;
-  text-align:center;
-  padding:var(--sp-4) 0;
-  color:var(--text-4);
+  text-align: center;
+  padding: var(--sp-4) 0;
+  color: var(--text-4);
   font-size: 0.82rem;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .infinite-sentinel {
@@ -2560,88 +2989,191 @@ function handleDownload(url?: string) {
 }
 
 /* === 广场 === */
-.gallery-area { flex:1; padding:var(--sp-4) var(--sp-8) var(--sp-6); overflow-y:auto; }
+.gallery-area {
+  flex: 1;
+  padding: var(--sp-4) var(--sp-8) var(--sp-6);
+  overflow-y: auto;
+}
+
 .gallery-empty {
   min-height: 340px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.gallery-card {
-  background:var(--bg-surface-2); border:1px solid var(--border-1); border-radius:var(--radius-lg);
-  overflow:hidden; cursor:pointer; transition:box-shadow 0s, border-color 0s;
-}
-.gallery-card:hover { box-shadow:var(--shadow-glow); border-color:var(--border-3); }
 
-.gallery-img-box { position:relative; width:100%; padding-bottom:100%; overflow:hidden; background:var(--bg-surface-3); }
-.gallery-img-box img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; transition:transform 0s; }
-.gallery-card:hover .gallery-img-box img { transform:scale(1.06); }
+.gallery-card {
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow 0s, border-color 0s;
+}
+
+.gallery-card:hover {
+  box-shadow: var(--shadow-glow);
+  border-color: var(--border-3);
+}
+
+.gallery-img-box {
+  position: relative;
+  width: 100%;
+  padding-bottom: 100%;
+  overflow: hidden;
+  background: var(--bg-surface-3);
+}
+
+.gallery-img-box img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0s;
+}
+
+.gallery-card:hover .gallery-img-box img {
+  transform: scale(1.06);
+}
 
 .gallery-hover {
-  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-  background:rgba(0,0,0,0.5); opacity:0; transition:opacity var(--duration-normal);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity var(--duration-normal);
 }
-.gallery-card:hover .gallery-hover { opacity:1; }
-.copy-prompt-btn {
-  display:flex; align-items:center; gap:6px; padding:8px 16px;
-  background:var(--gradient-primary); border:none; border-radius:var(--radius-md);
-  color:#fff; font-size: 0.82rem; cursor:pointer; font-weight:500;
-  transition:transform var(--duration-fast);
-}
-.copy-prompt-btn:hover { transform:scale(1.05); }
 
-.gallery-info { padding:var(--sp-3); }
+.gallery-card:hover .gallery-hover {
+  opacity: 1;
+}
+
+.copy-prompt-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--gradient-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: transform var(--duration-fast);
+}
+
+.copy-prompt-btn:hover {
+  transform: scale(1.05);
+}
+
+.gallery-info {
+  padding: var(--sp-3);
+}
+
 .gallery-prompt {
-  margin:0 0 var(--sp-2); font-size: 0.75rem; color:var(--text-2);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  margin: 0 0 var(--sp-2);
+  font-size: 0.75rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.gallery-author { display:flex; align-items:center; gap:var(--sp-2); font-size:0.75rem; color:var(--text-4); }
+
+.gallery-author {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 0.75rem;
+  color: var(--text-4);
+}
+
 .gallery-model-tag {
-  margin-top:var(--sp-2);
-  display:flex;
-  align-items:center;
-  white-space:nowrap;
+  margin-top: var(--sp-2);
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
 }
+
 .author-dot {
-  width:22px; height:22px; border-radius:50%; background:var(--gradient-primary);
-  color:#fff; font-size: 0.82rem; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  color: #fff;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 /* 预览 */
-.preview-body { text-align:left; }
-.preview-split{
-  display:flex;
-  gap: var(--sp-4);
-  align-items:flex-start;
+.preview-body {
+  text-align: left;
 }
-.preview-left{ flex: 1; min-width: 0; }
-.preview-right{
+
+.preview-split {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: flex-start;
+}
+
+.preview-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.preview-right {
   width: 340px;
   max-width: 46%;
   max-height: 72vh;
-  overflow:auto;
+  overflow: auto;
 }
-.preview-actions{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
+
+.preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: var(--sp-3);
   justify-content: flex-start;
 }
-.preview-actions :deep(.wca-btn){
+
+.preview-actions :deep(.wca-btn) {
   background: rgba(49, 49, 50, 0.2);
   color: var(--text-2);
 }
-.preview-actions :deep(.wca-btn:hover:not(:disabled)){
+
+.preview-actions :deep(.wca-btn:hover:not(:disabled)) {
   background: rgba(49, 49, 50, 0.18);
 }
-.preview-actions :deep(.wca-btn span){
+
+.preview-actions :deep(.wca-btn span) {
   font-size: 0.78rem;
 }
-.preview-img { width:100%; max-height:65vh; object-fit:contain; border-radius:var(--radius-md); }
-.preview-prompt { margin:var(--sp-4) 0 0; padding:var(--sp-4); background:var(--bg-surface-3); border-radius:var(--radius-md); text-align:left; color:var(--text-2); font-size:0.9rem; }
+
+.preview-img {
+  width: 100%;
+  max-height: 65vh;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+}
+
+.preview-prompt {
+  margin: var(--sp-4) 0 0;
+  padding: var(--sp-4);
+  background: var(--bg-surface-3);
+  border-radius: var(--radius-md);
+  text-align: left;
+  color: var(--text-2);
+  font-size: 0.9rem;
+}
+
 .detail-panel {
   margin-top: 0;
   padding: var(--sp-4);
@@ -2650,19 +3182,60 @@ function handleDownload(url?: string) {
   background: var(--bg-surface-2);
   text-align: left;
 }
-.detail-title { font-size: 0.82rem; color: var(--text-2); font-weight: 600; margin-bottom: var(--sp-3); }
-.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
-.detail-item { display: flex; gap: 8px; min-width: 0; }
-.detail-item .k { color: var(--text-4); font-size: 0.76rem; white-space: nowrap; }
-.detail-item .v { color: var(--text-2); font-size: 0.76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-.detail-block { margin-top: var(--sp-3); }
-.kb { font-size: 0.76rem; color: var(--text-4); margin-bottom: 6px; }
+
+.detail-title {
+  font-size: 0.82rem;
+  color: var(--text-2);
+  font-weight: 600;
+  margin-bottom: var(--sp-3);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px;
+}
+
+.detail-item {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.detail-item .k {
+  color: var(--text-4);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.detail-item .v {
+  color: var(--text-2);
+  font-size: 0.76rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.detail-block {
+  margin-top: var(--sp-3);
+}
+
+.kb {
+  font-size: 0.76rem;
+  color: var(--text-4);
+  margin-bottom: 6px;
+}
+
 .params-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 8px;
 }
+
 .params-item {
   display: grid;
   grid-template-columns: 96px 1fr;
@@ -2673,12 +3246,17 @@ function handleDownload(url?: string) {
   border: 1px solid var(--border-1);
   background: var(--bg-surface-3);
 }
-.params-item.long { grid-template-columns: 1fr; }
+
+.params-item.long {
+  grid-template-columns: 1fr;
+}
+
 .pk {
   color: var(--text-4);
   font-size: 0.74rem;
   line-height: 1.45;
 }
+
 .pv {
   color: var(--text-2);
   font-size: 0.74rem;
@@ -2686,6 +3264,7 @@ function handleDownload(url?: string) {
   word-break: break-word;
   white-space: pre-wrap;
 }
+
 .params-empty {
   color: var(--text-4);
   font-size: 0.74rem;
@@ -2694,15 +3273,18 @@ function handleDownload(url?: string) {
   border: 1px dashed var(--border-1);
   background: var(--bg-surface-3);
 }
+
 .params-raw {
   margin-top: 8px;
 }
-.params-raw > summary {
+
+.params-raw>summary {
   cursor: pointer;
   color: var(--text-4);
   font-size: 0.74rem;
   user-select: none;
 }
+
 .json-view {
   margin: 0;
   white-space: pre-wrap;
@@ -2721,55 +3303,124 @@ function handleDownload(url?: string) {
   background: rgba(22, 93, 255, 0.08);
   border-color: rgba(22, 93, 255, 0.2);
 }
+
 :global(body[arco-theme='light']) .progress-ring-overlay {
   background: rgba(15, 23, 42, 0.62);
 }
 
 /* 响应式 */
 @media(max-width:900px) {
-  .create-area { flex-direction:column; }
-  .form-panel { width:100%; max-height:45vh; }
-  .waterfall { grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
-  .batch-controls { 
-    flex-direction:column; 
-    align-items:stretch; 
-    gap:12px;
-    padding:12px;
+  .create-area {
+    flex-direction: column;
   }
-  .works-header { flex-direction:column; align-items:flex-start; gap:8px; }
-  .batch-actions { width:100%; justify-content:stretch; }
-  .batch-actions .batch-btn { flex:1; justify-content:center; }
+
+  .form-panel {
+    width: 100%;
+    max-height: 45vh;
+  }
+
+  .waterfall {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+
+  .batch-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .works-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .batch-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .batch-actions .batch-btn {
+    flex: 1;
+    justify-content: center;
+  }
 }
+
 @media(max-width:600px) {
-  .page-header { flex-direction:column; align-items:flex-start; gap:var(--sp-3); padding:var(--sp-4); }
-  .create-area { padding:var(--sp-3); }
-  .gallery-area { padding:var(--sp-3); }
-  .waterfall { grid-template-columns:repeat(2, 1fr); gap: 12px; }
-  .preview-split { flex-direction: column; }
-  .preview-right { width: 100%; max-width: 100%; max-height: none; overflow: visible; }
-  .batch-actions { 
-    flex-direction:column; 
-    gap:8px;
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
   }
-  .batch-actions .batch-btn { 
-    width:100%; 
-    justify-content:center;
+
+  .create-area {
+    padding: var(--sp-3);
+  }
+
+  .gallery-area {
+    padding: var(--sp-3);
+  }
+
+  .waterfall {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .preview-split {
+    flex-direction: column;
+  }
+
+  .preview-right {
+    width: 100%;
+    max-width: 100%;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .batch-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .batch-actions .batch-btn {
+    width: 100%;
+    justify-content: center;
   }
 }
+
 @media(max-width:420px) {
-  .waterfall { grid-template-columns:1fr; gap: 12px; }
-  .works-header-left, .works-header-right { 
-    flex-direction:column; 
-    align-items:stretch; 
-    gap:6px;
-    width:100%;
+  .waterfall {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
-  .works-header-right .arco-btn { width:100%; justify-content:center; }
+
+  .works-header-left,
+  .works-header-right {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .works-header-right .arco-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* 触屏设备没有 hover：始终提供操作入口 */
 @media (hover: none) {
-  .work-card .hover-actions { opacity: 1; transform: none; }
-  .gallery-card .gallery-hover { opacity: 1; background: rgba(0,0,0,0.5); }
+  .work-card .hover-actions {
+    opacity: 1;
+    transform: none;
+  }
+
+  .gallery-card .gallery-hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.5);
+  }
 }
 </style>
