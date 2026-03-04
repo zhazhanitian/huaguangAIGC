@@ -22,16 +22,24 @@ export class UserService {
    * 管理端创建用户
    */
   async createByAdmin(dto: CreateUserDto): Promise<User> {
-    const existing = await this.userRepository.findOne({ where: { email: dto.email } });
-    if (existing) {
-      throw new ConflictException('该邮箱已被注册');
+    const existingPhone = await this.userRepository.findOne({ where: { phone: dto.phone } });
+    if (existingPhone) {
+      throw new ConflictException('该手机号已被注册');
+    }
+
+    if (dto.email) {
+      const existingEmail = await this.userRepository.findOne({ where: { email: dto.email } });
+      if (existingEmail) {
+        throw new ConflictException('该邮箱已被注册');
+      }
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const inviteCode = crypto.randomBytes(6).toString('base64url').slice(0, 8).toUpperCase();
 
     const user = this.userRepository.create({
-      email: dto.email,
+      phone: dto.phone,
+      email: dto.email ?? null,
       password: hashedPassword,
       username: dto.username,
       role: dto.role ?? UserRole.USER,
@@ -79,7 +87,7 @@ export class UserService {
 
     if (keyword && keyword.trim()) {
       qb.andWhere(
-        '(user.username LIKE :keyword OR user.email LIKE :keyword)',
+        '(user.username LIKE :keyword OR user.email LIKE :keyword OR user.phone LIKE :keyword)',
         { keyword: `%${keyword.trim()}%` },
       );
     }
@@ -122,14 +130,27 @@ export class UserService {
    */
   async update(
     id: string,
-    updates: Partial<Pick<User, 'username' | 'avatar' | 'role' | 'status' | 'phone' | 'sign' | 'balance'>>,
+    updates: Partial<Pick<User, 'username' | 'email' | 'avatar' | 'role' | 'status' | 'sign' | 'balance'>>,
   ): Promise<User> {
     const user = await this.findById(id);
+
+    if (updates.email !== undefined) {
+      const newEmail = updates.email ?? null;
+      if (newEmail) {
+        const existingEmail = await this.userRepository.findOne({
+          where: { email: newEmail },
+        });
+        if (existingEmail && existingEmail.id !== id) {
+          throw new ConflictException('该邮箱已被注册');
+        }
+      }
+      user.email = newEmail;
+    }
     // balance comes from admin panel; keep it numeric for decimal column.
     if ((updates as any).balance !== undefined) {
       user.balance = Number((updates as any).balance);
     }
-    const { balance, ...rest } = updates as any;
+    const { balance, email, ...rest } = updates as any;
     Object.assign(user, rest);
     return this.userRepository.save(user);
   }

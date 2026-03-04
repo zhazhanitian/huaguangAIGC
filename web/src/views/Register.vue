@@ -11,6 +11,7 @@ const userStore = useUserStore()
 const loading = ref(false)
 const form = reactive({
   username: '',
+  phone: '',
   email: '',
   password: '',
   confirmPassword: '',
@@ -29,8 +30,11 @@ const rules = {
     { required: true, message: '请输入用户名' },
     { minLength: 2, maxLength: 20, message: '用户名 2-20 个字符' },
   ],
+  phone: [
+    { required: true, message: '请输入手机号' },
+    { minLength: 5, maxLength: 20, message: '手机号格式不正确' },
+  ],
   email: [
-    { required: true, message: '请输入邮箱' },
     { type: 'email', message: '请输入有效的邮箱地址' },
   ],
   password: [
@@ -51,7 +55,7 @@ async function handleRegister() {
     const errors = await formRef.value.validate()
     if (errors) return
     loading.value = true
-    await userStore.register(form.username, form.email, form.password)
+    await userStore.register(form.username, form.phone, form.password, form.email || undefined)
     Message.success('注册成功')
     router.push('/chat')
   } catch (err: unknown) {
@@ -83,8 +87,13 @@ async function handleRegister() {
             </template>
           </a-input>
         </a-form-item>
+        <a-form-item field="phone">
+          <a-input v-model="form.phone" type="tel" placeholder="手机号" size="large" :disabled="loading"
+            class="register-input">
+          </a-input>
+        </a-form-item>
         <a-form-item field="email">
-          <a-input v-model="form.email" type="email" placeholder="邮箱" size="large" :disabled="loading"
+          <a-input v-model="form.email" type="email" placeholder="邮箱（可选）" size="large" :disabled="loading"
             class="register-input">
             <template #prefix>
               <IconEmail :size="18" class="input-icon" />

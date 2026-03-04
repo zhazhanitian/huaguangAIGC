@@ -17,9 +17,16 @@ import { UserRole, UserStatus } from '../user.entity';
  * 注意：仅管理员接口使用（受 JwtAuthGuard + AdminGuard 保护）
  */
 export class CreateUserDto {
-  @ApiProperty({ description: '邮箱', example: 'newuser@example.com' })
+  @ApiProperty({ description: '手机号（登录账号）', example: '13800138000' })
+  @IsString({ message: '手机号格式不正确' })
+  @MinLength(5, { message: '手机号格式不正确' })
+  @MaxLength(20, { message: '手机号格式不正确' })
+  phone: string;
+
+  @ApiPropertyOptional({ description: '邮箱（可选）', example: 'newuser@example.com' })
+  @IsOptional()
   @IsEmail({}, { message: '请输入有效的邮箱地址' })
-  email: string;
+  email?: string;
 
   @ApiProperty({ description: '密码', example: '12345678' })
   @IsString()

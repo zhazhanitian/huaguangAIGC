@@ -15,7 +15,7 @@ const saving = ref(false)
 const editing = ref(false)
 const activeSection = ref('profile')
 const formRef = ref()
-const form = ref({ username: '', email: '', avatar: '', signature: '' })
+const form = ref({ username: '', phone: '', email: '', avatar: '', signature: '' })
 const heroParallaxY = ref(0)
 const prefersReducedMotion = ref(false)
 
@@ -25,7 +25,6 @@ const rules = {
     { min: 2, max: 20, message: '长度在 2 - 20 个字符' }
   ],
   email: [
-    { required: true, message: '请输入邮箱' },
     { type: 'email', message: '请输入正确的邮箱格式' }
   ],
   signature: [
@@ -85,6 +84,7 @@ onBeforeUnmount(() => {
 function syncForm(d: any) {
   form.value = {
     username: d?.username ?? '',
+    phone: d?.phone ?? '',
     email: d?.email ?? '',
     avatar: d?.avatar ?? '',
     signature: d?.sign ?? ''
@@ -215,7 +215,11 @@ const balance = computed(() => Number(userStore.userInfo?.balance ?? 0))
         </div>
         <div class="hero-info">
           <h1>{{ userStore.userInfo?.username || '用户' }}</h1>
-          <p>{{ userStore.userInfo?.email }}<span v-if="memberSince" class="since"> · {{ memberSince }}</span></p>
+          <p>
+            手机号：{{ userStore.userInfo?.phone || '未绑定' }}
+            <span v-if="userStore.userInfo?.email"> · 邮箱：{{ userStore.userInfo.email }}</span>
+            <span v-if="memberSince" class="since"> · {{ memberSince }}</span>
+          </p>
         </div>
         <a-popconfirm content="确定要退出登录吗？" type="warning" @ok="handleLogout">
           <a-button type="text" class="logout-btn">
@@ -266,6 +270,11 @@ const balance = computed(() => Number(userStore.userInfo?.balance ?? 0))
                 <a-col :span="12">
                   <a-form-item field="username" label="用户名">
                     <a-input v-model="form.username" :disabled="!editing" placeholder="你的昵称" />
+                  </a-form-item>
+                </a-col>
+                <a-col :span="12">
+                  <a-form-item field="phone" label="手机号">
+                    <a-input v-model="form.phone" disabled placeholder="登录手机号" />
                   </a-form-item>
                 </a-col>
                 <a-col :span="12">

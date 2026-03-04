@@ -2,12 +2,13 @@ import request from './index'
 
 export interface RegisterData {
   username: string
-  email: string
+  phone: string
   password: string
+  email?: string
 }
 
 export interface LoginData {
-  email: string
+  phone: string
   password: string
 }
 
@@ -17,7 +18,8 @@ export interface AuthResponse {
   user: {
     id: string
     username: string
-    email: string
+    phone: string
+    email?: string | null
     role?: string
     balance?: number
   }
@@ -26,7 +28,8 @@ export interface AuthResponse {
 export interface ProfileData {
   id: string
   username: string
-  email: string
+  phone: string
+  email?: string | null
   avatar?: string
   balance?: number
   membership?: string

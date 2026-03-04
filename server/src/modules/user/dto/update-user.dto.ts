@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsEnum, IsNumber, Min, Max } from 'class-validator';
+import { IsOptional, IsString, IsEnum, IsNumber, Min, Max, IsEmail } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole, UserStatus } from '../user.entity';
 
@@ -10,6 +10,11 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   username?: string;
+
+  @ApiPropertyOptional({ description: '邮箱（可选）' })
+  @IsOptional()
+  @IsEmail({}, { message: '请输入有效的邮箱地址' })
+  email?: string;
 
   @ApiPropertyOptional({ description: '头像 URL' })
   @IsOptional()
@@ -25,11 +30,6 @@ export class UpdateUserDto {
   @IsOptional()
   @IsEnum(UserStatus)
   status?: UserStatus;
-
-  @ApiPropertyOptional({ description: '手机号' })
-  @IsOptional()
-  @IsString()
-  phone?: string;
 
   @ApiPropertyOptional({ description: '签名' })
   @IsOptional()

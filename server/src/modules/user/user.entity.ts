@@ -27,8 +27,8 @@ export class User {
   @Column({ length: 50 })
   username: string;
 
-  @Column({ length: 100, unique: true })
-  email: string;
+  @Column({ length: 100, unique: true, nullable: true })
+  email: string | null;
 
   @Column({ length: 255, select: false })
   password: string;
@@ -59,13 +59,23 @@ export class User {
   @Column({ length: 36, nullable: true, comment: '邀请人用户 ID' })
   invitedBy: string | null;
 
-  @Column({ length: 20, unique: true, nullable: true, comment: '邀请码，他人注册时填入' })
+  @Column({
+    length: 20,
+    unique: true,
+    nullable: true,
+    comment: '邀请码，他人注册时填入',
+  })
   inviteCode: string | null;
 
   @Column({ length: 100, nullable: true })
   openId: string | null;
 
-  @Column({ length: 20, nullable: true })
+  @Column({
+    length: 20,
+    unique: true,
+    nullable: true,
+    comment: '手机号，作为登录账号',
+  })
   phone: string | null;
 
   @Column({ type: 'text', nullable: true })

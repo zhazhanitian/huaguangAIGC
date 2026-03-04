@@ -3,6 +3,7 @@ import request from './index'
 export interface User {
   id: string
   username: string
+  phone: string
   email?: string
   role: 'user' | 'admin' | 'super'
   status: 'active' | 'banned'
@@ -26,6 +27,7 @@ export interface UserListResult {
 }
 
 export interface UpdateUserData {
+  email?: string
   username?: string
   role?: 'user' | 'admin' | 'super'
   status?: 'active' | 'banned'
@@ -33,7 +35,8 @@ export interface UpdateUserData {
 }
 
 export interface CreateUserData {
-  email: string
+  phone: string
+  email?: string
   password: string
   username: string
   role?: 'user' | 'admin' | 'super'

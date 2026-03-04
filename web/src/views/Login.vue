@@ -11,14 +11,14 @@ const userStore = useUserStore()
 
 const loading = ref(false)
 const form = reactive({
-  email: '',
+  phone: '',
   password: '',
 })
 
 const rules = {
-  email: [
-    { required: true, message: '请输入邮箱' },
-    { type: 'email', message: '请输入有效的邮箱地址' },
+  phone: [
+    { required: true, message: '请输入手机号' },
+    { minLength: 5, maxLength: 20, message: '手机号格式不正确' },
   ],
   password: [
     { required: true, message: '请输入密码' },
@@ -34,7 +34,7 @@ async function handleLogin() {
     const errors = await formRef.value.validate()
     if (errors) return
     loading.value = true
-    await userStore.login(form.email, form.password)
+    await userStore.login(form.phone, form.password)
     Message.success('登录成功')
     const redirect = (route.query.redirect as string) || '/chat'
     router.push(redirect)
@@ -60,8 +60,8 @@ async function handleLogin() {
       <h1 class="title">华光人工智能</h1>
       <p class="subtitle">智能对话 · 创意无限</p>
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" class="login-form">
-        <a-form-item field="email">
-          <a-input v-model="form.email" type="email" placeholder="邮箱" size="large" :disabled="loading"
+        <a-form-item field="phone">
+          <a-input v-model="form.phone" type="tel" placeholder="手机号" size="large" :disabled="loading"
             class="login-input">
             <template #prefix>
               <IconUser :size="18" class="input-icon" />

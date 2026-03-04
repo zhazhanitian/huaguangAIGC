@@ -15,14 +15,14 @@ const formRef = ref<FormInstance>()
 const errorText = ref('')
 
 const form = reactive({
-  email: '',
+  phone: '',
   password: '',
 })
 
 const rules = {
-  email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入有效邮箱', trigger: 'blur' },
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { min: 5, max: 20, message: '手机号格式不正确', trigger: 'blur' },
   ],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
@@ -33,7 +33,7 @@ async function handleLogin() {
   loading.value = true
   errorText.value = ''
   try {
-    await userStore.login({ email: form.email, password: form.password })
+    await userStore.login({ phone: form.phone, password: form.password })
     Message.success('登录成功')
     const redirect = (route.query.redirect as string) ?? '/dashboard'
     router.push(redirect)
@@ -49,7 +49,7 @@ async function handleLogin() {
 }
 
 watch(
-  () => [form.email, form.password],
+  () => [form.phone, form.password],
   () => {
     if (errorText.value) errorText.value = ''
   },
@@ -72,8 +72,8 @@ watch(
         <p class="subtitle">请使用管理员账号登录</p>
       </div>
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" size="large" class="login-form">
-        <a-form-item field="email">
-          <a-input v-model="form.email" placeholder="请输入管理员邮箱" allow-clear autocomplete="email" class="login-input">
+        <a-form-item field="phone">
+          <a-input v-model="form.phone" placeholder="请输入管理员手机号" allow-clear autocomplete="tel" class="login-input">
             <template #prefix>
               <IconUser :size="18" class="input-icon" />
             </template>

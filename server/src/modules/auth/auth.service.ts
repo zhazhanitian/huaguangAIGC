@@ -27,12 +27,21 @@ export class AuthService {
    * 用户注册
    */
   async register(dto: RegisterDto): Promise<{ access_token: string; user: Partial<User> }> {
-    const existing = await this.userRepository.findOne({
-      where: { email: dto.email },
+    const existingPhone = await this.userRepository.findOne({
+      where: { phone: dto.phone },
     });
 
-    if (existing) {
-      throw new ConflictException('该邮箱已被注册');
+    if (existingPhone) {
+      throw new ConflictException('该手机号已被注册');
+    }
+
+    if (dto.email) {
+      const existingEmail = await this.userRepository.findOne({
+        where: { email: dto.email },
+      });
+      if (existingEmail) {
+        throw new ConflictException('该邮箱已被注册');
+      }
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -40,7 +49,8 @@ export class AuthService {
     const inviteCode = crypto.randomBytes(6).toString('base64url').slice(0, 8).toUpperCase();
 
     const user = this.userRepository.create({
-      email: dto.email,
+      phone: dto.phone,
+      email: dto.email ?? null,
       password: hashedPassword,
       username: dto.username,
       role: UserRole.USER,
@@ -71,6 +81,7 @@ export class AuthService {
         id: saved.id,
         username: saved.username,
         email: saved.email,
+        phone: saved.phone,
         avatar: saved.avatar,
         role: saved.role,
         status: saved.status,
@@ -84,17 +95,17 @@ export class AuthService {
    */
   async login(dto: LoginDto): Promise<{ access_token: string; user: Partial<User> }> {
     const user = await this.userRepository.findOne({
-      where: { email: dto.email },
-      select: ['id', 'email', 'password', 'username', 'avatar', 'role', 'status', 'balance'],
+      where: { phone: dto.phone },
+      select: ['id', 'phone', 'email', 'password', 'username', 'avatar', 'role', 'status', 'balance'],
     });
 
     if (!user) {
-      throw new UnauthorizedException('邮箱或密码错误');
+      throw new UnauthorizedException('手机号或密码错误');
     }
 
     const isMatch = await bcrypt.compare(dto.password, user.password);
     if (!isMatch) {
-      throw new UnauthorizedException('邮箱或密码错误');
+      throw new UnauthorizedException('手机号或密码错误');
     }
 
     if (user.status === UserStatus.BANNED) {
@@ -109,6 +120,7 @@ export class AuthService {
         id: user.id,
         username: user.username,
         email: user.email,
+        phone: user.phone,
         avatar: user.avatar,
         role: user.role,
         status: user.status,
@@ -132,6 +144,7 @@ export class AuthService {
       id: saved.id,
       username: saved.username,
       email: saved.email,
+      phone: saved.phone,
       avatar: saved.avatar,
       sign: saved.sign,
     };
@@ -140,10 +153,11 @@ export class AuthService {
   /**
    * 生成 JWT
    */
-  private generateToken(user: { id: string; email: string }): string {
+  private generateToken(user: { id: string; email?: string | null; phone?: string | null }): string {
     return this.jwtService.sign({
       sub: user.id,
       email: user.email,
+      phone: user.phone,
     });
   }
 }

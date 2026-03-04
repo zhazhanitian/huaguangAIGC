@@ -39,6 +39,8 @@ const addDialogVisible = ref(false)
 interface EditFormState {
   id?: string
   username?: string
+  phone?: string
+  email?: string
   role?: 'user' | 'admin' | 'super'
   status?: 'active' | 'banned'
   balance?: number
@@ -47,6 +49,7 @@ const editForm = ref<EditFormState>({})
 const editLoading = ref(false)
 
 interface AddFormState {
+  phone: string
   email: string
   username: string
   password: string
@@ -55,6 +58,7 @@ interface AddFormState {
   balance: number
 }
 const addForm = reactive<AddFormState>({
+  phone: '',
   email: '',
   username: '',
   password: '',
@@ -157,6 +161,8 @@ function openEdit(row: User) {
   editForm.value = {
     id: row.id,
     username: row.username,
+    phone: row.phone,
+    email: row.email,
     role: row.role,
     status: row.status === 'active' ? 'active' : 'banned',
     balance: Number((row as any).balance ?? 0),
@@ -166,13 +172,17 @@ function openEdit(row: User) {
 
 const editRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  email: [{ type: 'email', message: '邮箱格式不正确', trigger: 'blur' }],
   role: [{ required: true, message: '请选择角色', trigger: 'change' }],
   balance: [{ type: 'number', min: 0, message: '余额不能小于 0', trigger: 'blur' }],
 }
 
 const addRules = {
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { min: 5, max: 20, message: '手机号格式不正确', trigger: 'blur' },
+  ],
   email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
     { type: 'email', message: '邮箱格式不正确', trigger: 'blur' },
   ],
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -182,6 +192,7 @@ const addRules = {
 }
 
 function openAdd() {
+  addForm.phone = ''
   addForm.email = ''
   addForm.username = ''
   addForm.password = ''
@@ -197,7 +208,8 @@ async function submitAdd() {
   addLoading.value = true
   try {
     const payload: CreateUserData = {
-      email: addForm.email.trim(),
+      phone: addForm.phone.trim(),
+      email: addForm.email.trim() || undefined,
       username: addForm.username.trim(),
       password: addForm.password,
       role: addForm.role,
@@ -221,9 +233,10 @@ async function submitEdit() {
   if (!editForm.value.id) return
   editLoading.value = true
   try {
-    const { id, username, role, status, balance } = editForm.value
+    const { id, username, email, role, status, balance } = editForm.value
     const data: UpdateUserData = {
       username,
+      email,
       role,
       status,
       balance: balance == null ? undefined : Number(balance),
@@ -329,7 +342,7 @@ function onPageSizeChange(size: number) {
       <div class="toolbar">
         <a-input
           v-model="searchKeyword"
-          placeholder="搜索用户名/邮箱"
+          placeholder="搜索用户名/手机号/邮箱"
           allow-clear
           class="search-input"
           @press-enter="handleSearch"
@@ -391,7 +404,8 @@ function onPageSizeChange(size: number) {
             </a-avatar>
             <div class="user-info">
               <span class="user-name">{{ record.username }}</span>
-              <span class="user-email">{{ record.email ?? '-' }}</span>
+              <span class="user-email">手机号：{{ record.phone }}</span>
+              <span class="user-email">邮箱：{{ record.email ?? '-' }}</span>
             </div>
           </div>
         </template>
@@ -469,8 +483,14 @@ function onPageSizeChange(size: number) {
         :label-col-props="{ span: 6 }"
         :wrapper-col-props="{ span: 18 }"
       >
+        <a-form-item label="手机号" field="phone">
+          <a-input v-model="editForm.phone" disabled placeholder="登录账号，不能修改" />
+        </a-form-item>
         <a-form-item label="用户名" field="username">
           <a-input v-model="editForm.username" />
+        </a-form-item>
+        <a-form-item label="邮箱" field="email">
+          <a-input v-model="editForm.email" placeholder="可选，用于通知/找回密码" />
         </a-form-item>
         <a-form-item label="角色" field="role">
           <a-select v-model="editForm.role" placeholder="请选择" allow-clear>
@@ -515,8 +535,11 @@ function onPageSizeChange(size: number) {
         :label-col-props="{ span: 6 }"
         :wrapper-col-props="{ span: 18 }"
       >
+        <a-form-item label="手机号" field="phone">
+          <a-input v-model="addForm.phone" placeholder="登录账号，必填且唯一" />
+        </a-form-item>
         <a-form-item label="邮箱" field="email">
-          <a-input v-model="addForm.email" placeholder="用于登录/找回密码" />
+          <a-input v-model="addForm.email" placeholder="可选，用于通知/找回密码" />
         </a-form-item>
         <a-form-item label="用户名" field="username">
           <a-input v-model="addForm.username" placeholder="展示名称" />

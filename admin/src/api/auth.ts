@@ -1,7 +1,7 @@
 import request from './index'
 
 export interface LoginParams {
-  email: string
+  phone: string
   password: string
 }
 
@@ -11,6 +11,7 @@ export interface LoginResult {
     id: number
     username: string
     role: string
+    phone: string
     email?: string
   }
 }
@@ -18,6 +19,7 @@ export interface LoginResult {
 export interface ProfileResult {
   id: number
   username: string
+  phone: string
   email?: string
   role: string
   avatar?: string

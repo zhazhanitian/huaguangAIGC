@@ -12,7 +12,8 @@ import { User, UserStatus } from '../user/user.entity';
  */
 export interface JwtPayload {
   sub: string;
-  email: string;
+  email?: string;
+  phone?: string;
 }
 
 @Injectable()

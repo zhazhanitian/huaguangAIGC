@@ -9,8 +9,8 @@ export const useUserStore = defineStore('user', () => {
 
   const isLoggedIn = computed(() => !!token.value)
 
-  async function login(email: string, password: string) {
-    const { data } = await loginApi({ email, password })
+  async function login(phone: string, password: string) {
+    const { data } = await loginApi({ phone, password })
     const jwt = (data as { access_token?: string; token?: string; user?: unknown }).access_token
       || (data as { access_token?: string; token?: string; user?: unknown }).token
       || ''
@@ -20,8 +20,8 @@ export const useUserStore = defineStore('user', () => {
     return data
   }
 
-  async function register(username: string, email: string, password: string) {
-    const { data } = await registerApi({ username, email, password })
+  async function register(username: string, phone: string, password: string, email?: string) {
+    const { data } = await registerApi({ username, phone, password, email })
     const jwt = (data as { access_token?: string; token?: string; user?: unknown }).access_token
       || (data as { access_token?: string; token?: string; user?: unknown }).token
       || ''
