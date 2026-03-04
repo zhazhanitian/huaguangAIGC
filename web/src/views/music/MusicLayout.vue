@@ -555,7 +555,7 @@ async function handleKieQuery() {
 
         <!-- 歌曲标题 -->
         <section class="fg" v-if="customMode">
-          <label class="fl">歌曲名称 <span class="fl-opt">必填（<=80）< /span></label>
+          <label class="fl">歌曲名称 <span class="fl-opt">必填（<=80）</span></label>
           <input v-model="form.title" class="text-input" maxlength="80" placeholder="例如：Midnight Neon" />
         </section>
 
