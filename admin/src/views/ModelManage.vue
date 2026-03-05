@@ -24,10 +24,9 @@ import {
   type Model,
   type ModelKey,
   type CreateModelData,
+  type ModelType,
 } from '../api/model'
 import { getActiveApiKeys, type ApiKey } from '../api/apikey'
-
-type ModelType = 'text' | 'image' | 'video' | 'music' | '3d'
 
 interface TypeMeta { label: string; color: string; icon: string }
 
@@ -39,6 +38,7 @@ const typeMetaMap: Record<ModelType, TypeMeta> = {
   '3d': { label: '3D', color: '#38bdf8', icon: '3' },
 }
 
+// 兼容旧数据：若后端未返回 type，则根据名称猜测类型
 const imageModelNames = new Set([
   'nano-banana-pro', 'nano-banana-fast', 'nano-banana', 'nano-banana-pro-vt',
   'nano-banana-pro-cl', 'nano-banana-pro-vip', 'nano-banana-pro-4k-vip',
@@ -59,7 +59,7 @@ const videoModelNames = new Set([
 const musicModelNames = new Set(['suno-v3', 'suno-v3.5', 'suno-v4', 'suno-v4.5plus', 'udio'])
 const threeDModelNames = new Set(['tencent-hunyuan-3d-pro', 'tencent-hunyuan-3d-rapid', 'hunyuan-3d-pro', 'hunyuan-3d-rapid'])
 
-function getModelType(name: string): ModelType {
+function inferModelTypeByName(name: string): ModelType {
   if (imageModelNames.has(name)) return 'image'
   if (videoModelNames.has(name)) return 'video'
   if (musicModelNames.has(name)) return 'music'
@@ -67,8 +67,12 @@ function getModelType(name: string): ModelType {
   return 'text'
 }
 
-function getTypeMeta(name: string): TypeMeta {
-  return typeMetaMap[getModelType(name)]
+function getModelTypeFor(model: Model): ModelType {
+  return model.type ?? inferModelTypeByName(model.modelName)
+}
+
+function getTypeMetaByModel(model: Model): TypeMeta {
+  return typeMetaMap[getModelTypeFor(model)]
 }
 
 const loading = ref(false)
@@ -101,7 +105,7 @@ const typeTabs: { key: ModelType | 'all'; label: string; color: string }[] = [
 
 const filteredModels = computed(() => {
   return modelList.value.filter(m => {
-    if (filterType.value !== 'all' && getModelType(m.modelName) !== filterType.value) return false
+    if (filterType.value !== 'all' && getModelTypeFor(m) !== filterType.value) return false
     if (filterStatus.value === 'active' && !m.isActive) return false
     if (filterStatus.value === 'inactive' && m.isActive) return false
     if (searchKeyword.value) {
@@ -115,7 +119,7 @@ const filteredModels = computed(() => {
 const typeCounts = computed(() => {
   const counts: Record<string, number> = { all: modelList.value.length }
   for (const m of modelList.value) {
-    const t = getModelType(m.modelName)
+    const t = getModelTypeFor(m)
     counts[t] = (counts[t] || 0) + 1
   }
   return counts
@@ -124,9 +128,11 @@ const typeCounts = computed(() => {
 const addForm = reactive<CreateModelData>({
   modelName: '',
   provider: 'openai',
+  type: 'text',
   apiKey: '',
   baseUrl: '',
   isActive: true,
+  description: '',
   deductPoints: 0,
   maxTokens: 4096,
   temperature: 0.7,
@@ -137,9 +143,11 @@ const addForm = reactive<CreateModelData>({
 const editForm = reactive<CreateModelData & { id?: string }>({
   modelName: '',
   provider: 'openai',
+  type: 'text',
   apiKey: '',
   baseUrl: '',
   isActive: true,
+  description: '',
   deductPoints: 0,
   maxTokens: 4096,
   temperature: 0.7,
@@ -168,6 +176,7 @@ const keyForm = reactive<{
 const addRules = {
   modelName: [{ required: true, message: '请输入模型名称', trigger: 'blur' }],
   provider: [{ required: true, message: '请选择提供商', trigger: 'change' }],
+  type: [{ required: true, message: '请选择模型类型', trigger: 'change' }],
 }
 
 const keyRules = {
@@ -256,9 +265,11 @@ async function handleSyncPresets() {
 function openAdd() {
   addForm.modelName = ''
   addForm.provider = 'openai'
+  addForm.type = 'text'
   addForm.apiKey = ''
   addForm.baseUrl = ''
   addForm.isActive = true
+  addForm.description = ''
   addForm.deductPoints = 0
   addForm.maxTokens = 4096
   addForm.temperature = 0.7
@@ -271,9 +282,11 @@ function openEdit(row: Model) {
   editForm.id = row.id
   editForm.modelName = row.modelName
   editForm.provider = row.provider
+  editForm.type = row.type ?? getModelTypeFor(row)
   editForm.apiKey = row.apiKey || ''
   editForm.baseUrl = row.baseUrl || ''
   editForm.isActive = row.isActive ?? true
+  editForm.description = row.description || ''
   editForm.deductPoints = row.deductPoints ?? 0
   editForm.maxTokens = row.maxTokens ?? 4096
   editForm.temperature = Number(row.temperature ?? 0.7)
@@ -305,9 +318,11 @@ async function submitEdit() {
     await updateModel(editForm.id, {
       modelName: editForm.modelName,
       provider: editForm.provider,
+      type: editForm.type,
       apiKey: editForm.apiKey || undefined,
       baseUrl: editForm.baseUrl || undefined,
       isActive: editForm.isActive,
+      description: editForm.description || undefined,
       deductPoints: editForm.deductPoints,
       maxTokens: editForm.maxTokens,
       temperature: editForm.temperature,
@@ -578,15 +593,15 @@ function handleTableExpand(_expanded: boolean, record: Model) {
           :class="{ expanded: expandedCardId === model.id }">
           <div class="model-card-header" @click="toggleCardExpand(model.id)">
             <div class="type-avatar"
-              :style="{ background: getTypeMeta(model.modelName).color + '18', color: getTypeMeta(model.modelName).color }">
-              {{ getTypeMeta(model.modelName).icon }}
+              :style="{ background: getTypeMetaByModel(model).color + '18', color: getTypeMetaByModel(model).color }">
+              {{ getTypeMetaByModel(model).icon }}
             </div>
             <div class="model-card-info">
               <div class="model-name-row">
                 <span class="model-name">{{ model.modelName }}</span>
                 <span class="type-tag"
-                  :style="{ color: getTypeMeta(model.modelName).color, borderColor: getTypeMeta(model.modelName).color + '44' }">
-                  {{ getTypeMeta(model.modelName).label }}
+                  :style="{ color: getTypeMetaByModel(model).color, borderColor: getTypeMetaByModel(model).color + '44' }">
+                  {{ getTypeMetaByModel(model).label }}
                 </span>
               </div>
               <div class="model-meta">
@@ -698,14 +713,14 @@ function handleTableExpand(_expanded: boolean, record: Model) {
           </template>
           <template #modelName="{ record }">
             <div style="display:flex;align-items:center;gap:8px">
-              <span class="table-type-dot" :style="{ background: getTypeMeta(record.modelName).color }" />
+              <span class="table-type-dot" :style="{ background: getTypeMetaByModel(record).color }" />
               {{ record.modelName }}
             </div>
           </template>
           <template #type="{ record }">
             <span class="type-tag"
-              :style="{ color: getTypeMeta(record.modelName).color, borderColor: getTypeMeta(record.modelName).color + '44' }">
-              {{ getTypeMeta(record.modelName).label }}
+              :style="{ color: getTypeMetaByModel(record).color, borderColor: getTypeMetaByModel(record).color + '44' }">
+              {{ getTypeMetaByModel(record).label }}
             </span>
           </template>
           <template #status="{ record }">
@@ -753,6 +768,12 @@ function handleTableExpand(_expanded: boolean, record: Model) {
         <a-form-item label="模型名称" field="modelName">
           <a-input v-model="addForm.modelName" placeholder="如 gpt-4" />
         </a-form-item>
+        <a-form-item label="模型类型" field="type">
+          <a-select v-model="addForm.type" placeholder="请选择模型类型">
+            <a-option v-for="tab in typeTabs.filter(t => t.key !== 'all')" :key="tab.key" :value="tab.key"
+              :label="tab.label" />
+          </a-select>
+        </a-form-item>
         <a-form-item label="提供方" field="provider">
           <a-select v-model="addForm.provider" placeholder="请选择提供商">
             <a-option v-for="item in providerOptions" :key="item.value" :value="item.value" :label="item.label" />
@@ -763,6 +784,9 @@ function handleTableExpand(_expanded: boolean, record: Model) {
         </a-form-item>
         <a-form-item label="默认 BaseURL" field="baseUrl">
           <a-input v-model="addForm.baseUrl" placeholder="可选，如 https://api.openai.com/v1" />
+        </a-form-item>
+        <a-form-item label="模型描述" field="description">
+          <a-textarea v-model="addForm.description" :rows="3" placeholder="可选，用于在前端展示模型简介" />
         </a-form-item>
         <a-form-item label="消耗积分" field="deductPoints">
           <a-input-number v-model="addForm.deductPoints" :min="0" style="width: 100%" />
@@ -798,6 +822,12 @@ function handleTableExpand(_expanded: boolean, record: Model) {
         <a-form-item label="模型名称" field="modelName">
           <a-input v-model="editForm.modelName" />
         </a-form-item>
+        <a-form-item label="模型类型" field="type">
+          <a-select v-model="editForm.type" placeholder="请选择模型类型">
+            <a-option v-for="tab in typeTabs.filter(t => t.key !== 'all')" :key="tab.key" :value="tab.key"
+              :label="tab.label" />
+          </a-select>
+        </a-form-item>
         <a-form-item label="提供方" field="provider">
           <a-select v-model="editForm.provider" placeholder="请选择提供商">
             <a-option v-for="item in providerOptions" :key="item.value" :value="item.value" :label="item.label" />
@@ -808,6 +838,9 @@ function handleTableExpand(_expanded: boolean, record: Model) {
         </a-form-item>
         <a-form-item label="默认 BaseURL" field="baseUrl">
           <a-input v-model="editForm.baseUrl" placeholder="可选，如 https://api.openai.com/v1" />
+        </a-form-item>
+        <a-form-item label="模型描述" field="description">
+          <a-textarea v-model="editForm.description" :rows="3" placeholder="可选，用于在前端展示模型简介" />
         </a-form-item>
         <a-form-item label="消耗积分" field="deductPoints">
           <a-input-number v-model="editForm.deductPoints" :min="0" style="width: 100%" />

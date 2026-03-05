@@ -20,6 +20,15 @@ export enum ModelProvider {
   CUSTOM = 'custom',
 }
 
+/** AI 模型类型枚举 */
+export enum ModelType {
+  TEXT = 'text',
+  IMAGE = 'image',
+  VIDEO = 'video',
+  MUSIC = 'music',
+  THREE_D = '3d',
+}
+
 /**
  * AI 模型实体 - 存储模型配置
  */
@@ -32,6 +41,13 @@ export class AiModel {
   modelName: string;
 
   @Column({
+    type: 'text',
+    nullable: true,
+    comment: '模型描述，用于前端展示简介',
+  })
+  description: string | null;
+
+  @Column({
     type: 'enum',
     enum: ModelProvider,
     default: ModelProvider.OPENAI,
@@ -39,10 +55,26 @@ export class AiModel {
   })
   provider: ModelProvider;
 
-  @Column({ type: 'text', nullable: true, comment: '默认 API Key（可被 ModelKey 覆盖）' })
+  @Column({
+    type: 'enum',
+    enum: ModelType,
+    default: ModelType.TEXT,
+    comment: '模型类型：text/image/video/music/3d',
+  })
+  type: ModelType;
+
+  @Column({
+    type: 'text',
+    nullable: true,
+    comment: '默认 API Key（可被 ModelKey 覆盖）',
+  })
   apiKey: string | null;
 
-  @Column({ type: 'text', nullable: true, comment: '默认 baseUrl，兼容 Claude/Deepseek 等' })
+  @Column({
+    type: 'text',
+    nullable: true,
+    comment: '默认 baseUrl，兼容 Claude/Deepseek 等',
+  })
   baseUrl: string | null;
 
   @Column({ type: 'tinyint', default: 1, comment: '是否启用' })
@@ -51,10 +83,22 @@ export class AiModel {
   @Column({ type: 'int', default: 4096, comment: '最大 token 数' })
   maxTokens: number;
 
-  @Column({ type: 'decimal', precision: 3, scale: 2, default: 0.7, comment: '温度参数' })
+  @Column({
+    type: 'decimal',
+    precision: 3,
+    scale: 2,
+    default: 0.7,
+    comment: '温度参数',
+  })
   temperature: number;
 
-  @Column({ type: 'decimal', precision: 3, scale: 2, nullable: true, comment: 'top_p 参数' })
+  @Column({
+    type: 'decimal',
+    precision: 3,
+    scale: 2,
+    nullable: true,
+    comment: 'top_p 参数',
+  })
   topP: number | null;
 
   @Column({ type: 'int', default: 0, comment: '单次对话扣除积分' })

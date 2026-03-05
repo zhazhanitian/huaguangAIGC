@@ -8,8 +8,7 @@ import { Repository } from 'typeorm';
 import OpenAI from 'openai';
 import { readFile } from 'fs/promises';
 import { join, basename, extname } from 'path';
-import { AiModel, ModelKey } from './model.entity';
-import { ModelProvider } from './model.entity';
+import { AiModel, ModelKey, ModelType, ModelProvider } from './model.entity';
 import { ApiKey, ApiKeyProvider } from '../apikey/apikey.entity';
 import { CreateModelDto } from './dto/create-model.dto';
 import { UpdateModelDto } from './dto/update-model.dto';
@@ -91,9 +90,13 @@ export class ModelService {
   /**
    * 获取所有启用的模型列表（公开接口）
    */
-  async getActiveModels(): Promise<AiModel[]> {
+  async getActiveModels(type?: ModelType): Promise<AiModel[]> {
+    const where: Partial<AiModel> = { isActive: true };
+    if (type) {
+      (where as any).type = type;
+    }
     return this.modelRepository.find({
-      where: { isActive: true },
+      where,
       order: { order: 'ASC', createdAt: 'ASC' },
     });
   }
@@ -668,9 +671,33 @@ export class ModelService {
 
     // ========== 文字模型 (APIMart / GrsAI) ==========
     presets.push(
-      { modelName: 'gemini-3-pro', provider: ModelProvider.CUSTOM, isActive: true, order: 10, deductPoints: 2, apiProvider: 'grsai' },
-      { modelName: 'gpt-4-1106-preview', provider: ModelProvider.OPENAI, isActive: true, order: 20, deductPoints: 3, apiProvider: 'apimart' },
-      { modelName: 'gpt-5', provider: ModelProvider.OPENAI, isActive: true, order: 21, deductPoints: 5, apiProvider: 'apimart' },
+      {
+        modelName: 'gemini-3-pro',
+        provider: ModelProvider.CUSTOM,
+        type: ModelType.TEXT,
+        isActive: true,
+        order: 10,
+        deductPoints: 2,
+        apiProvider: 'grsai',
+      },
+      {
+        modelName: 'gpt-4-1106-preview',
+        provider: ModelProvider.OPENAI,
+        type: ModelType.TEXT,
+        isActive: true,
+        order: 20,
+        deductPoints: 3,
+        apiProvider: 'apimart',
+      },
+      {
+        modelName: 'gpt-5',
+        provider: ModelProvider.OPENAI,
+        type: ModelType.TEXT,
+        isActive: true,
+        order: 21,
+        deductPoints: 5,
+        apiProvider: 'apimart',
+      },
     );
 
     // ========== 图像模型 ==========
@@ -685,7 +712,14 @@ export class ModelService {
       { name: 'nano-banana-pro-4k-vip', points: 20 },
     ];
     for (const m of grsaiImageModels) {
-      presets.push({ modelName: m.name, provider: ModelProvider.CUSTOM, isActive: true, deductPoints: m.points, apiProvider: 'grsai' });
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        type: ModelType.IMAGE,
+        isActive: true,
+        deductPoints: m.points,
+        apiProvider: 'grsai',
+      });
     }
 
     // APIMart - 图像模型
@@ -698,7 +732,14 @@ export class ModelService {
       { name: 'flux-kontext-max', points: 25 },
     ];
     for (const m of apimartImageModels) {
-      presets.push({ modelName: m.name, provider: ModelProvider.CUSTOM, isActive: true, deductPoints: m.points, apiProvider: 'apimart' });
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        type: ModelType.IMAGE,
+        isActive: true,
+        deductPoints: m.points,
+        apiProvider: 'apimart',
+      });
     }
 
     // KIE - 图像模型
@@ -713,7 +754,14 @@ export class ModelService {
       { name: 'dalle', points: 15 },
     ];
     for (const m of kieImageModels) {
-      presets.push({ modelName: m.name, provider: ModelProvider.CUSTOM, isActive: true, deductPoints: m.points, apiProvider: 'kie' });
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        type: ModelType.IMAGE,
+        isActive: true,
+        deductPoints: m.points,
+        apiProvider: 'kie',
+      });
     }
 
     // ========== 视频模型 ==========
@@ -723,7 +771,14 @@ export class ModelService {
       { name: 'veo3.1-pro', points: 50 },
     ];
     for (const m of grsaiVideoModels) {
-      presets.push({ modelName: m.name, provider: ModelProvider.CUSTOM, isActive: true, deductPoints: m.points, apiProvider: 'grsai' });
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        type: ModelType.VIDEO,
+        isActive: true,
+        deductPoints: m.points,
+        apiProvider: 'grsai',
+      });
     }
 
     // APIMart - Sora 视频
@@ -734,15 +789,57 @@ export class ModelService {
       { name: 'sora-2-pro-preview', points: 60 },
     ];
     for (const m of apimartVideoModels) {
-      presets.push({ modelName: m.name, provider: ModelProvider.CUSTOM, isActive: true, deductPoints: m.points, apiProvider: 'apimart' });
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        type: ModelType.VIDEO,
+        isActive: true,
+        deductPoints: m.points,
+        apiProvider: 'apimart',
+      });
     }
 
     // KIE - Kling / Seedance 视频
-    presets.push({ modelName: 'kling-3.0', provider: ModelProvider.CUSTOM, isActive: true, deductPoints: 60, apiProvider: 'kie' });
-    presets.push({ modelName: 'kling-2.6/text-to-video', provider: ModelProvider.CUSTOM, isActive: true, deductPoints: 60, apiProvider: 'kie' });
-    presets.push({ modelName: 'kling-2.6/image-to-video', provider: ModelProvider.CUSTOM, isActive: true, deductPoints: 60, apiProvider: 'kie' });
-    presets.push({ modelName: 'kling-2.6/motion-control', provider: ModelProvider.CUSTOM, isActive: true, deductPoints: 80, apiProvider: 'kie' });
-    presets.push({ modelName: 'bytedance/seedance-1.5-pro', provider: ModelProvider.CUSTOM, isActive: true, deductPoints: 60, apiProvider: 'kie' });
+    presets.push({
+      modelName: 'kling-3.0',
+      provider: ModelProvider.CUSTOM,
+      type: ModelType.VIDEO,
+      isActive: true,
+      deductPoints: 60,
+      apiProvider: 'kie',
+    });
+    presets.push({
+      modelName: 'kling-2.6/text-to-video',
+      provider: ModelProvider.CUSTOM,
+      type: ModelType.VIDEO,
+      isActive: true,
+      deductPoints: 60,
+      apiProvider: 'kie',
+    });
+    presets.push({
+      modelName: 'kling-2.6/image-to-video',
+      provider: ModelProvider.CUSTOM,
+      type: ModelType.VIDEO,
+      isActive: true,
+      deductPoints: 60,
+      apiProvider: 'kie',
+    });
+    presets.push({
+      modelName: 'kling-2.6/motion-control',
+      provider: ModelProvider.CUSTOM,
+      type: ModelType.VIDEO,
+      isActive: true,
+      deductPoints: 80,
+      apiProvider: 'kie',
+    });
+    presets.push({
+      modelName: 'bytedance/seedance-1.5-pro',
+      provider: ModelProvider.CUSTOM,
+      type: ModelType.VIDEO,
+      isActive: true,
+      deductPoints: 60,
+      apiProvider: 'kie',
+    });
 
     // ========== 音乐模型 (KIE - Suno) ==========
     const musicModels = [
@@ -751,7 +848,14 @@ export class ModelService {
       { name: 'suno-v4.5plus', points: 50 },
     ];
     for (const m of musicModels) {
-      presets.push({ modelName: m.name, provider: ModelProvider.CUSTOM, isActive: true, deductPoints: m.points, apiProvider: 'kie' });
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        type: ModelType.MUSIC,
+        isActive: true,
+        deductPoints: m.points,
+        apiProvider: 'kie',
+      });
     }
 
     // ========== 3D模型 (腐蚀混元) ==========
@@ -760,7 +864,14 @@ export class ModelService {
       { name: 'tencent-hunyuan-3d-rapid', points: 25 },
     ];
     for (const m of threeDModels) {
-      presets.push({ modelName: m.name, provider: ModelProvider.CUSTOM, isActive: true, deductPoints: m.points, apiProvider: 'apimart' });
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        type: ModelType.THREE_D,
+        isActive: true,
+        deductPoints: m.points,
+        apiProvider: 'apimart',
+      });
     }
 
     // 去重（同名只保留最先的 order/设置）
@@ -790,6 +901,7 @@ export class ModelService {
         model = this.modelRepository.create({
           modelName: p.modelName,
           provider: p.provider ?? ModelProvider.CUSTOM,
+          type: p.type ?? ModelType.TEXT,
           isActive: p.isActive ?? true,
           maxTokens: p.maxTokens ?? 4096,
           temperature: typeof p.temperature === 'number' ? p.temperature : 0.7,

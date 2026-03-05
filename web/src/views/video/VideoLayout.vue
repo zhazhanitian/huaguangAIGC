@@ -155,8 +155,8 @@ const providers = computed(() => providersDef.map(p => {
 
 async function fetchVideoModelPoints() {
   try {
-    const res = await getModels()
-    const all = res.data || res // 兼容两种返回格式
+    const res = await getModels({ type: 'video' })
+    const all = (res as any).data || res // 兼容两种返回格式
     if (Array.isArray(all)) {
       for (const m of all) { if (m.deductPoints) videoPointsMap.value[m.modelName] = m.deductPoints }
     }

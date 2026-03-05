@@ -43,19 +43,51 @@ const remixNegativeTags = ref('')
 let kiePoll: ReturnType<typeof setInterval> | null = null
 
 const musicPointsMap = ref<Record<string, number>>({})
+const musicDescMap = ref<Record<string, string>>({})
 const modelOptions = computed(() => [
-  { value: 'V4', label: 'V4（经典）', pts: musicPointsMap.value['suno-v4'] ?? 0 },
-  { value: 'V4_5', label: 'V4（增强）', pts: musicPointsMap.value['suno-v4'] ?? 0 },
-  { value: 'V4_5PLUS', label: 'V4 Plus（推荐）', pts: musicPointsMap.value['suno-v4plus'] ?? 0 },
-  { value: 'V4_5ALL', label: 'V4 All（全能）', pts: musicPointsMap.value['suno-v4plus'] ?? 0 },
-  { value: 'V5', label: 'V5（旗舰）', pts: musicPointsMap.value['suno-v4plus'] ?? 0 },
+  {
+    value: 'V4',
+    label: 'V4（经典）',
+    pts: musicPointsMap.value['suno-v4'] ?? 0,
+    desc: musicDescMap.value['suno-v4'] || '兼顾质量与速度，适合大部分创作场景',
+  },
+  {
+    value: 'V4_5',
+    label: 'V4（增强）',
+    pts: musicPointsMap.value['suno-v4'] ?? 0,
+    desc: musicDescMap.value['suno-v4'] || '相对更细腻的编曲与空间感',
+  },
+  {
+    value: 'V4_5PLUS',
+    label: 'V4 Plus（推荐）',
+    pts: musicPointsMap.value['suno-v4plus'] ?? 0,
+    desc: musicDescMap.value['suno-v4.5plus'] || '平台默认推荐，质量/耗时平衡最佳',
+  },
+  {
+    value: 'V4_5ALL',
+    label: 'V4 All（全能）',
+    pts: musicPointsMap.value['suno-v4plus'] ?? 0,
+    desc: musicDescMap.value['suno-v4.5plus'] || '更偏探索向，适合尝试多风格组合',
+  },
+  {
+    value: 'V5',
+    label: 'V5（旗舰）',
+    pts: musicPointsMap.value['suno-v4plus'] ?? 0,
+    desc: musicDescMap.value['suno-v4.5plus'] || '更强的音质与细节表现',
+  },
 ])
 
 async function fetchMusicModelPoints() {
   try {
-    const all = await getModels()
+    const all = await getModels({ type: 'music' })
     if (Array.isArray(all)) {
-      for (const m of all) { if (m.deductPoints) musicPointsMap.value[m.modelName] = m.deductPoints }
+      for (const m of all) {
+        if (!m) continue
+        if (m.deductPoints) musicPointsMap.value[m.modelName] = m.deductPoints
+        if (typeof (m as any).description === 'string' && (m as any).description.trim()) {
+          musicDescMap.value[m.modelName] = (m as any).description.trim()
+        }
+      }
     }
   } catch { /* ignore */ }
 }
@@ -541,10 +573,16 @@ async function handleKieQuery() {
         <!-- 模型 -->
         <section class="fg">
           <label class="fl">模型</label>
-          <select v-model="form.model" class="text-input">
-            <option v-for="m in modelOptions" :key="m.value" :value="m.value">{{ m.label }}{{ m.pts ? ` (${m.pts}积分)` :
-              '' }}</option>
-          </select>
+          <div class="model-select">
+            <select v-model="form.model" class="text-input">
+              <option v-for="m in modelOptions" :key="m.value" :value="m.value">
+                {{ m.label }}{{ m.pts ? ` (${m.pts}积分)` : '' }}
+              </option>
+            </select>
+            <p v-if="modelOptions.find(x => x.value === form.model)?.desc" class="model-desc">
+              {{ modelOptions.find(x => x.value === form.model)?.desc }}
+            </p>
+          </div>
         </section>
 
         <!-- 模式 -->
@@ -1099,6 +1137,18 @@ async function handleKieQuery() {
   margin-top: 6px;
   text-align: right;
   font-size: 11px;
+  color: var(--text-4);
+}
+
+.model-select {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.model-desc {
+  margin: 0;
+  font-size: 12px;
   color: var(--text-4);
 }
 

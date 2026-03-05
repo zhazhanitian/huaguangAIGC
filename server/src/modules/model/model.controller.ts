@@ -6,9 +6,10 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { ModelService } from './model.service';
 import { AdminGuard } from '../../common/guards/admin.guard';
 import { Public } from '../../common/decorators/public.decorator';
@@ -16,6 +17,7 @@ import { CreateModelDto } from './dto/create-model.dto';
 import { UpdateModelDto } from './dto/update-model.dto';
 import { CreateModelKeyDto } from './dto/create-model-key.dto';
 import { UpdateModelKeyDto } from './dto/update-model-key.dto';
+import { ModelType } from './model.entity';
 
 @ApiTags('模型管理')
 @Controller('model')
@@ -25,8 +27,14 @@ export class ModelController {
   @Get('list')
   @Public()
   @ApiOperation({ summary: '获取启用的模型列表（公开）' })
-  async getList() {
-    return this.modelService.getActiveModels();
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    enum: ModelType,
+    description: '按模型类型过滤：text/image/video/music/3d',
+  })
+  async getList(@Query('type') type?: ModelType) {
+    return this.modelService.getActiveModels(type);
   }
 
   @Get('admin/list')

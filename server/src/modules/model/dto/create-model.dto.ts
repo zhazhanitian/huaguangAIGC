@@ -10,7 +10,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ModelProvider } from '../model.entity';
+import { ModelProvider, ModelType } from '../model.entity';
 
 /**
  * 创建 AI 模型 DTO（管理端）
@@ -26,6 +26,15 @@ export class CreateModelDto {
   @IsEnum(ModelProvider)
   provider?: ModelProvider;
 
+  @ApiPropertyOptional({
+    description: '模型类型',
+    enum: ModelType,
+    default: ModelType.TEXT,
+  })
+  @IsOptional()
+  @IsEnum(ModelType)
+  type?: ModelType;
+
   @ApiPropertyOptional({ description: '默认 API Key' })
   @IsOptional()
   @IsString()
@@ -37,6 +46,12 @@ export class CreateModelDto {
   @IsString()
   @MaxLength(500)
   baseUrl?: string;
+
+  @ApiPropertyOptional({ description: '模型描述，用于前端展示简介' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  description?: string;
 
   @ApiPropertyOptional({ description: '是否启用', default: true })
   @IsOptional()

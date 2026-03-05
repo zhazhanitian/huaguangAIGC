@@ -446,8 +446,8 @@ const providers = computed(() =>
 
 async function fetchDrawModelPoints() {
   try {
-    const res = await getModels()
-    const all = res.data || res // 兼容两种返回格式
+    const res = await getModels({ type: 'image' })
+    const all = (res as any).data || res // 兼容两种返回格式
     if (Array.isArray(all)) {
       for (const m of all) {
         if (m.deductPoints) modelPointsMap.value[m.modelName] = m.deductPoints
@@ -1893,13 +1893,13 @@ function handleDownload(url?: string) {
                   any)?.label
                   || previewTask.provider || '-' }}</span></div>
                 <div class="detail-item"><span class="k">任务类型</span><span class="v">{{ previewTask.taskType || '-'
-                    }}</span>
+                }}</span>
                 </div>
                 <div class="detail-item"><span class="k">状态</span><span class="v">{{ statusText(previewTask.status) ||
                   '-'
                     }}</span></div>
                 <div class="detail-item"><span class="k">进度</span><span class="v">{{ previewTask.progress ?? 0
-                    }}%</span>
+                }}%</span>
                 </div>
                 <div class="detail-item"><span class="k">公开状态</span><span class="v">{{ previewTask.isPublic ? '公开' :
                   '私密'

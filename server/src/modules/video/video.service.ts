@@ -16,7 +16,10 @@ import { CreateVideoTaskDto } from './dto/create-video-task.dto';
 import { UserService } from '../user/user.service';
 import { AiModel } from '../model/model.entity';
 import { RealtimeService } from '../realtime/realtime.service';
-import type { TaskEventPayload, TaskEventType } from '../realtime/realtime.types';
+import type {
+  TaskEventPayload,
+  TaskEventType,
+} from '../realtime/realtime.types';
 import { GlobalConfigService } from '../global-config/global-config.service';
 import { BadWordsService } from '../badwords/badwords.service';
 
@@ -25,8 +28,12 @@ const POINTS_PER_VIDEO_FALLBACK = Number(process.env.POINTS_PER_VIDEO) || 50;
 @Injectable()
 export class VideoService {
   private readonly logger = new Logger(VideoService.name);
-  private proxyCache: { fetchedAt: number; httpProxy: string; httpsProxy: string; noProxy: string } | null =
-    null;
+  private proxyCache: {
+    fetchedAt: number;
+    httpProxy: string;
+    httpsProxy: string;
+    noProxy: string;
+  } | null = null;
   private proxyAgentCache = new Map<string, ProxyAgent>();
 
   constructor(
@@ -42,14 +49,19 @@ export class VideoService {
     private readonly badWordsService: BadWordsService,
   ) {}
 
-  private toPayload(task: VideoTask, type: TaskEventType): Omit<TaskEventPayload, 'type'> {
+  private toPayload(
+    task: VideoTask,
+    type: TaskEventType,
+  ): Omit<TaskEventPayload, 'type'> {
     return {
       module: 'video',
       taskId: task.id,
       status: task.status,
       progress: task.progress,
       errorMessage: task.errorMessage,
-      updatedAt: task.updatedAt ? new Date(task.updatedAt).toISOString() : undefined,
+      updatedAt: task.updatedAt
+        ? new Date(task.updatedAt).toISOString()
+        : undefined,
       provider: task.provider,
       taskType: task.taskType,
       videoUrl: task.videoUrl,
@@ -71,16 +83,25 @@ export class VideoService {
   /**
    * 创建视频任务：敏感词检测、校验余额、扣积分、入队
    */
-  async createTask(userId: string, dto: CreateVideoTaskDto): Promise<VideoTask> {
+  async createTask(
+    userId: string,
+    dto: CreateVideoTaskDto,
+  ): Promise<VideoTask> {
     // 敏感词检测
     if (dto.prompt) {
       await this.badWordsService.assertNoSensitiveWords(dto.prompt, userId);
     }
 
-    const urls = Array.isArray((dto.params as Record<string, unknown> | undefined)?.urls)
+    const urls = Array.isArray(
+      (dto.params as Record<string, unknown> | undefined)?.urls,
+    )
       ? ((dto.params as Record<string, unknown>).urls as string[])
       : [];
-    if (dto.taskType === VideoTaskType.IMG2VIDEO && !dto.imageUrl && urls.length === 0) {
+    if (
+      dto.taskType === VideoTaskType.IMG2VIDEO &&
+      !dto.imageUrl &&
+      urls.length === 0
+    ) {
       throw new BadRequestException('img2video 类型需要提供源图 URL');
     }
 
@@ -111,7 +132,12 @@ export class VideoService {
     userId: string,
     page: number = 1,
     pageSize: number = 10,
-  ): Promise<{ list: VideoTask[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: VideoTask[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.videoRepository.findAndCount({
       where: { userId },
       order: { createdAt: 'DESC' },
@@ -121,8 +147,13 @@ export class VideoService {
     return { list, total, page, pageSize };
   }
 
-  async getTasksStatusBatch(userId: string, ids: string[]): Promise<VideoTask[]> {
-    const uniq = Array.from(new Set((ids || []).map((x) => String(x || '').trim()).filter(Boolean)));
+  async getTasksStatusBatch(
+    userId: string,
+    ids: string[],
+  ): Promise<VideoTask[]> {
+    const uniq = Array.from(
+      new Set((ids || []).map((x) => String(x || '').trim()).filter(Boolean)),
+    );
     if (uniq.length === 0) return [];
     return this.videoRepository.find({
       where: { userId, id: In(uniq) },
@@ -135,7 +166,12 @@ export class VideoService {
   async getGallery(
     page: number = 1,
     pageSize: number = 20,
-  ): Promise<{ list: VideoTask[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: VideoTask[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.videoRepository.findAndCount({
       where: { isPublic: true, status: VideoTaskStatus.COMPLETED },
       order: { createdAt: 'DESC' },
@@ -153,7 +189,11 @@ export class VideoService {
     if (!task) {
       throw new NotFoundException('任务不存在');
     }
-    if (task.userId !== userId && !task.isPublic && task.status !== VideoTaskStatus.COMPLETED) {
+    if (
+      task.userId !== userId &&
+      !task.isPublic &&
+      task.status !== VideoTaskStatus.COMPLETED
+    ) {
       throw new NotFoundException('无权查看');
     }
     return task;
@@ -190,7 +230,10 @@ export class VideoService {
       await this.videoRepository.save(task);
       this.emit(task.userId, 'task.failed', task);
       try {
-        await this.userService.addBalance(task.userId, Number(task.deductPoints));
+        await this.userService.addBalance(
+          task.userId,
+          Number(task.deductPoints),
+        );
       } catch (refundErr) {
         this.logger.error(`退还积分失败: ${task.userId}`, refundErr);
       }
@@ -209,7 +252,11 @@ export class VideoService {
       return this.callGrsaiVeoApi(task, model, params);
     }
 
-    if (['sora-2', 'sora-2-pro', 'sora-2-preview', 'sora-2-pro-preview'].includes(model)) {
+    if (
+      ['sora-2', 'sora-2-pro', 'sora-2-preview', 'sora-2-pro-preview'].includes(
+        model,
+      )
+    ) {
       return this.callApimartSoraApi(task, model, params);
     }
 
@@ -217,7 +264,13 @@ export class VideoService {
       return this.callKieSeedanceApi(task, params);
     }
 
-    if (['kling-2.6/text-to-video', 'kling-2.6/image-to-video', 'kling-2.6/motion-control'].includes(model)) {
+    if (
+      [
+        'kling-2.6/text-to-video',
+        'kling-2.6/image-to-video',
+        'kling-2.6/motion-control',
+      ].includes(model)
+    ) {
       return this.callKieKling26Api(task, model, params);
     }
 
@@ -229,15 +282,30 @@ export class VideoService {
     model: string,
     params: Record<string, unknown>,
   ): Promise<string> {
-    const endpoint = (process.env.GRSAI_API_URL || process.env.VEO_API_URL || 'https://grsai.dakka.com.cn').replace(/\/+$/, '');
-    const apiKey = process.env.GRSAI_API_KEY || process.env.VEO_API_KEY || 'sk-4e5fa91a66d54303ba527d2b4b8e5e09';
+    const endpoint = (
+      process.env.GRSAI_API_URL ||
+      process.env.VEO_API_URL ||
+      'https://grsai.dakka.com.cn'
+    ).replace(/\/+$/, '');
+    const apiKey =
+      process.env.GRSAI_API_KEY ||
+      process.env.VEO_API_KEY ||
+      'sk-4e5fa91a66d54303ba527d2b4b8e5e09';
     if (!apiKey) throw new Error('未配置 GRSAI_API_KEY');
 
-    let firstFrameUrl = task.taskType === VideoTaskType.IMG2VIDEO ? (task.imageUrl || '') : '';
-    let lastFrameUrl = typeof params.lastFrameUrl === 'string' ? params.lastFrameUrl : '';
-    let urls = Array.isArray(params.urls) ? (params.urls as unknown[]).filter((u): u is string => typeof u === 'string') : [];
-    const inputMode = typeof params.inputMode === 'string' ? params.inputMode : '';
-    const aspectRatio = typeof params.aspectRatio === 'string' ? params.aspectRatio : '16:9';
+    let firstFrameUrl =
+      task.taskType === VideoTaskType.IMG2VIDEO ? task.imageUrl || '' : '';
+    let lastFrameUrl =
+      typeof params.lastFrameUrl === 'string' ? params.lastFrameUrl : '';
+    let urls = Array.isArray(params.urls)
+      ? (params.urls as unknown[]).filter(
+          (u): u is string => typeof u === 'string',
+        )
+      : [];
+    const inputMode =
+      typeof params.inputMode === 'string' ? params.inputMode : '';
+    const aspectRatio =
+      typeof params.aspectRatio === 'string' ? params.aspectRatio : '16:9';
 
     if (inputMode === 'ref') {
       firstFrameUrl = '';
@@ -251,12 +319,16 @@ export class VideoService {
 
     firstFrameUrl = await this.normalizeMediaUrl(firstFrameUrl);
     lastFrameUrl = await this.normalizeMediaUrl(lastFrameUrl);
-    urls = (await Promise.all(urls.slice(0, 3).map((u) => this.normalizeMediaUrl(u)))).filter(Boolean) as string[];
+    urls = (
+      await Promise.all(urls.slice(0, 3).map((u) => this.normalizeMediaUrl(u)))
+    ).filter(Boolean) as string[];
 
     const body: Record<string, unknown> = {
       model,
       prompt: task.prompt,
-      aspectRatio: ['16:9', '9:16'].includes(aspectRatio) ? aspectRatio : '16:9',
+      aspectRatio: ['16:9', '9:16'].includes(aspectRatio)
+        ? aspectRatio
+        : '16:9',
       webHook: '-1',
       shutProgress: false,
     };
@@ -264,18 +336,23 @@ export class VideoService {
     if (lastFrameUrl && firstFrameUrl) body.lastFrameUrl = lastFrameUrl;
     if (urls.length > 0) body.urls = urls;
 
-    const createRes = await this.httpRequest<{ code?: number; msg?: string; data?: { id?: string } }>({
+    const createRes = await this.httpRequest<{
+      code?: number;
+      msg?: string;
+      data?: { id?: string };
+    }>({
       url: `${endpoint}/v1/video/veo`,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body,
     });
 
     const taskId = createRes?.data?.id;
-    if (!taskId) throw new Error(`视频创建失败: ${createRes?.msg || '缺少任务ID'}`);
+    if (!taskId)
+      throw new Error(`视频创建失败: ${createRes?.msg || '缺少任务ID'}`);
 
     // Veo 任务在高峰期可能超过 9 分钟
     const maxAttempts = 320; // ~16 分钟
@@ -301,7 +378,7 @@ export class VideoService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
         },
         body: { id: taskId },
       });
@@ -313,11 +390,18 @@ export class VideoService {
         await this.videoRepository.save(task);
       }
 
-      if (status === 'succeeded' && statusRes?.data?.url) return statusRes.data.url;
-      if (status === 'succeeded' && statusRes?.data?.video_url) return statusRes.data.video_url;
-      if (status === 'succeeded' && (statusRes?.data as any)?.result?.url) return (statusRes?.data as any).result.url;
+      if (status === 'succeeded' && statusRes?.data?.url)
+        return statusRes.data.url;
+      if (status === 'succeeded' && statusRes?.data?.video_url)
+        return statusRes.data.video_url;
+      if (status === 'succeeded' && (statusRes?.data as any)?.result?.url)
+        return (statusRes?.data as any).result.url;
       if (status === 'failed') {
-        throw new Error(statusRes?.data?.error || statusRes?.data?.failure_reason || '视频 API 任务执行失败');
+        throw new Error(
+          statusRes?.data?.error ||
+            statusRes?.data?.failure_reason ||
+            '视频 API 任务执行失败',
+        );
       }
     }
 
@@ -329,8 +413,12 @@ export class VideoService {
     model: string,
     params: Record<string, unknown>,
   ): Promise<string> {
-    const endpoint = (process.env.APIMART_API_URL || 'https://api.apimart.ai').replace(/\/+$/, '');
-    const apiKey = process.env.APIMART_API_KEY || 'sk-QDveW1X9IX9GAkWuQ9GbL9NAZSaJA9OfXQ5lbySqYe1zVAIV';
+    const endpoint = (
+      process.env.APIMART_API_URL || 'https://api.apimart.ai'
+    ).replace(/\/+$/, '');
+    const apiKey =
+      process.env.APIMART_API_KEY ||
+      'sk-QDveW1X9IX9GAkWuQ9GbL9NAZSaJA9OfXQ5lbySqYe1zVAIV';
     if (!apiKey) throw new Error('未配置 APIMART_API_KEY');
 
     const isPreview = model.endsWith('-preview');
@@ -339,8 +427,14 @@ export class VideoService {
     const aspectRatioRaw = String(params.aspectRatio || '16:9');
     const resolutionRaw = String(params.resolution || 'standard');
 
-    const allowedDurations = isPreview ? [4, 8, 12] : isPro ? [10, 15, 25] : [10, 15];
-    const duration = allowedDurations.includes(durationRaw) ? durationRaw : allowedDurations[0];
+    const allowedDurations = isPreview
+      ? [4, 8, 12]
+      : isPro
+        ? [10, 15, 25]
+        : [10, 15];
+    const duration = allowedDurations.includes(durationRaw)
+      ? durationRaw
+      : allowedDurations[0];
 
     let aspectRatio: string;
     if (isPreview) {
@@ -353,8 +447,12 @@ export class VideoService {
     }
 
     const sourceUrls = [
-      task.taskType === VideoTaskType.IMG2VIDEO ? (task.imageUrl || '') : '',
-      ...(Array.isArray(params.urls) ? (params.urls as unknown[]).filter((u): u is string => typeof u === 'string') : []),
+      task.taskType === VideoTaskType.IMG2VIDEO ? task.imageUrl || '' : '',
+      ...(Array.isArray(params.urls)
+        ? (params.urls as unknown[]).filter(
+            (u): u is string => typeof u === 'string',
+          )
+        : []),
     ].filter(Boolean);
     const imageUrls = (
       await Promise.all(
@@ -375,15 +473,22 @@ export class VideoService {
     if (isPreview && isPro) {
       body.resolution = resolutionRaw === 'high' ? 'high' : 'standard';
     }
-    if (typeof params.watermark === 'boolean') body.watermark = params.watermark;
-    if (typeof params.thumbnail === 'boolean') body.thumbnail = params.thumbnail;
+    if (typeof params.watermark === 'boolean')
+      body.watermark = params.watermark;
+    if (typeof params.thumbnail === 'boolean')
+      body.thumbnail = params.thumbnail;
     if (typeof params.private === 'boolean') body.private = params.private;
-    if (typeof params.style === 'string' && params.style.trim()) body.style = params.style.trim();
-    if (typeof params.storyboard === 'boolean') body.storyboard = params.storyboard;
+    if (typeof params.style === 'string' && params.style.trim())
+      body.style = params.style.trim();
+    if (typeof params.storyboard === 'boolean')
+      body.storyboard = params.storyboard;
     if (typeof params.characterUrl === 'string' && params.characterUrl.trim()) {
       body.character_url = params.characterUrl.trim();
     }
-    if (typeof params.characterTimestamps === 'string' && params.characterTimestamps.trim()) {
+    if (
+      typeof params.characterTimestamps === 'string' &&
+      params.characterTimestamps.trim()
+    ) {
       body.character_timestamps = params.characterTimestamps.trim();
     }
 
@@ -397,14 +502,16 @@ export class VideoService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body,
     });
 
     const taskId = createRes?.data?.[0]?.task_id || createRes?.task_id;
     if (!taskId) {
-      throw new Error(`APIMart 视频创建失败: ${createRes?.error?.message || '缺少任务ID'}`);
+      throw new Error(
+        `APIMart 视频创建失败: ${createRes?.error?.message || '缺少任务ID'}`,
+      );
     }
 
     // Sora2 常见 estimated_time=600s，且排队时会更久，避免提前误判超时
@@ -418,7 +525,7 @@ export class VideoService {
         url: `${endpoint}/v1/tasks/${taskId}`,
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
         },
       });
 
@@ -427,7 +534,10 @@ export class VideoService {
       const estimatedTime = Number(data?.estimated_time ?? 0);
       const dynamicMaxAttempts =
         estimatedTime > 0
-          ? Math.max(maxAttempts, Math.ceil((estimatedTime * 1.6) / (pollInterval / 1000)))
+          ? Math.max(
+              maxAttempts,
+              Math.ceil((estimatedTime * 1.6) / (pollInterval / 1000)),
+            )
           : maxAttempts;
       const progress = Number(data?.progress ?? data?.percentage ?? 0);
       if (!Number.isNaN(progress)) {
@@ -450,7 +560,9 @@ export class VideoService {
       }
 
       if (['failed', 'error'].includes(status)) {
-        throw new Error(data?.error?.message || data?.error || 'APIMart 视频任务失败');
+        throw new Error(
+          data?.error?.message || data?.error || 'APIMart 视频任务失败',
+        );
       }
 
       if (i >= dynamicMaxAttempts - 1) {
@@ -469,15 +581,23 @@ export class VideoService {
     task: VideoTask,
     params: Record<string, unknown>,
   ): Promise<string> {
-    const endpoint = (process.env.KIE_API_URL || 'https://api.kie.ai').replace(/\/+$/, '');
-    const apiKey = process.env.KIE_API_KEY || 'a27f776a5028b2e0b3d3208293e8c9ac';
+    const endpoint = (process.env.KIE_API_URL || 'https://api.kie.ai').replace(
+      /\/+$/,
+      '',
+    );
+    const apiKey =
+      process.env.KIE_API_KEY || 'a27f776a5028b2e0b3d3208293e8c9ac';
     if (!apiKey) throw new Error('未配置 KIE_API_KEY');
 
     const durationRaw = Number(params.duration ?? 8);
     const allowedDurations = [4, 6, 8, 10];
-    const duration = allowedDurations.includes(durationRaw) ? durationRaw : allowedDurations[0];
+    const duration = allowedDurations.includes(durationRaw)
+      ? durationRaw
+      : allowedDurations[0];
 
-    const aspectRatio = ['16:9', '9:16', '1:1'].includes(String(params.aspectRatio))
+    const aspectRatio = ['16:9', '9:16', '1:1'].includes(
+      String(params.aspectRatio),
+    )
       ? String(params.aspectRatio)
       : '16:9';
     const resolution = ['720p', '1080p'].includes(String(params.resolution))
@@ -485,13 +605,18 @@ export class VideoService {
       : '720p';
     const fixedLens = Boolean(params.fixed_lens ?? false);
     const generateAudio = Boolean(params.generate_audio ?? false);
-    const inputMode = typeof params.inputMode === 'string' ? params.inputMode : '';
+    const inputMode =
+      typeof params.inputMode === 'string' ? params.inputMode : '';
 
     const sourceUrls: string[] = [];
-    const taskImageUrl = task.taskType === VideoTaskType.IMG2VIDEO ? (task.imageUrl || '') : '';
-    const lastFrameUrl = typeof params.lastFrameUrl === 'string' ? params.lastFrameUrl : '';
+    const taskImageUrl =
+      task.taskType === VideoTaskType.IMG2VIDEO ? task.imageUrl || '' : '';
+    const lastFrameUrl =
+      typeof params.lastFrameUrl === 'string' ? params.lastFrameUrl : '';
     const extraUrls = Array.isArray(params.urls)
-      ? (params.urls as unknown[]).filter((u): u is string => typeof u === 'string')
+      ? (params.urls as unknown[]).filter(
+          (u): u is string => typeof u === 'string',
+        )
       : [];
 
     if (inputMode === 'frame') {
@@ -503,7 +628,9 @@ export class VideoService {
     }
 
     const inputUrls = (
-      await Promise.all(sourceUrls.slice(0, 2).map((u) => this.normalizeMediaUrl(u)))
+      await Promise.all(
+        sourceUrls.slice(0, 2).map((u) => this.normalizeMediaUrl(u)),
+      )
     ).filter(Boolean) as string[];
 
     const input: Record<string, unknown> = {
@@ -534,14 +661,16 @@ export class VideoService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: requestBody,
     });
 
     const taskId = createRes?.data?.taskId;
     if (!taskId) {
-      throw new Error(`Seedance 1.5 Pro 创建失败: ${createRes?.msg || '缺少 taskId'}`);
+      throw new Error(
+        `Seedance 1.5 Pro 创建失败: ${createRes?.msg || '缺少 taskId'}`,
+      );
     }
     this.logger.log(`Seedance 1.5 Pro 任务已创建: ${taskId}`);
 
@@ -568,7 +697,7 @@ export class VideoService {
       }>({
         url: `${endpoint}/api/v1/jobs/getTaskDetail?taskId=${encodeURIComponent(taskId)}`,
         method: 'GET',
-        headers: { 'Authorization': `Bearer ${apiKey}` },
+        headers: { Authorization: `Bearer ${apiKey}` },
       });
 
       const data = statusRes?.data;
@@ -580,7 +709,9 @@ export class VideoService {
       }
 
       if (i % 10 === 0) {
-        this.logger.log(`Seedance 1.5 Pro 轮询 #${i}: state=${state}, progress=${progress}`);
+        this.logger.log(
+          `Seedance 1.5 Pro 轮询 #${i}: state=${state}, progress=${progress}`,
+        );
       }
 
       if (['success', 'succeeded', 'completed', 'done'].includes(state)) {
@@ -590,7 +721,9 @@ export class VideoService {
       }
 
       if (['fail', 'failed', 'error'].includes(state)) {
-        throw new Error(data?.failMsg || data?.error?.message || 'Seedance 1.5 Pro 任务失败');
+        throw new Error(
+          data?.failMsg || data?.error?.message || 'Seedance 1.5 Pro 任务失败',
+        );
       }
     }
 
@@ -605,15 +738,23 @@ export class VideoService {
     model: string,
     params: Record<string, unknown>,
   ): Promise<string> {
-    const endpoint = (process.env.KIE_API_URL || 'https://api.kie.ai').replace(/\/+$/, '');
-    const apiKey = process.env.KIE_API_KEY || 'a27f776a5028b2e0b3d3208293e8c9ac';
+    const endpoint = (process.env.KIE_API_URL || 'https://api.kie.ai').replace(
+      /\/+$/,
+      '',
+    );
+    const apiKey =
+      process.env.KIE_API_KEY || 'a27f776a5028b2e0b3d3208293e8c9ac';
     if (!apiKey) throw new Error('未配置 KIE_API_KEY');
 
     const durationRaw = Number(params.duration ?? 5);
     const allowedDurations = [3, 4, 5, 6, 8, 10];
-    const duration = allowedDurations.includes(durationRaw) ? durationRaw : allowedDurations[0];
+    const duration = allowedDurations.includes(durationRaw)
+      ? durationRaw
+      : allowedDurations[0];
     const sound = Boolean(params.sound ?? false);
-    const aspectRatio = ['1:1', '16:9', '9:16', '4:3'].includes(String(params.aspectRatio))
+    const aspectRatio = ['1:1', '16:9', '9:16', '4:3'].includes(
+      String(params.aspectRatio),
+    )
       ? String(params.aspectRatio)
       : '16:9';
 
@@ -627,14 +768,18 @@ export class VideoService {
 
     if (model === 'kling-2.6/image-to-video') {
       const extraUrls = Array.isArray(params.urls)
-        ? (params.urls as unknown[]).filter((u): u is string => typeof u === 'string')
+        ? (params.urls as unknown[]).filter(
+            (u): u is string => typeof u === 'string',
+          )
         : [];
       const sourceUrls = [
-        task.taskType === VideoTaskType.IMG2VIDEO ? (task.imageUrl || '') : '',
+        task.taskType === VideoTaskType.IMG2VIDEO ? task.imageUrl || '' : '',
         ...extraUrls,
       ].filter(Boolean);
       const imageUrls = (
-        await Promise.all(sourceUrls.slice(0, 1).map((u) => this.normalizeMediaUrl(u)))
+        await Promise.all(
+          sourceUrls.slice(0, 1).map((u) => this.normalizeMediaUrl(u)),
+        )
       ).filter(Boolean) as string[];
       if (!imageUrls.length) throw new Error('Kling 2.6 图生视频缺少参考图');
       input.image_urls = imageUrls;
@@ -643,17 +788,28 @@ export class VideoService {
     }
 
     if (model === 'kling-2.6/motion-control') {
-      const roleImageUrl = task.taskType === VideoTaskType.IMG2VIDEO ? (task.imageUrl || '') : '';
-      const motionVideoUrl = typeof params.motionVideoUrl === 'string' ? params.motionVideoUrl : '';
+      const roleImageUrl =
+        task.taskType === VideoTaskType.IMG2VIDEO ? task.imageUrl || '' : '';
+      const motionVideoUrl =
+        typeof params.motionVideoUrl === 'string' ? params.motionVideoUrl : '';
       const inputUrls = (
-        await Promise.all([roleImageUrl].filter(Boolean).slice(0, 1).map((u) => this.normalizeMediaUrl(u)))
+        await Promise.all(
+          [roleImageUrl]
+            .filter(Boolean)
+            .slice(0, 1)
+            .map((u) => this.normalizeMediaUrl(u)),
+        )
       ).filter(Boolean) as string[];
       if (!inputUrls.length) throw new Error('Kling 2.6 动作控制缺少角色图');
       if (!motionVideoUrl) throw new Error('Kling 2.6 动作控制缺少动作视频');
       input.input_urls = inputUrls;
       input.video_urls = [motionVideoUrl];
-      input.mode = ['480p', '720p', '1080p'].includes(String(params.mode)) ? String(params.mode) : '720p';
-      input.character_orientation = ['image', 'video', 'auto'].includes(String(params.character_orientation))
+      input.mode = ['480p', '720p', '1080p'].includes(String(params.mode))
+        ? String(params.mode)
+        : '720p';
+      input.character_orientation = ['image', 'video', 'auto'].includes(
+        String(params.character_orientation),
+      )
         ? String(params.character_orientation)
         : 'image';
     }
@@ -673,7 +829,7 @@ export class VideoService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: requestBody,
     });
@@ -698,7 +854,7 @@ export class VideoService {
           const res = await this.httpRequest<any>({
             url: `${endpoint}${path}`,
             method: 'GET',
-            headers: { 'Authorization': `Bearer ${apiKey}` },
+            headers: { Authorization: `Bearer ${apiKey}` },
           });
           if (res?.data) return res.data;
           if (res) return res;
@@ -713,7 +869,9 @@ export class VideoService {
       const data = await fetchDetail();
       if (!data) continue;
 
-      const state = String(data?.status || data?.state || data?.task_status || '').toLowerCase();
+      const state = String(
+        data?.status || data?.state || data?.task_status || '',
+      ).toLowerCase();
       const progress = Number(data?.progress ?? 0);
       if (!Number.isNaN(progress) && progress > 0) {
         task.progress = Math.min(Math.max(progress, 0), 99);
@@ -721,7 +879,9 @@ export class VideoService {
       }
 
       if (i % 10 === 0) {
-        this.logger.log(`Kling 2.6 轮询 #${i}: state=${state}, progress=${progress}`);
+        this.logger.log(
+          `Kling 2.6 轮询 #${i}: state=${state}, progress=${progress}`,
+        );
       }
 
       if (['success', 'succeeded', 'completed', 'done'].includes(state)) {
@@ -731,7 +891,9 @@ export class VideoService {
       }
 
       if (['fail', 'failed', 'error'].includes(state)) {
-        throw new Error(data?.failMsg || data?.error?.message || 'Kling 2.6 任务失败');
+        throw new Error(
+          data?.failMsg || data?.error?.message || 'Kling 2.6 任务失败',
+        );
       }
     }
 
@@ -746,13 +908,19 @@ export class VideoService {
     task: VideoTask,
     params: Record<string, unknown>,
   ): Promise<string> {
-    const endpoint = (process.env.KIE_API_URL || 'https://api.kie.ai').replace(/\/+$/, '');
-    const apiKey = process.env.KIE_API_KEY || 'a27f776a5028b2e0b3d3208293e8c9ac';
+    const endpoint = (process.env.KIE_API_URL || 'https://api.kie.ai').replace(
+      /\/+$/,
+      '',
+    );
+    const apiKey =
+      process.env.KIE_API_KEY || 'a27f776a5028b2e0b3d3208293e8c9ac';
     if (!apiKey) throw new Error('未配置 KIE_API_KEY');
 
     const durationRaw = Number(params.duration ?? 5);
     const duration = Math.max(3, Math.min(15, Math.round(durationRaw)));
-    const aspectRatio = ['16:9', '9:16', '1:1'].includes(String(params.aspectRatio))
+    const aspectRatio = ['16:9', '9:16', '1:1'].includes(
+      String(params.aspectRatio),
+    )
       ? String(params.aspectRatio)
       : '16:9';
     const mode = params.klingMode === 'std' ? 'std' : 'pro';
@@ -766,7 +934,9 @@ export class VideoService {
       sourceUrls.push(params.lastFrameUrl);
     }
     const imageUrls = (
-      await Promise.all(sourceUrls.slice(0, 2).map((u) => this.normalizeMediaUrl(u)))
+      await Promise.all(
+        sourceUrls.slice(0, 2).map((u) => this.normalizeMediaUrl(u)),
+      )
     ).filter(Boolean);
 
     const input: Record<string, unknown> = {
@@ -796,7 +966,7 @@ export class VideoService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: requestBody,
     });
@@ -826,7 +996,7 @@ export class VideoService {
       }>({
         url: `${endpoint}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`,
         method: 'GET',
-        headers: { 'Authorization': `Bearer ${apiKey}` },
+        headers: { Authorization: `Bearer ${apiKey}` },
       });
 
       const data = statusRes?.data;
@@ -839,18 +1009,25 @@ export class VideoService {
       }
 
       if (i % 10 === 0) {
-        this.logger.log(`Kling 3.0 轮询 #${i}: state=${state}, progress=${progress}`);
+        this.logger.log(
+          `Kling 3.0 轮询 #${i}: state=${state}, progress=${progress}`,
+        );
       }
 
       if (state === 'success') {
-        this.logger.log(`Kling 3.0 任务完成, resultJson: ${String(data?.resultJson).slice(0, 500)}`);
+        this.logger.log(
+          `Kling 3.0 任务完成, resultJson: ${String(data?.resultJson).slice(0, 500)}`,
+        );
         const videoUrl = this.extractKlingVideoUrl(data?.resultJson);
         if (videoUrl) return videoUrl;
         throw new Error('Kling 3.0 任务完成但未获取到视频 URL');
       }
 
       if (state === 'fail') {
-        throw new Error(data?.failMsg || `Kling 3.0 任务失败 (code: ${data?.failCode || 'unknown'})`);
+        throw new Error(
+          data?.failMsg ||
+            `Kling 3.0 任务失败 (code: ${data?.failCode || 'unknown'})`,
+        );
       }
     }
 
@@ -903,7 +1080,8 @@ export class VideoService {
     if (!resultJson) return null;
     try {
       const result = JSON.parse(resultJson);
-      if (typeof result === 'string' && result.startsWith('http')) return result;
+      if (typeof result === 'string' && result.startsWith('http'))
+        return result;
       const url =
         result?.url ||
         result?.video_url ||
@@ -917,7 +1095,8 @@ export class VideoService {
       const match = deep.match(/"(https?:\/\/[^"]+\.mp4[^"]*)"/);
       if (match?.[1]) return match[1];
     } catch {
-      if (typeof resultJson === 'string' && resultJson.startsWith('http')) return resultJson;
+      if (typeof resultJson === 'string' && resultJson.startsWith('http'))
+        return resultJson;
     }
     return null;
   }
@@ -966,7 +1145,8 @@ export class VideoService {
     body?: unknown;
     retries?: number;
   }): Promise<T> {
-    const retries = typeof options.retries === 'number' ? Math.max(0, options.retries) : 3;
+    const retries =
+      typeof options.retries === 'number' ? Math.max(0, options.retries) : 3;
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -994,8 +1174,13 @@ export class VideoService {
         const cause = err?.cause;
         const causeCode = cause?.code ? String(cause.code) : '';
         const causeMsg = cause?.message ? String(cause.message) : '';
-        const extra = (causeCode || causeMsg) ? ` | cause=${[causeCode, causeMsg].filter(Boolean).join(' ')}` : '';
-        lastError = new Error(`请求失败: ${options.method} ${options.url} | ${msg}${extra}`);
+        const extra =
+          causeCode || causeMsg
+            ? ` | cause=${[causeCode, causeMsg].filter(Boolean).join(' ')}`
+            : '';
+        lastError = new Error(
+          `请求失败: ${options.method} ${options.url} | ${msg}${extra}`,
+        );
         break;
       }
 
@@ -1015,7 +1200,9 @@ export class VideoService {
         parsed = null;
       }
       if (!retryAfterSeconds) {
-        const bodyRetryAfter = Number(parsed?.retry_after || parsed?.error?.retry_after || 0);
+        const bodyRetryAfter = Number(
+          parsed?.retry_after || parsed?.error?.retry_after || 0,
+        );
         if (!Number.isNaN(bodyRetryAfter) && bodyRetryAfter > 0) {
           retryAfterSeconds = bodyRetryAfter;
         }
@@ -1023,10 +1210,13 @@ export class VideoService {
 
       if (res.status === 402) {
         const msg = parsed?.detail || parsed?.error?.message || text;
-        throw new Error(`上游额度/计费不足（402）: ${String(msg).slice(0, 300)}`);
+        throw new Error(
+          `上游额度/计费不足（402）: ${String(msg).slice(0, 300)}`,
+        );
       }
 
-      const retryable = res.status === 408 || res.status === 429 || res.status >= 500;
+      const retryable =
+        res.status === 408 || res.status === 429 || res.status >= 500;
       const canRetry = retryable && attempt < retries;
       if (canRetry) {
         const waitMs =
@@ -1070,7 +1260,10 @@ export class VideoService {
     return h === rr || h.endsWith(`.${rr}`);
   }
 
-  private async getProxySettings(): Promise<{ proxyUrl: string; noProxy: string }> {
+  private async getProxySettings(): Promise<{
+    proxyUrl: string;
+    noProxy: string;
+  }> {
     const now = Date.now();
     if (this.proxyCache && now - this.proxyCache.fetchedAt < 15_000) {
       const proxyUrl = this.proxyCache.httpsProxy || this.proxyCache.httpProxy;
@@ -1081,14 +1274,20 @@ export class VideoService {
       this.globalConfig.getConfig('HTTPS_PROXY'),
       this.globalConfig.getConfig('NO_PROXY'),
     ]);
-    const httpProxy = String(httpProxyCfg || process.env.HTTP_PROXY || '').trim();
-    const httpsProxy = String(httpsProxyCfg || process.env.HTTPS_PROXY || '').trim();
+    const httpProxy = String(
+      httpProxyCfg || process.env.HTTP_PROXY || '',
+    ).trim();
+    const httpsProxy = String(
+      httpsProxyCfg || process.env.HTTPS_PROXY || '',
+    ).trim();
     const noProxy = String(noProxyCfg || process.env.NO_PROXY || '').trim();
     this.proxyCache = { fetchedAt: now, httpProxy, httpsProxy, noProxy };
     return { proxyUrl: httpsProxy || httpProxy, noProxy };
   }
 
-  private async getDispatcherForUrl(url: string): Promise<ProxyAgent | undefined> {
+  private async getDispatcherForUrl(
+    url: string,
+  ): Promise<ProxyAgent | undefined> {
     const { proxyUrl, noProxy } = await this.getProxySettings();
     if (!proxyUrl) return undefined;
     let hostname = '';
@@ -1099,7 +1298,8 @@ export class VideoService {
     }
     if (hostname) {
       const rules = this.parseNoProxyList(noProxy);
-      if (rules.some((r) => this.hostMatchesNoProxy(hostname, r))) return undefined;
+      if (rules.some((r) => this.hostMatchesNoProxy(hostname, r)))
+        return undefined;
     }
     const cached = this.proxyAgentCache.get(proxyUrl);
     if (cached) return cached;
@@ -1170,7 +1370,12 @@ export class VideoService {
   async getAllTasks(
     page: number = 1,
     pageSize: number = 20,
-  ): Promise<{ list: VideoTask[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: VideoTask[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.videoRepository.findAndCount({
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,

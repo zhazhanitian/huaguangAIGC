@@ -43,7 +43,7 @@ const selectedModel = ref<string>(DEFAULT_CHAT_MODEL)
 
 async function fetchChatModels() {
   try {
-    const all = await getModels()
+    const all = await getModels({ type: 'text' })
     if (Array.isArray(all) && all.length > 0) {
       const chatModels = all.filter(m => CHAT_MODEL_NAMES.includes(m.modelName) && m.isActive)
       if (chatModels.length > 0) {
@@ -633,6 +633,9 @@ onBeforeUnmount(() => {
                   <div class="ui-option-header">
                     <span class="ui-option-title">{{ m.modelName }}</span>
                     <span v-if="m.deductPoints" class="ui-option-badge">{{ m.deductPoints }}积分</span>
+                  </div>
+                  <div v-if="m.description" class="ui-option-desc">
+                    {{ m.description }}
                   </div>
                 </div>
               </div>

@@ -1,10 +1,14 @@
 import request from './index'
 
+export type ModelType = 'text' | 'image' | 'video' | 'music' | '3d'
+
 export interface Model {
   id: string
   modelName: string
   provider: 'openai' | 'claude' | 'deepseek' | 'custom'
+  type?: ModelType
   isActive: boolean
+  description?: string | null
   deductPoints?: number
   maxTokens?: number
   temperature?: number
@@ -27,7 +31,9 @@ export interface ModelKey {
 export interface CreateModelData {
   modelName: string
   provider?: 'openai' | 'claude' | 'deepseek' | 'custom'
+  type?: ModelType
   isActive?: boolean
+  description?: string
   deductPoints?: number
   maxTokens?: number
   temperature?: number
@@ -40,7 +46,9 @@ export interface CreateModelData {
 export interface UpdateModelData {
   modelName?: string
   provider?: 'openai' | 'claude' | 'deepseek' | 'custom'
+  type?: ModelType
   isActive?: boolean
+  description?: string
   deductPoints?: number
   maxTokens?: number
   temperature?: number

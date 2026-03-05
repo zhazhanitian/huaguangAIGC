@@ -269,8 +269,8 @@ const modelOptions = computed(() => {
 
 async function fetchModelPoints() {
   try {
-    const res = await getModels()
-    const all = res.data || res // 兼容两种返回格式
+    const res = await getModels({ type: 'image' })
+    const all = (res as any).data || res // 兼容两种返回格式
     if (Array.isArray(all)) {
       for (const m of all) {
         if (m.deductPoints) {
@@ -423,7 +423,7 @@ function handleKeyDown(e: KeyboardEvent) {
     if (inInput) {
       return
     }
-    
+
     if (selectedNodeIds.value.size > 0) {
       e.preventDefault()
       const count = selectedNodeIds.value.size
@@ -439,12 +439,12 @@ function handleKeyDown(e: KeyboardEvent) {
       })
     }
   }
-  
+
   // Escape 取消选择
   if (e.key === 'Escape') {
     canvasStore.clearSelection()
   }
-  
+
   // Ctrl+A 全选
   if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
     if (inInput) {
@@ -556,7 +556,7 @@ async function handleGenerateNode(id: string, forceGenerate = false) {
   // 执行生成
   try {
     await canvasStore.createTaskForNode(id)
-    
+
     // 如果有 LOW 级别敏感词，显示提示
     if (lastCheckResult.value?.hasWarning && lastCheckResult.value?.lowWords?.length > 0) {
       Message.info({
@@ -682,7 +682,7 @@ async function handleGenerateFromPrompt(forceGenerate = false) {
   // 执行生成
   try {
     await canvasStore.generateFromPrompt()
-    
+
     // 如果有 LOW 级别敏感词，显示提示
     if (lastCheckResult.value?.hasWarning && lastCheckResult.value?.lowWords?.length > 0) {
       Message.info({
@@ -879,63 +879,45 @@ async function handleUploadChange(event: Event) {
 <template>
   <div class="canvas-shell">
     <div class="canvas-main">
-      <CanvasToolbar
-        :zoom="viewport.zoom"
-        :running="runningCount"
-        :queued="queuedCount"
-        :can-undo="canUndo"
-        :can-redo="canRedo"
-        @create-node="handleCreateNode"
-        @save="handleSave"
-        @export="handleExport"
-        @zoom-in="handleZoomIn"
-        @zoom-out="handleZoomOut"
-        @zoom-reset="handleZoomReset"
-        @undo="handleUndo"
-        @redo="handleRedo"
-      />
+      <CanvasToolbar :zoom="viewport.zoom" :running="runningCount" :queued="queuedCount" :can-undo="canUndo"
+        :can-redo="canRedo" @create-node="handleCreateNode" @save="handleSave" @export="handleExport"
+        @zoom-in="handleZoomIn" @zoom-out="handleZoomOut" @zoom-reset="handleZoomReset" @undo="handleUndo"
+        @redo="handleRedo" />
 
       <div class="canvas-body">
-        <CanvasStage
-          v-model:viewport="viewport"
-          :nodes="nodes"
-          :selected-id="selectedNodeId || ''"
-          :selected-ids="[...selectedNodeIds]"
-          :active-tool="activeTool"
-          :shape-kind="shapeKind"
-          :shape-color="shapeColor"
-          :snap-enabled="SNAP_ENABLED"
-          :snap-threshold="SNAP_THRESHOLD"
-          :snap-grid-size="SNAP_GRID_SIZE"
-          @select="handleSelectNode"
-          @select-multiple="handleSelectMultiple"
-          @generate="handleGenerateNode"
-          @duplicate="handleDuplicateNode"
-          @update-node="handleUpdateNode"
-          @move-nodes="handleMoveNodes"
-          @create-node="handleCreateNodeFromStage"
-          @edit-image="handleEditImage"
-        />
+        <CanvasStage v-model:viewport="viewport" :nodes="nodes" :selected-id="selectedNodeId || ''"
+          :selected-ids="[...selectedNodeIds]" :active-tool="activeTool" :shape-kind="shapeKind"
+          :shape-color="shapeColor" :snap-enabled="SNAP_ENABLED" :snap-threshold="SNAP_THRESHOLD"
+          :snap-grid-size="SNAP_GRID_SIZE" @select="handleSelectNode" @select-multiple="handleSelectMultiple"
+          @generate="handleGenerateNode" @duplicate="handleDuplicateNode" @update-node="handleUpdateNode"
+          @move-nodes="handleMoveNodes" @create-node="handleCreateNodeFromStage" @edit-image="handleEditImage" />
 
         <div class="canvas-toolbox">
-          <button :class="['tool-btn', { active: activeTool === 'select' }]" title="选择" @click="handleToolChange('select')">
+          <button :class="['tool-btn', { active: activeTool === 'select' }]" title="选择"
+            @click="handleToolChange('select')">
             <MousePointer2 class="tool-icon" :size="18" />
           </button>
-          <button :class="['tool-btn', { active: activeTool === 'upload' }]" title="添加图片" @click="handleToolChange('upload')">
+          <button :class="['tool-btn', { active: activeTool === 'upload' }]" title="添加图片"
+            @click="handleToolChange('upload')">
             <ImagePlus class="tool-icon" :size="18" />
           </button>
-          <button :class="['tool-btn', { active: activeTool === 'shape' }]" title="绘制色块" @click="handleToolChange('shape')">
+          <button :class="['tool-btn', { active: activeTool === 'shape' }]" title="绘制色块"
+            @click="handleToolChange('shape')">
             <Square class="tool-icon" :size="18" />
           </button>
-          <button :class="['tool-btn', { active: activeTool === 'text' }]" title="输入文本" @click="handleToolChange('text')">
+          <button :class="['tool-btn', { active: activeTool === 'text' }]" title="输入文本"
+            @click="handleToolChange('text')">
             <TypeIcon class="tool-icon" :size="18" />
           </button>
-          <button :class="['tool-btn', { active: activeTool === 'arrow' }]" title="绘制箭头" @click="handleToolChange('arrow')">
+          <button :class="['tool-btn', { active: activeTool === 'arrow' }]" title="绘制箭头"
+            @click="handleToolChange('arrow')">
             <ArrowUpRight class="tool-icon" :size="18" />
           </button>
           <div class="shape-options" v-if="activeTool === 'shape'">
-            <button class="shape-btn" :class="{ active: shapeKind === 'square' }" title="方形色块" @click="shapeKind = 'square'">■</button>
-            <button class="shape-btn" :class="{ active: shapeKind === 'circle' }" title="圆形色块" @click="shapeKind = 'circle'">●</button>
+            <button class="shape-btn" :class="{ active: shapeKind === 'square' }" title="方形色块"
+              @click="shapeKind = 'square'">■</button>
+            <button class="shape-btn" :class="{ active: shapeKind === 'circle' }" title="圆形色块"
+              @click="shapeKind = 'circle'">●</button>
             <input v-model="shapeColor" class="shape-color" type="color" title="色块颜色" />
           </div>
           <div class="layer-options" v-if="selectedNodeIds.size > 0">
@@ -950,24 +932,12 @@ async function handleUploadChange(event: Event) {
       </div>
     </div>
 
-    <CanvasSidebar
-      :nodes="historyNodes"
-      :selected-id="selectedNodeId || ''"
-      :prompt-mode="promptMode"
-      :prompt-text="promptText"
-      :selected-model="selectedModel"
-      :param-settings="paramSettings"
-      :models="modelOptions"
-      :model-configs="modelConfigs"
-      @select="handleSelectNode"
-      @generate-node="handleGenerateNode"
-      @delete-node="handleDeleteNode"
-      @download-node="handleDownloadNode"
-      @update-prompt="handleUpdatePrompt"
-      @update-params="handleUpdateParams"
-      @generate-from-prompt="handleGenerateFromPrompt"
-      @update-ref-images="handleUpdateRefImages"
-    />
+    <CanvasSidebar :nodes="historyNodes" :selected-id="selectedNodeId || ''" :prompt-mode="promptMode"
+      :prompt-text="promptText" :selected-model="selectedModel" :param-settings="paramSettings" :models="modelOptions"
+      :model-configs="modelConfigs" @select="handleSelectNode" @generate-node="handleGenerateNode"
+      @delete-node="handleDeleteNode" @download-node="handleDownloadNode" @update-prompt="handleUpdatePrompt"
+      @update-params="handleUpdateParams" @generate-from-prompt="handleGenerateFromPrompt"
+      @update-ref-images="handleUpdateRefImages" />
   </div>
 </template>
 
@@ -1115,7 +1085,7 @@ async function handleUploadChange(event: Event) {
   border-radius: 16px;
   backdrop-filter: blur(6px);
   z-index: 10;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .status-left,
