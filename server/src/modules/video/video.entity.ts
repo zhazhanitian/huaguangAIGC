@@ -26,6 +26,7 @@ export enum VideoProvider {
   KLING_26_TEXT = 'kling-2.6/text-to-video',
   KLING_26_IMAGE = 'kling-2.6/image-to-video',
   KLING_26_MOTION = 'kling-2.6/motion-control',
+  KLING_30 = 'kling-3.0',
   SEEDANCE_15_PRO = 'bytedance/seedance-1.5-pro',
 }
 

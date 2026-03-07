@@ -271,6 +271,10 @@ export class VideoService {
       return this.callKieKling26Api(task, model, params);
     }
 
+    if (model === 'kling-3.0') {
+      return this.callKieKlingApi(task, params);
+    }
+
     throw new Error(`不支持的视频模型: ${model}`);
   }
 
@@ -489,6 +493,9 @@ export class VideoService {
       body.character_timestamps = params.characterTimestamps.trim();
     }
 
+    this.logger.log(
+      `[APIMart Sora] 创建任务: POST ${endpoint}/v1/videos/generations model=${model} duration=${duration} aspect_ratio=${aspectRatio} imageUrls=${imageUrls.length}`,
+    );
     const createRes = await this.httpRequest<{
       code?: number;
       data?: Array<{ status?: string; task_id?: string }>;
@@ -506,10 +513,16 @@ export class VideoService {
 
     const taskId = createRes?.data?.[0]?.task_id || createRes?.task_id;
     if (!taskId) {
+      this.logger.error(
+        `[APIMart Sora] 创建任务响应缺少 task_id，完整响应: ${JSON.stringify(createRes)}`,
+      );
       throw new Error(
         `APIMart 视频创建失败: ${createRes?.error?.message || '缺少任务ID'}`,
       );
     }
+    this.logger.log(
+      `[APIMart Sora] 创建成功 task_id=${taskId}，开始轮询 GET ${endpoint}/v1/tasks/${taskId}`,
+    );
 
     // Sora2 常见 estimated_time=600s，且排队时会更久，避免提前误判超时
     const maxAttempts = 520; // 默认 ~26 分钟
@@ -542,6 +555,13 @@ export class VideoService {
         await this.videoRepository.save(task);
       }
 
+      // 每 20 次或首次打印轮询状态，便于排查 sora-2-pro 结果查询
+      if (i % 20 === 0 || i < 3) {
+        this.logger.log(
+          `[APIMart Sora] 轮询 ${i + 1}/${dynamicMaxAttempts} task_id=${taskId} status=${status} progress=${progress} estimated_time=${estimatedTime}s`,
+        );
+      }
+
       const videoUrl =
         data?.url ||
         data?.video_url ||
@@ -557,6 +577,9 @@ export class VideoService {
       }
 
       if (['failed', 'error'].includes(status)) {
+        this.logger.error(
+          `[APIMart Sora] 任务失败 task_id=${taskId} 完整响应: ${JSON.stringify(data)}`,
+        );
         throw new Error(
           data?.error?.message || data?.error || 'APIMart 视频任务失败',
         );
@@ -1243,7 +1266,17 @@ export class VideoService {
         continue;
       }
 
-      lastError = new Error(`HTTP ${res.status}: ${text}`);
+      // OpenAI/APIMart 风格错误体：优先抛出 error.message；同时打出完整响应便于排查
+      const upstreamMsg =
+        parsed?.error?.message ?? parsed?.message ?? parsed?.detail;
+      const errMsg =
+        typeof upstreamMsg === 'string' && upstreamMsg.length > 0
+          ? `HTTP ${res.status}: ${upstreamMsg}`
+          : `HTTP ${res.status}: ${text}`;
+      this.logger.error(
+        `上游请求失败，完整响应: ${options.method} ${options.url} -> ${text}`,
+      );
+      lastError = new Error(errMsg);
       break;
     }
 
