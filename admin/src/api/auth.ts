@@ -25,9 +25,9 @@ export interface ProfileResult {
   avatar?: string
 }
 
-/** 后端路由: POST /api/auth/login */
+/** 后端路由: POST /api/auth/admin/login（仅管理员，普通用户返回 401） */
 export function login(data: LoginParams) {
-  return request.post<LoginResult>('/auth/login', data)
+  return request.post<LoginResult>('/auth/admin/login', data)
 }
 
 /** 后端路由: GET /api/auth/profile */

@@ -10,10 +10,7 @@ import { UserModule } from '../user/user.module';
  * 套餐、订单、支付回调
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Order, Package]),
-    UserModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Order, Package]), UserModule],
   providers: [PaymentService],
   controllers: [PaymentController],
   exports: [PaymentService],

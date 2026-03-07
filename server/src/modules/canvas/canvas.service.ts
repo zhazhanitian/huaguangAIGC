@@ -21,7 +21,10 @@ export class CanvasService {
     private readonly drawService: DrawService,
   ) {}
 
-  async createProject(userId: string, dto: CreateCanvasProjectDto): Promise<CanvasProject> {
+  async createProject(
+    userId: string,
+    dto: CreateCanvasProjectDto,
+  ): Promise<CanvasProject> {
     const project = this.projectRepository.create({
       userId,
       name: dto.name,
@@ -37,7 +40,12 @@ export class CanvasService {
     userId: string,
     page: number = 1,
     pageSize: number = 12,
-  ): Promise<{ list: CanvasProject[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: CanvasProject[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.projectRepository.findAndCount({
       where: { userId },
       order: { updatedAt: 'DESC' },
@@ -50,7 +58,12 @@ export class CanvasService {
   async getAllProjects(
     page: number = 1,
     pageSize: number = 20,
-  ): Promise<{ list: CanvasProject[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: CanvasProject[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.projectRepository.findAndCount({
       order: { updatedAt: 'DESC' },
       skip: (page - 1) * pageSize,
@@ -60,7 +73,9 @@ export class CanvasService {
   }
 
   async getProjectDetail(userId: string, projectId: string) {
-    const project = await this.projectRepository.findOne({ where: { id: projectId } });
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
     if (!project || project.userId !== userId) {
       throw new NotFoundException('画布项目不存在');
     }
@@ -76,7 +91,9 @@ export class CanvasService {
     projectId: string,
     dto: UpdateCanvasProjectDto,
   ): Promise<CanvasProject> {
-    const project = await this.projectRepository.findOne({ where: { id: projectId, userId } });
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId, userId },
+    });
     if (!project) throw new NotFoundException('画布项目不存在');
     if (dto.name !== undefined) project.name = dto.name;
     if (dto.description !== undefined) project.description = dto.description;
@@ -85,8 +102,14 @@ export class CanvasService {
     return this.projectRepository.save(project);
   }
 
-  async createNode(userId: string, projectId: string, dto: CreateCanvasNodeDto): Promise<CanvasNode> {
-    const project = await this.projectRepository.findOne({ where: { id: projectId, userId } });
+  async createNode(
+    userId: string,
+    projectId: string,
+    dto: CreateCanvasNodeDto,
+  ): Promise<CanvasNode> {
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId, userId },
+    });
     if (!project) throw new NotFoundException('画布项目不存在');
     const node = this.nodeRepository.create({
       userId,
@@ -110,8 +133,14 @@ export class CanvasService {
     return saved;
   }
 
-  async updateNode(userId: string, nodeId: string, dto: UpdateCanvasNodeDto): Promise<CanvasNode> {
-    const node = await this.nodeRepository.findOne({ where: { id: nodeId, userId } });
+  async updateNode(
+    userId: string,
+    nodeId: string,
+    dto: UpdateCanvasNodeDto,
+  ): Promise<CanvasNode> {
+    const node = await this.nodeRepository.findOne({
+      where: { id: nodeId, userId },
+    });
     if (!node) throw new NotFoundException('节点不存在');
     Object.assign(node, {
       title: dto.title ?? node.title,
@@ -134,10 +163,14 @@ export class CanvasService {
   }
 
   async deleteNode(userId: string, nodeId: string) {
-    const node = await this.nodeRepository.findOne({ where: { id: nodeId, userId } });
+    const node = await this.nodeRepository.findOne({
+      where: { id: nodeId, userId },
+    });
     if (!node) throw new NotFoundException('节点不存在');
     await this.nodeRepository.remove(node);
-    const project = await this.projectRepository.findOne({ where: { id: node.projectId, userId } });
+    const project = await this.projectRepository.findOne({
+      where: { id: node.projectId, userId },
+    });
     if (project) {
       project.nodeCount = Math.max(0, (project.nodeCount || 1) - 1);
       await this.projectRepository.save(project);
@@ -145,16 +178,26 @@ export class CanvasService {
     return { message: '删除成功' };
   }
 
-  async createNodeTask(userId: string, nodeId: string, dto: CreateCanvasNodeTaskDto) {
-    const node = await this.nodeRepository.findOne({ where: { id: nodeId, userId } });
+  async createNodeTask(
+    userId: string,
+    nodeId: string,
+    dto: CreateCanvasNodeTaskDto,
+  ) {
+    const node = await this.nodeRepository.findOne({
+      where: { id: nodeId, userId },
+    });
     if (!node) throw new NotFoundException('节点不存在');
 
     const provider = dto.provider || node.provider || 'nano-banana-pro';
     const prompt = dto.prompt || node.prompt;
-    const negativePrompt = dto.negativePrompt ?? node.negativePrompt ?? undefined;
+    const negativePrompt =
+      dto.negativePrompt ?? node.negativePrompt ?? undefined;
     const taskType = dto.taskType || node.taskType || 'text2img';
 
-    const mergedParams: Record<string, unknown> = { ...(node.params || {}), ...(dto.params || {}) };
+    const mergedParams: Record<string, unknown> = {
+      ...(node.params || {}),
+      ...(dto.params || {}),
+    };
     const size = dto.size || node.size;
     const style = dto.style || node.style;
     if (size) mergedParams.size = size;

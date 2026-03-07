@@ -9,9 +9,7 @@ import { CozeController } from './coze.controller';
  * 接入 Coze 平台 API，支持多机器人对话
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([CozeBot, CozeConversation, CozeMessage]),
-  ],
+  imports: [TypeOrmModule.forFeature([CozeBot, CozeConversation, CozeMessage])],
   providers: [CozeService],
   controllers: [CozeController],
   exports: [CozeService],

@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, OnModuleInit, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  OnModuleInit,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { ApiKey, ApiKeyProvider } from './apikey.entity';
@@ -61,7 +66,7 @@ export class ApiKeyService implements OnModuleInit {
   private async checkTableExists(): Promise<boolean> {
     try {
       const result = await this.dataSource.query(
-        `SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'api_keys'`
+        `SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'api_keys'`,
       );
       return result[0]?.cnt > 0;
     } catch {
@@ -101,21 +106,26 @@ export class ApiKeyService implements OnModuleInit {
       {
         name: 'Apimart API',
         provider: ApiKeyProvider.APIMART,
-        apiKey: process.env.APIMART_API_KEY || 'sk-QDveW1X9IX9GAkWuQ9GbL9NAZSaJA9OfXQ5lbySqYe1zVAIV',
+        apiKey:
+          process.env.APIMART_API_KEY ||
+          'sk-QDveW1X9IX9GAkWuQ9GbL9NAZSaJA9OfXQ5lbySqYe1zVAIV',
         baseUrl: 'https://api.apimart.ai/v1',
         remark: 'GPT-5 / Claude / Gemini / Flux / 豆包等',
       },
       {
         name: 'GrsAI API',
         provider: ApiKeyProvider.GRSAI,
-        apiKey: process.env.GRSAI_API_KEY || 'sk-4e5fa91a66d54303ba527d2b4b8e5e09',
+        apiKey:
+          process.env.GRSAI_API_KEY || 'sk-4e5fa91a66d54303ba527d2b4b8e5e09',
         baseUrl: 'https://grsaiapi.com/v1',
         remark: 'Nano Banana / Gemini 系列模型',
       },
     ];
 
     for (const data of initialKeys) {
-      const existing = await this.apiKeyRepository.findOne({ where: { name: data.name } });
+      const existing = await this.apiKeyRepository.findOne({
+        where: { name: data.name },
+      });
       if (!existing) {
         await this.create(data);
       }

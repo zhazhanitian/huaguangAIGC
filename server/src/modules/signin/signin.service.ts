@@ -29,7 +29,8 @@ export class SigninService {
     points: number;
     streakBonus: number;
   }> {
-    const pointsVal = await this.globalConfigService.getConfig(CONFIG_SIGNIN_POINTS);
+    const pointsVal =
+      await this.globalConfigService.getConfig(CONFIG_SIGNIN_POINTS);
     const streakVal = await this.globalConfigService.getConfig(
       CONFIG_SIGNIN_STREAK_BONUS,
     );
@@ -110,7 +111,10 @@ export class SigninService {
       points,
       streak,
       totalStreak: streak,
-      message: streak > 1 ? `连续签到 ${streak} 天，获得 ${points} 积分` : `签到成功，获得 ${points} 积分`,
+      message:
+        streak > 1
+          ? `连续签到 ${streak} 天，获得 ${points} 积分`
+          : `签到成功，获得 ${points} 积分`,
     };
   }
 

@@ -61,11 +61,10 @@ export class ChatController {
 
   @Post('send')
   @ApiOperation({ summary: '发送消息（非流式）' })
-  async send(
-    @GetUser('id') userId: string,
-    @Body() dto: SendMessageDto,
-  ) {
-    console.log(`[ChatController] send: userId=${userId}, groupId=${dto.groupId}, model=${dto.model}, content=${dto.content?.substring(0, 50)}`);
+  async send(@GetUser('id') userId: string, @Body() dto: SendMessageDto) {
+    console.log(
+      `[ChatController] send: userId=${userId}, groupId=${dto.groupId}, model=${dto.model}, content=${dto.content?.substring(0, 50)}`,
+    );
     return this.chatService.sendMessage(
       userId,
       dto.groupId,
@@ -82,7 +81,9 @@ export class ChatController {
     @Body() dto: SendMessageDto,
     @Res({ passthrough: false }) res: Response,
   ) {
-    console.log(`[ChatController] send-stream: userId=${userId}, model=${dto.model}, content=${dto.content?.substring(0, 50)}`);
+    console.log(
+      `[ChatController] send-stream: userId=${userId}, model=${dto.model}, content=${dto.content?.substring(0, 50)}`,
+    );
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -108,7 +109,9 @@ export class ChatController {
       console.log('[ChatController] Stream done');
     } catch (err) {
       console.error('[ChatController] Stream error:', (err as Error).message);
-      res.write(`data: ${JSON.stringify({ error: (err as Error).message })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({ error: (err as Error).message })}\n\n`,
+      );
     } finally {
       res.write('data: [DONE]\n\n');
       res.end();

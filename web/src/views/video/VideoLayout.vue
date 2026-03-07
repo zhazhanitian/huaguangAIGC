@@ -135,13 +135,28 @@ const providersDef = [
   { value: 'kling-2', label: 'Kling 2', desc: '文生/图生/动作控制子模型', color: '#0ea5e9' },
   { value: 'bytedance/seedance-1-pro', label: 'Seedance 1 Pro', desc: '字节视频，支持参考图/首尾帧', color: '#14b8a6' },
 ]
+/** 前端 provider value -> 后端 modelName（或多个），用于按后台启用列表过滤 */
+const providerToBackendNames: Record<string, string | string[]> = {
+  'kling-2': ['kling-2.6/text-to-video', 'kling-2.6/image-to-video', 'kling-2.6/motion-control'],
+  'bytedance/seedance-1-pro': 'bytedance/seedance-1.5-pro',
+}
+const activeVideoModelNames = ref<Set<string>>(new Set())
 const kling26SubModels = [
-  { value: 'kling-2/text-to-video', label: '文生视频', desc: '3-10秒，多比例，支持音效' },
-  { value: 'kling-2/image-to-video', label: '图生视频', desc: '3-10秒，参考图驱动' },
+  { value: 'kling-2/text-to-video', label: '文生视频', desc: '5/10 秒，多比例，支持音效' },
+  { value: 'kling-2/image-to-video', label: '图生视频', desc: '5/10 秒，参考图驱动' },
   { value: 'kling-2/motion-control', label: '动作控制', desc: '角色图 + 动作视频控制' },
 ]
 const videoPointsMap = ref<Record<string, number>>({})
-const providers = computed(() => providersDef.map(p => {
+const visibleProviders = computed(() => {
+  const set = activeVideoModelNames.value
+  if (set.size === 0) return providersDef
+  return providersDef.filter(p => {
+    const backends = providerToBackendNames[p.value]
+    const names = Array.isArray(backends) ? backends : [backends ?? p.value]
+    return names.some(b => set.has(b))
+  })
+})
+const providers = computed(() => visibleProviders.value.map(p => {
   let modelNameForPoints = p.value === 'kling-2' ? selectedKling26SubModel.value : p.value
   let points = videoPointsMap.value[modelNameForPoints] ?? 0
 
@@ -158,11 +173,23 @@ async function fetchVideoModelPoints() {
     const res = await getModels({ type: 'video' })
     const all = (res as any).data || res // 兼容两种返回格式
     if (Array.isArray(all)) {
+      activeVideoModelNames.value = new Set(
+        all.map((m: { modelName?: string }) => m.modelName).filter((x): x is string => Boolean(x))
+      )
       for (const m of all) { if (m.deductPoints) videoPointsMap.value[m.modelName] = m.deductPoints }
     }
   } catch { /* ignore */ }
 }
+
 const selectedModel = ref('veo3.1-fast')
+watch(visibleProviders, (list) => {
+  if (list.length) {
+    const first = list[0]
+    if (first && !list.some(p => p.value === selectedModel.value)) {
+      selectedModel.value = first.value
+    }
+  }
+}, { immediate: true })
 const actualModel = computed(() => selectedModel.value === 'kling-2' ? selectedKling26SubModel.value : selectedModel.value)
 const defaultRatioOptions = [
   { value: '16:9', label: '16:9 横屏', icon: '▬' },
@@ -294,7 +321,7 @@ const modelConfigs: Record<string, ModelConfig> = {
   'kling-2/text-to-video': {
     inputModes: ['text'],
     maxRefImages: 0,
-    durations: [3, 4, 5, 6, 8, 10],
+    durations: [5, 10],
     supportsPreview: false,
     supportsPreviewResolution: false,
     hint: 'Kling 2 文生视频，支持多比例与音效',
@@ -302,7 +329,7 @@ const modelConfigs: Record<string, ModelConfig> = {
   'kling-2/image-to-video': {
     inputModes: ['ref'],
     maxRefImages: 1,
-    durations: [3, 4, 5, 6, 8, 10],
+    durations: [5, 10],
     supportsPreview: false,
     supportsPreviewResolution: false,
     hint: 'Kling 2 图生视频，1 张参考图驱动',
@@ -346,11 +373,22 @@ const canUseFrameMode = computed(() => availableInputModes.value.includes('frame
 const maxRef = computed(() => modelConfig.value.maxRefImages || FALLBACK_MAX_REF)
 const isSoraModel = computed(() => actualModel.value.startsWith('sora-2'))
 
+/** 前端展示用 actualModel → 后端接口 / 枚举值（provider、params.model 均需使用） */
+function providerForApi(): string {
+  const m = actualModel.value
+  if (m === 'bytedance/seedance-1-pro') return 'bytedance/seedance-1.5-pro'
+  if (m === 'kling-2/text-to-video') return 'kling-2.6/text-to-video'
+  if (m === 'kling-2/image-to-video') return 'kling-2.6/image-to-video'
+  if (m === 'kling-2/motion-control') return 'kling-2.6/motion-control'
+  return m
+}
+
 function modelForApi() {
+  const backendModel = providerForApi()
   if (previewMode.value && isSoraModel.value) {
-    return `${actualModel.value}-preview`
+    return `${backendModel}-preview`
   }
-  return actualModel.value
+  return backendModel
 }
 
 watch(actualModel, () => {
@@ -514,7 +552,7 @@ async function handleGenerate() {
       params.aspectRatio = selectedRatio.value
     }
     const payload: CreateVideoTaskData = {
-      provider: actualModel.value,
+      provider: providerForApi(),
       taskType: taskMode.value,
       prompt: form.value.prompt.trim(),
       params,
@@ -1026,7 +1064,7 @@ function handleDeleteTask(task: VideoTask) {
           <div class="detail-item"><span class="k">创建时间</span><span class="v">{{ previewTask.createdAt || '-' }}</span>
           </div>
           <div class="detail-item"><span class="k">失败原因</span><span class="v">{{ previewTask.errorMessage || '-'
-              }}</span></div>
+          }}</span></div>
         </div>
         <div class="detail-block">
           <div class="kb">提示词</div>

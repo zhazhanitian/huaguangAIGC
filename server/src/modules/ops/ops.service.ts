@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import { RealtimeService } from '../realtime/realtime.service';
@@ -40,7 +45,10 @@ export class OpsService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    const logInterval = Math.max(10_000, Number(process.env.OPS_LOG_INTERVAL_MS) || 60_000);
+    const logInterval = Math.max(
+      10_000,
+      Number(process.env.OPS_LOG_INTERVAL_MS) || 60_000,
+    );
     this.logTicker = setInterval(() => {
       this.getStats({})
         .then((s) => {
@@ -57,7 +65,10 @@ export class OpsService implements OnModuleInit, OnModuleDestroy {
     }, logInterval);
 
     this.takeSample();
-    this.sampleTicker = setInterval(() => this.takeSample(), SAMPLE_INTERVAL_MS);
+    this.sampleTicker = setInterval(
+      () => this.takeSample(),
+      SAMPLE_INTERVAL_MS,
+    );
   }
 
   onModuleDestroy() {
@@ -76,7 +87,8 @@ export class OpsService implements OnModuleInit, OnModuleDestroy {
         this.counts(this.model3dQueue),
       ]);
       const backlog =
-        (draw.waiting + draw.delayed) +
+        draw.waiting +
+        draw.delayed +
         (video.waiting + video.delayed) +
         (music.waiting + music.delayed) +
         (model3d.waiting + model3d.delayed);
@@ -136,19 +148,21 @@ export class OpsService implements OnModuleInit, OnModuleDestroy {
     const inflightAll = this.realtime.getInflight();
     const filterOptions = this.realtime.getFilterOptions();
 
-    const recentFailures = this.realtime.getRecentFailures(20, {
-      module: opts.module,
-      provider: opts.provider,
-      taskType: opts.taskType,
-    }).map((r) => ({
-      taskId: r.taskId,
-      module: r.module,
-      provider: r.provider,
-      taskType: r.taskType,
-      endedAt: new Date(r.endedAtMs).toISOString(),
-      totalMs: r.totalMs,
-      errorMessage: r.errorMessage,
-    }));
+    const recentFailures = this.realtime
+      .getRecentFailures(20, {
+        module: opts.module,
+        provider: opts.provider,
+        taskType: opts.taskType,
+      })
+      .map((r) => ({
+        taskId: r.taskId,
+        module: r.module,
+        provider: r.provider,
+        taskType: r.taskType,
+        endedAt: new Date(r.endedAtMs).toISOString(),
+        totalMs: r.totalMs,
+        errorMessage: r.errorMessage,
+      }));
 
     const tsCutoff = Date.now() - windowMs;
     const timeSeriesSlice = this.timeSeries.filter((s) => s.ts >= tsCutoff);
@@ -182,7 +196,11 @@ export class OpsService implements OnModuleInit, OnModuleDestroy {
     const s = await this.getStats({});
     const lines: string[] = [];
 
-    const gauge = (name: string, value: number, labels?: Record<string, string>) => {
+    const gauge = (
+      name: string,
+      value: number,
+      labels?: Record<string, string>,
+    ) => {
       const labelText = labels
         ? `{${Object.entries(labels)
             .map(([k, v]) => `${k}="${String(v).replace(/"/g, '\\"')}"`)
@@ -211,17 +229,28 @@ export class OpsService implements OnModuleInit, OnModuleDestroy {
     gauge('huaguang_ws_emit_debounced_total', e.debounced);
 
     for (const row of s.taskSummary) {
-      const l = { module: row.module, provider: row.provider, taskType: row.taskType };
+      const l = {
+        module: row.module,
+        provider: row.provider,
+        taskType: row.taskType,
+      };
       gauge('huaguang_task_completed', row.completed, l);
       gauge('huaguang_task_failed', row.failed, l);
       gauge('huaguang_task_inflight', row.inflight, l);
-      if (row.p95.totalMs != null) gauge('huaguang_task_p95_total_ms', row.p95.totalMs, l);
-      if (row.p95.queueMs != null) gauge('huaguang_task_p95_queue_ms', row.p95.queueMs, l);
-      if (row.p95.procMs != null) gauge('huaguang_task_p95_proc_ms', row.p95.procMs, l);
+      if (row.p95.totalMs != null)
+        gauge('huaguang_task_p95_total_ms', row.p95.totalMs, l);
+      if (row.p95.queueMs != null)
+        gauge('huaguang_task_p95_queue_ms', row.p95.queueMs, l);
+      if (row.p95.procMs != null)
+        gauge('huaguang_task_p95_proc_ms', row.p95.procMs, l);
     }
 
     for (const inf of s.inflightAll) {
-      gauge('huaguang_task_inflight', inf.count, { module: inf.module, provider: inf.provider, taskType: inf.taskType });
+      gauge('huaguang_task_inflight', inf.count, {
+        module: inf.module,
+        provider: inf.provider,
+        taskType: inf.taskType,
+      });
     }
 
     return lines.join('\n') + '\n';

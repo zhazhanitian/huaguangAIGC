@@ -23,10 +23,7 @@ export class PptController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '创建 PPT 任务' })
-  async create(
-    @GetUser('id') userId: string,
-    @Body() dto: CreatePptTaskDto,
-  ) {
+  async create(@GetUser('id') userId: string, @Body() dto: CreatePptTaskDto) {
     return this.pptService.createTask(userId, dto);
   }
 

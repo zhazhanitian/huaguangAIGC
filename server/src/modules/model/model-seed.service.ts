@@ -41,7 +41,9 @@ export class ModelSeedService implements OnModuleInit {
     const seedKey = String(process.env.SEED_KIE_KEY || '').trim();
     if (!seedKey) return;
 
-    const seedBaseUrl = String(process.env.SEED_KIE_BASE_URL || 'https://api.kie.ai')
+    const seedBaseUrl = String(
+      process.env.SEED_KIE_BASE_URL || 'https://api.kie.ai',
+    )
       .trim()
       .replace(/\/+$/, '');
 
@@ -62,14 +64,16 @@ export class ModelSeedService implements OnModuleInit {
       'qwen/text-to-image': 10,
       'qwen/image-to-image': 12,
       'qwen/image-edit': 12,
-      'midjourney': 25,
+      midjourney: 25,
     };
 
     let upserted = 0;
     let keysWritten = 0;
 
     for (const name of modelNames) {
-      let model = await this.modelRepository.findOne({ where: { modelName: name } });
+      let model = await this.modelRepository.findOne({
+        where: { modelName: name },
+      });
       if (!model) {
         const created = this.modelRepository.create({
           modelName: name,
@@ -149,7 +153,12 @@ export class ModelSeedService implements OnModuleInit {
       { name: 'nano-banana-pro-4k-vip', points: 20 },
     ];
     for (const m of grsaiImageModels) {
-      presets.push({ modelName: m.name, provider: ModelProvider.CUSTOM, isActive: true, deductPoints: m.points });
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        isActive: true,
+        deductPoints: m.points,
+      });
     }
 
     // APIMart - 图像模型
@@ -162,7 +171,12 @@ export class ModelSeedService implements OnModuleInit {
       { name: 'flux-kontext-max', points: 25 },
     ];
     for (const m of apimartImageModels) {
-      presets.push({ modelName: m.name, provider: ModelProvider.CUSTOM, isActive: true, deductPoints: m.points });
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        isActive: true,
+        deductPoints: m.points,
+      });
     }
 
     // KIE - 图像模型
@@ -177,7 +191,12 @@ export class ModelSeedService implements OnModuleInit {
       { name: 'dalle', points: 15 },
     ];
     for (const m of kieImageModels) {
-      presets.push({ modelName: m.name, provider: ModelProvider.CUSTOM, isActive: true, deductPoints: m.points });
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        isActive: true,
+        deductPoints: m.points,
+      });
     }
 
     // ========== 视频模型 ==========
@@ -187,7 +206,12 @@ export class ModelSeedService implements OnModuleInit {
       { name: 'veo3.1-pro', points: 50 },
     ];
     for (const m of grsaiVideoModels) {
-      presets.push({ modelName: m.name, provider: ModelProvider.CUSTOM, isActive: true, deductPoints: m.points });
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        isActive: true,
+        deductPoints: m.points,
+      });
     }
 
     // APIMart - Sora 视频
@@ -198,15 +222,45 @@ export class ModelSeedService implements OnModuleInit {
       { name: 'sora-2-pro-preview', points: 60 },
     ];
     for (const m of apimartVideoModels) {
-      presets.push({ modelName: m.name, provider: ModelProvider.CUSTOM, isActive: true, deductPoints: m.points });
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        isActive: true,
+        deductPoints: m.points,
+      });
     }
 
     // KIE - Kling / Seedance 视频
-    presets.push({ modelName: 'kling-3.0', provider: ModelProvider.CUSTOM, isActive: true, deductPoints: 60 });
-    presets.push({ modelName: 'kling-2.6/text-to-video', provider: ModelProvider.CUSTOM, isActive: true, deductPoints: 60 });
-    presets.push({ modelName: 'kling-2.6/image-to-video', provider: ModelProvider.CUSTOM, isActive: true, deductPoints: 60 });
-    presets.push({ modelName: 'kling-2.6/motion-control', provider: ModelProvider.CUSTOM, isActive: true, deductPoints: 80 });
-    presets.push({ modelName: 'bytedance/seedance-1.5-pro', provider: ModelProvider.CUSTOM, isActive: true, deductPoints: 60 });
+    presets.push({
+      modelName: 'kling-3.0',
+      provider: ModelProvider.CUSTOM,
+      isActive: true,
+      deductPoints: 60,
+    });
+    presets.push({
+      modelName: 'kling-2.6/text-to-video',
+      provider: ModelProvider.CUSTOM,
+      isActive: true,
+      deductPoints: 60,
+    });
+    presets.push({
+      modelName: 'kling-2.6/image-to-video',
+      provider: ModelProvider.CUSTOM,
+      isActive: true,
+      deductPoints: 60,
+    });
+    presets.push({
+      modelName: 'kling-2.6/motion-control',
+      provider: ModelProvider.CUSTOM,
+      isActive: true,
+      deductPoints: 80,
+    });
+    presets.push({
+      modelName: 'bytedance/seedance-1.5-pro',
+      provider: ModelProvider.CUSTOM,
+      isActive: true,
+      deductPoints: 60,
+    });
 
     // ========== 音乐模型 (KIE - Suno) ==========
     const musicModels = [
@@ -215,7 +269,12 @@ export class ModelSeedService implements OnModuleInit {
       { name: 'suno-v4.5plus', points: 50 },
     ];
     for (const m of musicModels) {
-      presets.push({ modelName: m.name, provider: ModelProvider.CUSTOM, isActive: true, deductPoints: m.points });
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        isActive: true,
+        deductPoints: m.points,
+      });
     }
 
     // ========== 3D模型 ==========
@@ -224,24 +283,35 @@ export class ModelSeedService implements OnModuleInit {
       { name: 'hunyuan3d-2-mini', points: 20 },
     ];
     for (const m of threeDModels) {
-      presets.push({ modelName: m.name, provider: ModelProvider.CUSTOM, isActive: true, deductPoints: m.points });
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        isActive: true,
+        deductPoints: m.points,
+      });
     }
 
-
-      // ========== 对话模型 (Chat) ==========
-      const chatModels = [
-        { name: 'gpt-5', points: 5 },
-        { name: 'gpt-4-1106-preview', points: 3 },
-        { name: 'claude-opus-4-5-20251101', points: 5 },
-        { name: 'gemini-3-pro', points: 3 },
-      ];
-      for (const m of chatModels) {
-        presets.push({ modelName: m.name, provider: ModelProvider.CUSTOM, isActive: true, deductPoints: m.points });
-      }
+    // ========== 对话模型 (Chat) ==========
+    const chatModels = [
+      { name: 'gpt-5', points: 5 },
+      { name: 'gpt-4-1106-preview', points: 3 },
+      { name: 'claude-opus-4-5-20251101', points: 5 },
+      { name: 'gemini-3-pro', points: 3 },
+    ];
+    for (const m of chatModels) {
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        isActive: true,
+        deductPoints: m.points,
+      });
+    }
     // 写入数据库
     let created = 0;
     for (const preset of presets) {
-      const existing = await this.modelRepository.findOne({ where: { modelName: preset.modelName } });
+      const existing = await this.modelRepository.findOne({
+        where: { modelName: preset.modelName },
+      });
       if (!existing) {
         const model = this.modelRepository.create({
           ...preset,
@@ -255,7 +325,9 @@ export class ModelSeedService implements OnModuleInit {
       }
     }
 
-    this.logger.log(`自动同步预设模型完成：共 ${presets.length} 个，新创建 ${created} 个`);
+    this.logger.log(
+      `自动同步预设模型完成：共 ${presets.length} 个，新创建 ${created} 个`,
+    );
   }
 
   /**
@@ -264,11 +336,11 @@ export class ModelSeedService implements OnModuleInit {
   private async seedMissingModels() {
     // 定义所有应该存在的模型
     const requiredModels = [
-        // 对话模型
-        { name: 'gpt-5', points: 5 },
-        { name: 'gpt-4-1106-preview', points: 3 },
-        { name: 'claude-opus-4-5-20251101', points: 5 },
-        { name: 'gemini-3-pro', points: 3 },
+      // 对话模型
+      { name: 'gpt-5', points: 5 },
+      { name: 'gpt-4-1106-preview', points: 3 },
+      { name: 'claude-opus-4-5-20251101', points: 5 },
+      { name: 'gemini-3-pro', points: 3 },
 
       // 视频模型
       { name: 'bytedance/seedance-1.5-pro', points: 60 },
@@ -283,7 +355,9 @@ export class ModelSeedService implements OnModuleInit {
 
     let created = 0;
     for (const model of requiredModels) {
-      const existing = await this.modelRepository.findOne({ where: { modelName: model.name } });
+      const existing = await this.modelRepository.findOne({
+        where: { modelName: model.name },
+      });
       if (!existing) {
         const newModel = this.modelRepository.create({
           modelName: model.name,

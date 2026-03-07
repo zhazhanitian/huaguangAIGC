@@ -7,4 +7,3 @@ export class UpdateGroupTitleDto {
   @MaxLength(200)
   title: string;
 }
-

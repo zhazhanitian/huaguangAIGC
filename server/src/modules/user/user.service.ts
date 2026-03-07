@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole, UserStatus } from './user.entity';
@@ -6,6 +11,11 @@ import { UserListDto } from './dto/user-list.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
+
+/** 仅超级管理员可操作的角色 */
+const SUPER_ROLE = UserRole.SUPER;
+/** 普通管理员可见/可操作的角色 */
+const ADMIN_MANAGEABLE_ROLES = [UserRole.USER, UserRole.ADMIN];
 
 /**
  * 用户服务
@@ -19,23 +29,34 @@ export class UserService {
   ) {}
 
   /**
-   * 管理端创建用户
+   * 管理端创建用户（受当前登录角色限制：普通管理员不能创建超级管理员）
    */
-  async createByAdmin(dto: CreateUserDto): Promise<User> {
-    const existingPhone = await this.userRepository.findOne({ where: { phone: dto.phone } });
+  async createByAdmin(dto: CreateUserDto, caller: User): Promise<User> {
+    if (caller.role !== SUPER_ROLE && dto.role === UserRole.SUPER) {
+      throw new ForbiddenException('无权限创建超级管理员账号');
+    }
+    const existingPhone = await this.userRepository.findOne({
+      where: { phone: dto.phone },
+    });
     if (existingPhone) {
       throw new ConflictException('该手机号已被注册');
     }
 
     if (dto.email) {
-      const existingEmail = await this.userRepository.findOne({ where: { email: dto.email } });
+      const existingEmail = await this.userRepository.findOne({
+        where: { email: dto.email },
+      });
       if (existingEmail) {
         throw new ConflictException('该邮箱已被注册');
       }
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
-    const inviteCode = crypto.randomBytes(6).toString('base64url').slice(0, 8).toUpperCase();
+    const inviteCode = crypto
+      .randomBytes(6)
+      .toString('base64url')
+      .slice(0, 8)
+      .toUpperCase();
 
     const user = this.userRepository.create({
       phone: dto.phone,
@@ -53,12 +74,15 @@ export class UserService {
   }
 
   /**
-   * 根据 ID 查找用户
+   * 根据 ID 查找用户（管理端带权限：普通管理员不能查看超级管理员）
    */
-  async findById(id: string): Promise<User> {
+  async findById(id: string, caller?: User): Promise<User> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException('用户不存在');
+    }
+    if (caller && caller.role !== SUPER_ROLE && user.role === UserRole.SUPER) {
+      throw new ForbiddenException('无权限查看该用户');
     }
     return user;
   }
@@ -71,19 +95,37 @@ export class UserService {
   }
 
   /**
-   * 分页查询用户列表（管理端）
+   * 分页查询用户列表（管理端；普通管理员仅返回普通用户与管理员，不包含超级管理员）
    */
-  async findAll(query: UserListDto): Promise<{
+  async findAll(
+    query: UserListDto,
+    caller: User,
+  ): Promise<{
     list: User[];
     total: number;
     page: number;
     pageSize: number;
     totalPages: number;
   }> {
-    const { page = 1, pageSize = 10, keyword, role, status, startDate, endDate } = query;
+    const {
+      page = 1,
+      pageSize = 10,
+      keyword,
+      role,
+      status,
+      startDate,
+      endDate,
+    } = query;
     const skip = (page - 1) * pageSize;
 
     const qb = this.userRepository.createQueryBuilder('user');
+
+    // 普通管理员只能看 user / admin，不能看 super
+    if (caller.role !== SUPER_ROLE) {
+      qb.andWhere('user.role IN (:...manageableRoles)', {
+        manageableRoles: ADMIN_MANAGEABLE_ROLES,
+      });
+    }
 
     if (keyword && keyword.trim()) {
       qb.andWhere(
@@ -126,13 +168,23 @@ export class UserService {
   }
 
   /**
-   * 更新用户
+   * 更新用户（管理端；普通管理员不能改超级管理员，也不能将任何人改为超级管理员）
    */
   async update(
     id: string,
-    updates: Partial<Pick<User, 'username' | 'email' | 'avatar' | 'role' | 'status' | 'sign' | 'balance'>>,
+    updates: Partial<
+      Pick<
+        User,
+        'username' | 'email' | 'avatar' | 'role' | 'status' | 'sign' | 'balance'
+      >
+    >,
+    caller: User,
   ): Promise<User> {
-    const user = await this.findById(id);
+    const user = await this.findById(id, caller);
+
+    if (caller.role !== SUPER_ROLE && updates.role === UserRole.SUPER) {
+      throw new ForbiddenException('无权限将用户设置为超级管理员');
+    }
 
     if (updates.email !== undefined) {
       const newEmail = updates.email ?? null;
@@ -203,17 +255,21 @@ export class UserService {
   }
 
   /**
-   * 封禁/解封用户
+   * 封禁/解封用户（普通管理员不能操作超级管理员）
    */
-  async setStatus(userId: string, status: UserStatus): Promise<User> {
-    return this.update(userId, { status });
+  async setStatus(
+    userId: string,
+    status: UserStatus,
+    caller: User,
+  ): Promise<User> {
+    return this.update(userId, { status }, caller);
   }
 
   /**
-   * 删除用户（软删除可后续扩展，此处为硬删除）
+   * 删除用户（普通管理员不能删除超级管理员）
    */
-  async delete(id: string): Promise<void> {
-    const user = await this.findById(id);
+  async delete(id: string, caller: User): Promise<void> {
+    const user = await this.findById(id, caller);
     await this.userRepository.remove(user);
   }
 }

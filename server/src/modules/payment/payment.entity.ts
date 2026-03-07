@@ -77,7 +77,12 @@ export class Order {
   @Column({ length: 36, comment: '套餐 ID' })
   packageId: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, comment: '订单金额（元）' })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    comment: '订单金额（元）',
+  })
   amount: number;
 
   @Column({

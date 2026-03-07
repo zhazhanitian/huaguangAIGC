@@ -1,5 +1,9 @@
 export type TaskModuleKey = 'draw' | 'video' | 'music' | 'model3d';
-export type TaskEventType = 'task.created' | 'task.updated' | 'task.completed' | 'task.failed';
+export type TaskEventType =
+  | 'task.created'
+  | 'task.updated'
+  | 'task.completed'
+  | 'task.failed';
 
 export type TaskEventPayload = {
   module: TaskModuleKey;
@@ -26,4 +30,3 @@ export type TaskEventPayload = {
 export function userRoom(userId: string) {
   return `user:${userId}`;
 }
-

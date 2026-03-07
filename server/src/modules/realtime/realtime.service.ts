@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Server } from 'socket.io';
-import { userRoom, type TaskEventPayload, type TaskEventType } from './realtime.types';
+import {
+  userRoom,
+  type TaskEventPayload,
+  type TaskEventType,
+} from './realtime.types';
 
 export type TaskFinishRecord = {
   taskId: string;
@@ -29,7 +33,10 @@ export class RealtimeService {
     string,
     { timer: NodeJS.Timeout; payload: Omit<TaskEventPayload, 'type'> }
   >();
-  private readonly lastSentHash = new Map<string, { hash: string; at: number }>();
+  private readonly lastSentHash = new Map<
+    string,
+    { hash: string; at: number }
+  >();
 
   private emitTotal = 0;
   private emitDropped = 0;
@@ -56,7 +63,11 @@ export class RealtimeService {
     this.server = server;
   }
 
-  emitToUser(userId: string, type: TaskEventType, payload: Omit<TaskEventPayload, 'type'>) {
+  emitToUser(
+    userId: string,
+    type: TaskEventType,
+    payload: Omit<TaskEventPayload, 'type'>,
+  ) {
     if (!this.server) return;
     try {
       this.recordTaskMetrics(type, payload);
@@ -107,7 +118,9 @@ export class RealtimeService {
           });
           this.lastSentHash.set(key, { hash: h, at: Date.now() });
           this.emitTotal += 1;
-          this.server?.to(userRoom(userId)).emit('task.updated', { ...p, type: 'task.updated' });
+          this.server
+            ?.to(userRoom(userId))
+            .emit('task.updated', { ...p, type: 'task.updated' });
         }, 600);
 
         this.pendingUpdates.set(key, { timer, payload });
@@ -138,13 +151,22 @@ export class RealtimeService {
   }
 
   getEmitStats() {
-    return { total: this.emitTotal, dropped: this.emitDropped, debounced: this.emitDebounced };
+    return {
+      total: this.emitTotal,
+      dropped: this.emitDropped,
+      debounced: this.emitDebounced,
+    };
   }
 
   getInflight() {
     return Array.from(this.inflight.entries()).map(([k, v]) => {
       const [module, provider, taskType] = k.split('||');
-      return { module: module || 'unknown', provider: provider || 'unknown', taskType: taskType || 'unknown', count: v };
+      return {
+        module: module || 'unknown',
+        provider: provider || 'unknown',
+        taskType: taskType || 'unknown',
+        count: v,
+      };
     });
   }
 
@@ -154,7 +176,12 @@ export class RealtimeService {
     return total;
   }
 
-  queryTaskMetrics(opts: { windowMs: number; module?: string; provider?: string; taskType?: string }) {
+  queryTaskMetrics(opts: {
+    windowMs: number;
+    module?: string;
+    provider?: string;
+    taskType?: string;
+  }) {
     const cutoff = Date.now() - opts.windowMs;
     this.pruneEventLog();
 
@@ -223,20 +250,45 @@ export class RealtimeService {
         failed: g.failed,
         done,
         failRate,
-        p50: { queueMs: pctl(g.queueMs, 0.5), procMs: pctl(g.procMs, 0.5), totalMs: pctl(g.totalMs, 0.5) },
-        p95: { queueMs: pctl(g.queueMs, 0.95), procMs: pctl(g.procMs, 0.95), totalMs: pctl(g.totalMs, 0.95) },
+        p50: {
+          queueMs: pctl(g.queueMs, 0.5),
+          procMs: pctl(g.procMs, 0.5),
+          totalMs: pctl(g.totalMs, 0.5),
+        },
+        p95: {
+          queueMs: pctl(g.queueMs, 0.95),
+          procMs: pctl(g.procMs, 0.95),
+          totalMs: pctl(g.totalMs, 0.95),
+        },
         avg: {
-          queueMs: g.queueMs.length ? Math.round(g.queueMs.reduce((a, b) => a + b, 0) / g.queueMs.length) : null,
-          procMs: g.procMs.length ? Math.round(g.procMs.reduce((a, b) => a + b, 0) / g.procMs.length) : null,
-          totalMs: g.totalMs.length ? Math.round(g.totalMs.reduce((a, b) => a + b, 0) / g.totalMs.length) : null,
+          queueMs: g.queueMs.length
+            ? Math.round(
+                g.queueMs.reduce((a, b) => a + b, 0) / g.queueMs.length,
+              )
+            : null,
+          procMs: g.procMs.length
+            ? Math.round(g.procMs.reduce((a, b) => a + b, 0) / g.procMs.length)
+            : null,
+          totalMs: g.totalMs.length
+            ? Math.round(
+                g.totalMs.reduce((a, b) => a + b, 0) / g.totalMs.length,
+              )
+            : null,
         },
       };
     });
   }
 
-  getRecentFailures(limit: number, filters?: { module?: string; provider?: string; taskType?: string }) {
+  getRecentFailures(
+    limit: number,
+    filters?: { module?: string; provider?: string; taskType?: string },
+  ) {
     const result: TaskFinishRecord[] = [];
-    for (let i = this.eventLog.length - 1; i >= 0 && result.length < limit; i--) {
+    for (
+      let i = this.eventLog.length - 1;
+      i >= 0 && result.length < limit;
+      i--
+    ) {
       const r = this.eventLog[i];
       if (r.endType !== 'failed') continue;
       if (filters?.module && r.module !== filters.module) continue;
@@ -284,7 +336,10 @@ export class RealtimeService {
     }
   }
 
-  private recordTaskMetrics(type: TaskEventType, payload: Omit<TaskEventPayload, 'type'>) {
+  private recordTaskMetrics(
+    type: TaskEventType,
+    payload: Omit<TaskEventPayload, 'type'>,
+  ) {
     const module = String(payload.module || '').trim();
     const taskId = String(payload.taskId || '').trim();
     if (!module || !taskId) return;
@@ -298,7 +353,13 @@ export class RealtimeService {
 
     if (type === 'task.created') {
       this.taskTimelines.set(timelineKey, {
-        taskId, module, provider, taskType, createdAtMs: now, processingAtMs: null, lastErrorMessage: null,
+        taskId,
+        module,
+        provider,
+        taskType,
+        createdAtMs: now,
+        processingAtMs: null,
+        lastErrorMessage: null,
       });
       this.inflightInc(labelKey, 1);
       return;
@@ -316,16 +377,20 @@ export class RealtimeService {
     }
 
     const endType =
-      type === 'task.completed' ? 'completed' as const
-      : type === 'task.failed' ? 'failed' as const
-      : null;
+      type === 'task.completed'
+        ? ('completed' as const)
+        : type === 'task.failed'
+          ? ('failed' as const)
+          : null;
     if (!endType) return;
 
     this.taskTimelines.delete(timelineKey);
     this.inflightInc(labelKey, -1);
 
     const totalMs = now - tl.createdAtMs;
-    const queueMs = tl.processingAtMs ? tl.processingAtMs - tl.createdAtMs : null;
+    const queueMs = tl.processingAtMs
+      ? tl.processingAtMs - tl.createdAtMs
+      : null;
     const procMs = tl.processingAtMs ? now - tl.processingAtMs : null;
 
     this.eventLog.push({

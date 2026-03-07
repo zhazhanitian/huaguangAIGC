@@ -9,9 +9,7 @@ import { SaasController } from './saas.controller';
  * 多租户子站点管理、域名识别、配置
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Site]),
-  ],
+  imports: [TypeOrmModule.forFeature([Site])],
   providers: [SaasService],
   controllers: [SaasController],
   exports: [SaasService],

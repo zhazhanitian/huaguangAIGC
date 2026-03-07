@@ -33,10 +33,18 @@ export class MindMapTask {
   @Column({ type: 'text', comment: '用户输入的提示词' })
   prompt: string;
 
-  @Column({ type: 'text', nullable: true, comment: 'Markdown 内容（MarkMap 层级格式）' })
+  @Column({
+    type: 'text',
+    nullable: true,
+    comment: 'Markdown 内容（MarkMap 层级格式）',
+  })
   markdownContent: string | null;
 
-  @Column({ type: 'text', nullable: true, comment: 'SVG 内容（可选，用于渲染）' })
+  @Column({
+    type: 'text',
+    nullable: true,
+    comment: 'SVG 内容（可选，用于渲染）',
+  })
   svgContent: string | null;
 
   @Column({

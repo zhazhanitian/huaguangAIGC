@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { Message, Modal } from '@arco-design/web-vue'
 import type { FormInstance } from '@arco-design/web-vue'
 import {
@@ -22,6 +22,11 @@ import {
   type UpdateUserData,
   type CreateUserData,
 } from '../api/user'
+import { useUserStore } from '../stores/user'
+
+const userStore = useUserStore()
+/** 当前登录是否为超级管理员（超级管理员可管理所有用户，普通管理员只能管理普通用户与管理员） */
+const isSuperAdmin = computed(() => userStore.userInfo?.role === 'super')
 
 const loading = ref(false)
 const tableData = ref<User[]>([])
@@ -301,6 +306,11 @@ function roleColor(role: string) {
   return 'gray'
 }
 
+/** 当前登录角色是否可管理该行（超级管理员可管理所有人；普通管理员不能管理超级管理员） */
+function canManageRow(record: User) {
+  return isSuperAdmin.value || record.role !== 'super'
+}
+
 function onPageChange(page: number) {
   pagination.page = page
   paginationConfig.current = page
@@ -357,7 +367,7 @@ function onPageSizeChange(size: number) {
           allow-clear
           style="width: 140px"
         >
-          <a-option label="超级管理员" value="super" />
+          <a-option v-if="isSuperAdmin" label="超级管理员" value="super" />
           <a-option label="管理员" value="admin" />
           <a-option label="普通用户" value="user" />
         </a-select>
@@ -427,27 +437,30 @@ function onPageSizeChange(size: number) {
           </span>
         </template>
         <template #action="{ record }">
-          <a-tooltip content="编辑">
-            <a-button type="text" size="small" class="action-btn" @click="openEdit(record)">
-              <template #icon><IconEdit /></template>
-            </a-button>
-          </a-tooltip>
-          <a-tooltip :content="isActive(record) ? '封禁' : '启用'">
-            <a-button
-              type="text"
-              size="small"
-              :status="isActive(record) ? 'warning' : 'success'"
-              class="action-btn"
-              @click="handleStatusChange(record)"
-            >
-              <template #icon><IconMessageBanned /></template>
-            </a-button>
-          </a-tooltip>
-          <a-tooltip content="删除">
-            <a-button type="text" status="danger" size="small" class="action-btn" @click="handleDelete(record)">
-              <template #icon><IconDelete /></template>
-            </a-button>
-          </a-tooltip>
+          <template v-if="canManageRow(record)">
+            <a-tooltip content="编辑">
+              <a-button type="text" size="small" class="action-btn" @click="openEdit(record)">
+                <template #icon><IconEdit /></template>
+              </a-button>
+            </a-tooltip>
+            <a-tooltip :content="isActive(record) ? '封禁' : '启用'">
+              <a-button
+                type="text"
+                size="small"
+                :status="isActive(record) ? 'warning' : 'success'"
+                class="action-btn"
+                @click="handleStatusChange(record)"
+              >
+                <template #icon><IconMessageBanned /></template>
+              </a-button>
+            </a-tooltip>
+            <a-tooltip content="删除">
+              <a-button type="text" status="danger" size="small" class="action-btn" @click="handleDelete(record)">
+                <template #icon><IconDelete /></template>
+              </a-button>
+            </a-tooltip>
+          </template>
+          <span v-else class="no-permission-tip">—</span>
         </template>
       </a-table>
 
@@ -494,7 +507,7 @@ function onPageSizeChange(size: number) {
         </a-form-item>
         <a-form-item label="角色" field="role">
           <a-select v-model="editForm.role" placeholder="请选择" allow-clear>
-            <a-option label="超级管理员" value="super" />
+            <a-option v-if="isSuperAdmin" label="超级管理员" value="super" />
             <a-option label="管理员" value="admin" />
             <a-option label="普通用户" value="user" />
           </a-select>
@@ -549,9 +562,9 @@ function onPageSizeChange(size: number) {
         </a-form-item>
         <a-form-item label="角色" field="role">
           <a-select v-model="addForm.role" placeholder="请选择">
-            <a-option label="普通用户" value="user" />
+            <a-option v-if="isSuperAdmin" label="超级管理员" value="super" />
             <a-option label="管理员" value="admin" />
-            <a-option label="超级管理员" value="super" />
+            <a-option label="普通用户" value="user" />
           </a-select>
         </a-form-item>
         <a-form-item label="状态" field="status">
@@ -709,6 +722,11 @@ function onPageSizeChange(size: number) {
 
 .action-btn {
   margin: 0 2px;
+}
+
+.no-permission-tip {
+  color: var(--text-3);
+  font-size: 12px;
 }
 
 .pagination-wrap {

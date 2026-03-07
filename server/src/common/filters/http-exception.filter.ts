@@ -39,10 +39,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
     } else if (exception instanceof Error) {
       message = exception.message;
-      this.logger.error(
-        `未捕获异常: ${exception.message}`,
-        exception.stack,
-      );
+      this.logger.error(`未捕获异常: ${exception.message}`, exception.stack);
     }
 
     const errorResponse = {

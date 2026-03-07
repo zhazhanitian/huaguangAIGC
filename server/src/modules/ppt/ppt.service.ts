@@ -67,7 +67,10 @@ export class PptService {
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `请为以下主题生成 PPT 大纲（8-15 页）：\n${prompt}` },
+        {
+          role: 'user',
+          content: `请为以下主题生成 PPT 大纲（8-15 页）：\n${prompt}`,
+        },
       ],
       temperature: 0.7,
       max_tokens: 2000,
@@ -90,7 +93,9 @@ export class PptService {
   /**
    * 使用 AI 根据大纲填充每页内容
    */
-  async generateContent(outline: PptOutlineSlide[]): Promise<PptContentSlide[]> {
+  async generateContent(
+    outline: PptOutlineSlide[],
+  ): Promise<PptContentSlide[]> {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       throw new Error('未配置 OPENAI_API_KEY');
@@ -134,7 +139,12 @@ export class PptService {
     userId: string,
     page: number = 1,
     pageSize: number = 10,
-  ): Promise<{ list: PptTask[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: PptTask[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.pptRepository.findAndCount({
       where: { userId },
       order: { createdAt: 'DESC' },

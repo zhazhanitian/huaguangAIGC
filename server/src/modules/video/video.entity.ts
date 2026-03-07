@@ -73,7 +73,11 @@ export class VideoTask {
   @Column({ type: 'text', comment: '提示词' })
   prompt: string;
 
-  @Column({ type: 'text', nullable: true, comment: '源图 URL（img2video 时使用）' })
+  @Column({
+    type: 'text',
+    nullable: true,
+    comment: '源图 URL（img2video 时使用）',
+  })
   imageUrl: string | null;
 
   @Column({ type: 'text', nullable: true, comment: '生成结果视频 URL' })
@@ -99,7 +103,13 @@ export class VideoTask {
   @Column({ type: 'json', nullable: true, comment: '扩展参数' })
   params: VideoParams | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0, comment: '扣除积分数' })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    comment: '扣除积分数',
+  })
   deductPoints: number;
 
   @Column({ type: 'tinyint', default: 0, comment: '是否公开到画廊' })

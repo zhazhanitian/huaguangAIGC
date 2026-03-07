@@ -20,10 +20,7 @@ export class SaasService {
   /**
    * 创建子站点
    */
-  async createSite(
-    ownerId: string,
-    dto: CreateSiteDto,
-  ): Promise<Site> {
+  async createSite(ownerId: string, dto: CreateSiteDto): Promise<Site> {
     const exists = await this.siteRepository.findOne({
       where: { domain: dto.domain.toLowerCase().trim() },
     });

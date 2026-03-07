@@ -39,6 +39,7 @@ import {
   type Model3dTask,
 } from '../../api/model3d'
 import { uploadFile } from '../../api/upload'
+import { getModels } from '../../api/model'
 import EmptyState from '../../components/EmptyState.vue'
 import WorkCardActionButton from '../../components/WorkCardActionButton.vue'
 import GenerateButton from '../../components/GenerateButton.vue'
@@ -101,10 +102,35 @@ const form = ref({
 const sourceImage = ref<{ file: File; url: string } | null>(null)
 const sourceInputRef = ref<HTMLInputElement>()
 
-const providers = [
+const providersDef = [
   { value: 'tencent-hunyuan-3d-pro', label: '腾讯混元3D-专业版', desc: '高质量，支持更多细节参数' },
   { value: 'tencent-hunyuan-3d-rapid', label: '腾讯混元3D-极速版', desc: '生成更快，适合快速迭代' },
 ]
+/** GET /model/list?type=3d 返回的 modelName 与前端 value 一致（来自 model.service 预设），无需映射 */
+const active3dModelNames = ref<Set<string>>(new Set())
+const providers = computed(() => {
+  const set = active3dModelNames.value
+  if (set.size === 0) return providersDef
+  return providersDef.filter(p => set.has(p.value))
+})
+
+async function fetch3dModels() {
+  try {
+    const list = await getModels({ type: '3d' })
+    if (Array.isArray(list)) {
+      active3dModelNames.value = new Set(
+        list.map((m: { modelName?: string }) => m.modelName).filter((x): x is string => Boolean(x))
+      )
+    }
+  } catch { /* ignore */ }
+}
+
+watch(providers, (list) => {
+  const first = list[0]
+  if (list.length && first && !list.some(p => p.value === form.value.provider)) {
+    form.value.provider = first.value
+  }
+}, { immediate: true })
 
 const textureStyles = [
   { value: 'general', label: '通用' },
@@ -976,6 +1002,7 @@ watch(previewTask, () => {
 })
 
 onMounted(() => {
+  fetch3dModels()
   fetchMyTasks()
   unsubRealtime = onTaskEvent((e) => {
     if (e.module !== 'model3d') return

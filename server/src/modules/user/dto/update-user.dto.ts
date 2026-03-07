@@ -1,4 +1,12 @@
-import { IsOptional, IsString, IsEnum, IsNumber, Min, Max, IsEmail } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsEnum,
+  IsNumber,
+  Min,
+  Max,
+  IsEmail,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole, UserStatus } from '../user.entity';
 

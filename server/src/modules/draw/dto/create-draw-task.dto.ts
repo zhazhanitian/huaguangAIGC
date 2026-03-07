@@ -12,7 +12,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
  * 创建绘画任务 DTO
  */
 export class CreateDrawTaskDto {
-  @ApiPropertyOptional({ description: '任务来源', enum: ['draw', 'canvas'], default: 'draw' })
+  @ApiPropertyOptional({
+    description: '任务来源',
+    enum: ['draw', 'canvas'],
+    default: 'draw',
+  })
   @IsOptional()
   @IsString()
   @IsIn(['draw', 'canvas'])

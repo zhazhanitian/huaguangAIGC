@@ -1,11 +1,14 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
-import { User } from '../user/user.entity';
-import { UserRole, UserStatus } from '../user/user.entity';
+import { User, UserRole, UserStatus } from '../user/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { InvitationService } from '../invitation/invitation.service';
@@ -26,7 +29,9 @@ export class AuthService {
   /**
    * 用户注册
    */
-  async register(dto: RegisterDto): Promise<{ access_token: string; user: Partial<User> }> {
+  async register(
+    dto: RegisterDto,
+  ): Promise<{ access_token: string; user: Partial<User> }> {
     const existingPhone = await this.userRepository.findOne({
       where: { phone: dto.phone },
     });
@@ -46,7 +51,11 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-    const inviteCode = crypto.randomBytes(6).toString('base64url').slice(0, 8).toUpperCase();
+    const inviteCode = crypto
+      .randomBytes(6)
+      .toString('base64url')
+      .slice(0, 8)
+      .toUpperCase();
 
     const user = this.userRepository.create({
       phone: dto.phone,
@@ -70,7 +79,10 @@ export class AuthService {
     const saved = await this.userRepository.save(user);
 
     if (dto.inviterCode?.trim()) {
-      await this.invitationService.processInvitation(saved.id, dto.inviterCode.trim());
+      await this.invitationService.processInvitation(
+        saved.id,
+        dto.inviterCode.trim(),
+      );
     }
 
     const token = this.generateToken(saved);
@@ -93,10 +105,22 @@ export class AuthService {
   /**
    * 用户登录
    */
-  async login(dto: LoginDto): Promise<{ access_token: string; user: Partial<User> }> {
+  async login(
+    dto: LoginDto,
+  ): Promise<{ access_token: string; user: Partial<User> }> {
     const user = await this.userRepository.findOne({
       where: { phone: dto.phone },
-      select: ['id', 'phone', 'email', 'password', 'username', 'avatar', 'role', 'status', 'balance'],
+      select: [
+        'id',
+        'phone',
+        'email',
+        'password',
+        'username',
+        'avatar',
+        'role',
+        'status',
+        'balance',
+      ],
     });
 
     if (!user) {
@@ -130,9 +154,31 @@ export class AuthService {
   }
 
   /**
+   * 管理后台登录（仅允许 admin / super 角色，否则返回与普通登录一致的错误文案，避免泄露）
+   */
+  async adminLogin(
+    dto: LoginDto,
+  ): Promise<{ access_token: string; user: Partial<User> }> {
+    const result = await this.login(dto);
+    const role = result.user?.role;
+    if (role !== UserRole.ADMIN && role !== UserRole.SUPER) {
+      throw new UnauthorizedException('手机号或密码错误');
+    }
+    return result;
+  }
+
+  /**
    * 更新当前用户资料
    */
-  async updateProfile(userId: string, updates: { username?: string; email?: string; avatar?: string; sign?: string }): Promise<Partial<User>> {
+  async updateProfile(
+    userId: string,
+    updates: {
+      username?: string;
+      email?: string;
+      avatar?: string;
+      sign?: string;
+    },
+  ): Promise<Partial<User>> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('用户不存在');
     if (updates.username !== undefined) user.username = updates.username;
@@ -153,7 +199,11 @@ export class AuthService {
   /**
    * 生成 JWT
    */
-  private generateToken(user: { id: string; email?: string | null; phone?: string | null }): string {
+  private generateToken(user: {
+    id: string;
+    email?: string | null;
+    phone?: string | null;
+  }): string {
     return this.jwtService.sign({
       sub: user.id,
       email: user.email,

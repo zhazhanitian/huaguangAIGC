@@ -59,15 +59,19 @@ type OpenAIInputMessage = {
 };
 
 const APIMART_TEXT_API_KEY =
-  process.env.APIMART_API_KEY || 'sk-QDveW1X9IX9GAkWuQ9GbL9NAZSaJA9OfXQ5lbySqYe1zVAIV';
-const APIMART_TEXT_BASE = (process.env.APIMART_API_URL || 'https://api.apimart.ai').replace(/\/+$/, '');
+  process.env.APIMART_API_KEY ||
+  'sk-QDveW1X9IX9GAkWuQ9GbL9NAZSaJA9OfXQ5lbySqYe1zVAIV';
+const APIMART_TEXT_BASE = (
+  process.env.APIMART_API_URL || 'https://api.apimart.ai'
+).replace(/\/+$/, '');
 const APIMART_CHAT_MODELS = [
   'gpt-4-1106-preview',
   'gpt-5',
   'claude-opus-4-5-20251101',
 ] as const;
 const APIMART_CLAUDE_MODEL = 'claude-opus-4-5-20251101';
-const APIMART_CLAUDE_API_VERSION = process.env.APIMART_CLAUDE_API_VERSION || '2025-10-01';
+const APIMART_CLAUDE_API_VERSION =
+  process.env.APIMART_CLAUDE_API_VERSION || '2025-10-01';
 
 /** APIMart 实际模型名映射（见 APIMart 文档）；Claude 允许通过 env 覆盖 */
 const APIMART_MODEL_MAP: Record<string, string> = {
@@ -117,9 +121,7 @@ export class ModelService {
   private toLocalUploadPath(url: string): string | null {
     if (!url) return null;
     try {
-      const pathname = url.startsWith('http')
-        ? new URL(url).pathname
-        : url;
+      const pathname = url.startsWith('http') ? new URL(url).pathname : url;
       if (!pathname.startsWith('/uploads/')) return null;
       const safeName = basename(pathname);
       return join(process.cwd(), 'uploads', safeName);
@@ -128,7 +130,9 @@ export class ModelService {
     }
   }
 
-  private async imageAttachmentToModelUrl(attachment: ChatAttachment): Promise<string | null> {
+  private async imageAttachmentToModelUrl(
+    attachment: ChatAttachment,
+  ): Promise<string | null> {
     const sourceUrl = (attachment.url || '').trim();
     if (!sourceUrl) return null;
 
@@ -137,7 +141,8 @@ export class ModelService {
     if (localPath) {
       try {
         const bin = await readFile(localPath);
-        const mime = attachment.mimetype || this.guessMimeTypeFromPath(localPath);
+        const mime =
+          attachment.mimetype || this.guessMimeTypeFromPath(localPath);
         return `data:${mime};base64,${bin.toString('base64')}`;
       } catch {
         // 读取失败则回退到原 URL
@@ -147,28 +152,43 @@ export class ModelService {
     return sourceUrl;
   }
 
-  private async toOpenAIMessages(messages: ChatMessage[]): Promise<OpenAIInputMessage[]> {
+  private async toOpenAIMessages(
+    messages: ChatMessage[],
+  ): Promise<OpenAIInputMessage[]> {
     const out: OpenAIInputMessage[] = [];
     for (const m of messages) {
       const attachments = (m.attachments || []).filter(Boolean);
-      const hasVisionAttachments = m.role === 'user' && attachments.some((a) => a.type === 'image');
+      const hasVisionAttachments =
+        m.role === 'user' && attachments.some((a) => a.type === 'image');
       if (!hasVisionAttachments) {
         out.push({ role: m.role, content: m.content });
         continue;
       }
 
-      const parts: OpenAIInputMessage['content'] = [{ type: 'text', text: m.content || '请分析附件' }];
+      const parts: OpenAIInputMessage['content'] = [
+        { type: 'text', text: m.content || '请分析附件' },
+      ];
       for (const att of attachments) {
         if (att.type === 'image') {
           const modelUrl = await this.imageAttachmentToModelUrl(att);
           if (modelUrl) {
-            (parts as Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }>).push({
+            (
+              parts as Array<
+                | { type: 'text'; text: string }
+                | { type: 'image_url'; image_url: { url: string } }
+              >
+            ).push({
               type: 'image_url',
               image_url: { url: modelUrl },
             });
           }
         } else if (att.url) {
-          (parts as Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }>).push({
+          (
+            parts as Array<
+              | { type: 'text'; text: string }
+              | { type: 'image_url'; image_url: { url: string } }
+            >
+          ).push({
             type: 'text',
             text: `附件 ${att.name}: ${att.url}`,
           });
@@ -210,7 +230,9 @@ export class ModelService {
       };
     }
 
-    const model = await this.modelRepository.findOne({ where: { id: modelId } });
+    const model = await this.modelRepository.findOne({
+      where: { id: modelId },
+    });
     if (model?.apiKey) {
       return {
         apiKey: model.apiKey,
@@ -243,7 +265,9 @@ export class ModelService {
     throw new BadRequestException('该模型未配置可用的 API Key');
   }
 
-  private inferApiKeyProvider(modelName?: string | null): ApiKeyProvider | null {
+  private inferApiKeyProvider(
+    modelName?: string | null,
+  ): ApiKeyProvider | null {
     const name = String(modelName || '').toLowerCase();
     if (!name) return null;
     if (
@@ -255,7 +279,11 @@ export class ModelService {
     ) {
       return ApiKeyProvider.APIMART;
     }
-    if (name.includes('gemini') || name.includes('banana') || name.includes('grsai')) {
+    if (
+      name.includes('gemini') ||
+      name.includes('banana') ||
+      name.includes('grsai')
+    ) {
       return ApiKeyProvider.GRSAI;
     }
     if (
@@ -269,11 +297,15 @@ export class ModelService {
     return null;
   }
 
-  private getEnvProviderFallback(provider: ApiKeyProvider): SelectedKeyConfig | null {
+  private getEnvProviderFallback(
+    provider: ApiKeyProvider,
+  ): SelectedKeyConfig | null {
     if (provider === ApiKeyProvider.APIMART) {
       const apiKey = String(process.env.APIMART_API_KEY || '').trim();
       if (!apiKey) return null;
-      const base = String(process.env.APIMART_API_URL || 'https://api.apimart.ai').replace(/\/+$/, '');
+      const base = String(
+        process.env.APIMART_API_URL || 'https://api.apimart.ai',
+      ).replace(/\/+$/, '');
       return {
         apiKey,
         baseUrl: `${base}/v1`,
@@ -284,7 +316,9 @@ export class ModelService {
     if (provider === ApiKeyProvider.GRSAI) {
       const apiKey = String(process.env.GRSAI_API_KEY || '').trim();
       if (!apiKey) return null;
-      const base = String(process.env.GRSAI_API_URL || 'https://grsaiapi.com/v1').replace(/\/+$/, '');
+      const base = String(
+        process.env.GRSAI_API_URL || 'https://grsaiapi.com/v1',
+      ).replace(/\/+$/, '');
       return {
         apiKey,
         baseUrl: base,
@@ -295,7 +329,9 @@ export class ModelService {
     if (provider === ApiKeyProvider.OPENAI) {
       const apiKey = String(process.env.OPENAI_API_KEY || '').trim();
       if (!apiKey) return null;
-      const base = String(process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
+      const base = String(
+        process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+      ).replace(/\/+$/, '');
       return {
         apiKey,
         baseUrl: base,
@@ -306,7 +342,9 @@ export class ModelService {
     if (provider === ApiKeyProvider.KIE) {
       const apiKey = String(process.env.KIE_API_KEY || '').trim();
       if (!apiKey) return null;
-      const base = String(process.env.KIE_API_URL || 'https://api.kie.ai').replace(/\/+$/, '');
+      const base = String(
+        process.env.KIE_API_URL || 'https://api.kie.ai',
+      ).replace(/\/+$/, '');
       return {
         apiKey,
         baseUrl: base,
@@ -343,15 +381,26 @@ export class ModelService {
 
   private getApimartApiKey(): string {
     // Read env at runtime (ConfigModule loads env after module import)
-    return String(process.env.APIMART_API_KEY || 'sk-QDveW1X9IX9GAkWuQ9GbL9NAZSaJA9OfXQ5lbySqYe1zVAIV').trim();
+    return String(
+      process.env.APIMART_API_KEY ||
+        'sk-QDveW1X9IX9GAkWuQ9GbL9NAZSaJA9OfXQ5lbySqYe1zVAIV',
+    ).trim();
   }
 
   private getApimartBase(): string {
-    return String(process.env.APIMART_API_URL || 'https://api.apimart.ai').replace(/\/+$/, '');
+    return String(
+      process.env.APIMART_API_URL || 'https://api.apimart.ai',
+    ).replace(/\/+$/, '');
   }
 
-  private getApimartFallbackRuntime(modelName: string): RuntimeModelConfig | null {
-    if (!APIMART_CHAT_MODELS.includes(modelName as (typeof APIMART_CHAT_MODELS)[number])) {
+  private getApimartFallbackRuntime(
+    modelName: string,
+  ): RuntimeModelConfig | null {
+    if (
+      !APIMART_CHAT_MODELS.includes(
+        modelName as (typeof APIMART_CHAT_MODELS)[number],
+      )
+    ) {
       return null;
     }
     const transport: RuntimeModelConfig['transport'] =
@@ -365,13 +414,18 @@ export class ModelService {
       temperature: 0.7,
       topP: 1,
       apiKey: APIMART_TEXT_API_KEY,
-      baseUrl: transport === 'openai-responses' ? `${APIMART_TEXT_BASE}/v1` : APIMART_TEXT_BASE,
+      baseUrl:
+        transport === 'openai-responses'
+          ? `${APIMART_TEXT_BASE}/v1`
+          : APIMART_TEXT_BASE,
       keyId: '',
       transport,
     };
   }
 
-  private async resolveRuntimeModel(modelName: string): Promise<RuntimeModelConfig> {
+  private async resolveRuntimeModel(
+    modelName: string,
+  ): Promise<RuntimeModelConfig> {
     const fallback = this.getApimartFallbackRuntime(modelName);
     if (fallback) {
       // 优先使用数据库中的 Key（管理端可配置），无 Key 时用 APIMart 兜底
@@ -379,7 +433,9 @@ export class ModelService {
         const model = await this.getModelByName(modelName);
         const config = await this.pickKeyForModel(model.id);
         const transport: RuntimeModelConfig['transport'] =
-          modelName === APIMART_CLAUDE_MODEL ? 'claude-messages' : 'openai-responses';
+          modelName === APIMART_CLAUDE_MODEL
+            ? 'claude-messages'
+            : 'openai-responses';
         const actualModel = APIMART_MODEL_MAP[modelName] ?? modelName;
         return {
           modelName: actualModel,
@@ -440,7 +496,10 @@ export class ModelService {
     };
   }
 
-  private async chatWithClaudeMessages(runtime: RuntimeModelConfig, messages: ChatMessage[]): Promise<string> {
+  private async chatWithClaudeMessages(
+    runtime: RuntimeModelConfig,
+    messages: ChatMessage[],
+  ): Promise<string> {
     const normalized = this.toClaudeMessages(messages);
     const body: Record<string, unknown> = {
       model: runtime.modelName,
@@ -451,15 +510,18 @@ export class ModelService {
     };
     if (normalized.system) body.system = normalized.system;
 
-    const res = await fetch(`${runtime.baseUrl || APIMART_TEXT_BASE}/v1/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': runtime.apiKey,
-        'anthropic-version': APIMART_CLAUDE_API_VERSION,
+    const res = await fetch(
+      `${runtime.baseUrl || APIMART_TEXT_BASE}/v1/messages`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': runtime.apiKey,
+          'anthropic-version': APIMART_CLAUDE_API_VERSION,
+        },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    });
+    );
     const text = await res.text();
     if (!res.ok) {
       throw new BadRequestException(`Claude API 错误(${res.status}): ${text}`);
@@ -468,7 +530,9 @@ export class ModelService {
     try {
       parsed = JSON.parse(text);
     } catch {
-      throw new BadRequestException(`Claude API 返回非 JSON: ${text.slice(0, 200)}`);
+      throw new BadRequestException(
+        `Claude API 返回非 JSON: ${text.slice(0, 200)}`,
+      );
     }
     const content =
       parsed?.content?.[0]?.text ||
@@ -494,21 +558,28 @@ export class ModelService {
     };
     if (normalized.system) body.system = normalized.system;
 
-    const res = await fetch(`${runtime.baseUrl || APIMART_TEXT_BASE}/v1/messages`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': runtime.apiKey,
-        'anthropic-version': APIMART_CLAUDE_API_VERSION,
+    const res = await fetch(
+      `${runtime.baseUrl || APIMART_TEXT_BASE}/v1/messages`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': runtime.apiKey,
+          'anthropic-version': APIMART_CLAUDE_API_VERSION,
+        },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    });
+    );
     if (!res.ok || !res.body) {
       const text = await res.text();
-      throw new BadRequestException(`Claude 流式请求失败(${res.status}): ${text}`);
+      throw new BadRequestException(
+        `Claude 流式请求失败(${res.status}): ${text}`,
+      );
     }
 
-    async function* iterate(bodyStream: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+    async function* iterate(
+      bodyStream: ReadableStream<Uint8Array>,
+    ): AsyncGenerator<string> {
       const reader = bodyStream.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -665,9 +736,13 @@ export class ModelService {
     updated: number;
     total: number;
     chatKeysAdded?: number;
-    models: Array<Pick<AiModel, 'id' | 'modelName' | 'provider' | 'isActive' | 'order'>>;
+    models: Array<
+      Pick<AiModel, 'id' | 'modelName' | 'provider' | 'isActive' | 'order'>
+    >;
   }> {
-    const presets: Array<Partial<AiModel> & { modelName: string; apiProvider?: string }> = [];
+    const presets: Array<
+      Partial<AiModel> & { modelName: string; apiProvider?: string }
+    > = [];
 
     // ========== 文字模型 (APIMart / GrsAI) ==========
     presets.push(
@@ -875,7 +950,10 @@ export class ModelService {
     }
 
     // 去重（同名只保留最先的 order/设置）
-    const byName = new Map<string, Partial<AiModel> & { modelName: string; apiProvider?: string }>();
+    const byName = new Map<
+      string,
+      Partial<AiModel> & { modelName: string; apiProvider?: string }
+    >();
     for (const p of presets) {
       if (!byName.has(p.modelName)) byName.set(p.modelName, p);
     }
@@ -887,16 +965,23 @@ export class ModelService {
     // API Key 配置
     const apimartKey = this.getApimartApiKey();
     const apimartBase = this.getApimartBase();
-    const kieKey = process.env.KIE_API_KEY || 'a27f776a5028b2e0b3d3208293e8c9ac';
-    const kieBase = (process.env.KIE_API_URL || 'https://api.kie.ai').replace(/\/+$/, '');
-    const grsaiKey = process.env.GRSAI_API_KEY || 'sk-4e5fa91a66d54303ba527d2b4b8e5e09';
+    const kieKey =
+      process.env.KIE_API_KEY || 'a27f776a5028b2e0b3d3208293e8c9ac';
+    const kieBase = (process.env.KIE_API_URL || 'https://api.kie.ai').replace(
+      /\/+$/,
+      '',
+    );
+    const grsaiKey =
+      process.env.GRSAI_API_KEY || 'sk-4e5fa91a66d54303ba527d2b4b8e5e09';
     const grsaiBase = 'https://grsaiapi.com/v1';
 
     let keysAdded = 0;
 
     for (const p of uniq) {
-      let model = await this.modelRepository.findOne({ where: { modelName: p.modelName } });
-      
+      let model = await this.modelRepository.findOne({
+        where: { modelName: p.modelName },
+      });
+
       if (!model) {
         model = this.modelRepository.create({
           modelName: p.modelName,
@@ -915,7 +1000,10 @@ export class ModelService {
         created += 1;
       } else {
         // 更新积分配置
-        if (typeof p.deductPoints === 'number' && model.deductPoints !== p.deductPoints) {
+        if (
+          typeof p.deductPoints === 'number' &&
+          model.deductPoints !== p.deductPoints
+        ) {
           model.deductPoints = p.deductPoints;
           await this.modelRepository.save(model);
           updated += 1;
@@ -923,13 +1011,16 @@ export class ModelService {
       }
 
       // 为模型添加 API Key（如果还没有）
-      const keyCount = await this.keyRepository.count({ where: { modelId: model.id } });
+      const keyCount = await this.keyRepository.count({
+        where: { modelId: model.id },
+      });
       if (keyCount === 0 && p.apiProvider) {
         let keyConfig: { apiKey: string; baseUrl: string } | null = null;
-        
+
         switch (p.apiProvider) {
           case 'apimart':
-            if (apimartKey) keyConfig = { apiKey: apimartKey, baseUrl: `${apimartBase}/v1` };
+            if (apimartKey)
+              keyConfig = { apiKey: apimartKey, baseUrl: `${apimartBase}/v1` };
             break;
           case 'kie':
             if (kieKey) keyConfig = { apiKey: kieKey, baseUrl: kieBase };

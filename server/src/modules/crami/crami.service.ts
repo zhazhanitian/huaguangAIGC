@@ -85,7 +85,9 @@ export class CramiService {
     const id = batchId || crypto.randomBytes(8).toString('hex');
     const codes: string[] = [];
     const existingCodes = new Set(
-      (await this.cramiRepository.find({ select: ['code'] })).map((c) => c.code),
+      (await this.cramiRepository.find({ select: ['code'] })).map(
+        (c) => c.code,
+      ),
     );
 
     const entities: Crami[] = [];
@@ -94,7 +96,7 @@ export class CramiService {
 
     while (entities.length < count && attempts < maxAttempts) {
       attempts++;
-      let code = this.generateCode();
+      const code = this.generateCode();
       if (existingCodes.has(code)) continue;
       existingCodes.add(code);
 

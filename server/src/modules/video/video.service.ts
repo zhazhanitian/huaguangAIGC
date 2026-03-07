@@ -49,10 +49,7 @@ export class VideoService {
     private readonly badWordsService: BadWordsService,
   ) {}
 
-  private toPayload(
-    task: VideoTask,
-    type: TaskEventType,
-  ): Omit<TaskEventPayload, 'type'> {
+  private toPayload(task: VideoTask): Omit<TaskEventPayload, 'type'> {
     return {
       module: 'video',
       taskId: task.id,
@@ -69,7 +66,7 @@ export class VideoService {
   }
 
   private emit(userId: string, type: TaskEventType, task: VideoTask) {
-    this.realtime.emitToUser(userId, type, this.toPayload(task, type));
+    this.realtime.emitToUser(userId, type, this.toPayload(task));
   }
 
   private async resolvePoints(modelName?: string): Promise<number> {
@@ -677,31 +674,28 @@ export class VideoService {
     const maxAttempts = 400;
     const pollInterval = 3000;
 
+    // KIE 统一任务查询接口：https://docs.kie.ai/market/common/get-task-detail
+    const recordInfoUrl = `${endpoint}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`;
+
     for (let i = 0; i < maxAttempts; i++) {
       await this.sleep(pollInterval);
 
       const statusRes = await this.httpRequest<{
         code?: number;
         data?: {
-          taskId?: string;
-          status?: string;
           state?: string;
           progress?: number;
-          result?: any;
-          output?: any;
-          video_url?: string;
-          videoUrl?: string;
-          error?: any;
+          resultJson?: string;
           failMsg?: string;
         };
       }>({
-        url: `${endpoint}/api/v1/jobs/getTaskDetail?taskId=${encodeURIComponent(taskId)}`,
+        url: recordInfoUrl,
         method: 'GET',
         headers: { Authorization: `Bearer ${apiKey}` },
       });
 
       const data = statusRes?.data;
-      const state = String(data?.status || data?.state || '').toLowerCase();
+      const state = String(data?.state ?? '').toLowerCase();
       const progress = Number(data?.progress ?? 0);
       if (!Number.isNaN(progress) && progress > 0) {
         task.progress = Math.min(Math.max(progress, 0), 99);
@@ -714,16 +708,14 @@ export class VideoService {
         );
       }
 
-      if (['success', 'succeeded', 'completed', 'done'].includes(state)) {
-        const videoUrl = this.extractSeedanceVideoUrl(data);
+      if (state === 'success') {
+        const videoUrl = this.extractKieResultVideoUrl(data?.resultJson);
         if (videoUrl) return videoUrl;
         throw new Error('Seedance 1.5 Pro 任务完成但未获取到视频 URL');
       }
 
-      if (['fail', 'failed', 'error'].includes(state)) {
-        throw new Error(
-          data?.failMsg || data?.error?.message || 'Seedance 1.5 Pro 任务失败',
-        );
+      if (state === 'fail') {
+        throw new Error(data?.failMsg || 'Seedance 1.5 Pro 任务失败');
       }
     }
 
@@ -747,10 +739,13 @@ export class VideoService {
     if (!apiKey) throw new Error('未配置 KIE_API_KEY');
 
     const durationRaw = Number(params.duration ?? 5);
-    const allowedDurations = [3, 4, 5, 6, 8, 10];
+    // KIE Kling 2.6 文生/图生视频仅支持 5、10 秒，见 https://docs.kie.ai/market/kling/text-to-video
+    const allowedDurations = [5, 10];
     const duration = allowedDurations.includes(durationRaw)
       ? durationRaw
-      : allowedDurations[0];
+      : durationRaw <= 5
+        ? 5
+        : 10;
     const sound = Boolean(params.sound ?? false);
     const aspectRatio = ['1:1', '16:9', '9:16', '4:3'].includes(
       String(params.aspectRatio),
@@ -843,35 +838,28 @@ export class VideoService {
     const maxAttempts = 400;
     const pollInterval = 3000;
 
-    const fetchDetail = async () => {
-      const paths = [
-        `/api/v1/jobs/getTaskDetail?taskId=${encodeURIComponent(taskId)}`,
-        `/api/v1/jobs/getTask?taskId=${encodeURIComponent(taskId)}`,
-        `/api/v1/jobs/getTaskResult?taskId=${encodeURIComponent(taskId)}`,
-      ];
-      for (const path of paths) {
-        try {
-          const res = await this.httpRequest<any>({
-            url: `${endpoint}${path}`,
-            method: 'GET',
-            headers: { Authorization: `Bearer ${apiKey}` },
-          });
-          if (res?.data) return res.data;
-          if (res) return res;
-        } catch {}
-      }
-      return null;
-    };
+    // KIE 统一任务查询接口：https://docs.kie.ai/market/common/get-task-detail
+    const recordInfoUrl = `${endpoint}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`;
 
     for (let i = 0; i < maxAttempts; i++) {
       await this.sleep(pollInterval);
 
-      const data = await fetchDetail();
-      if (!data) continue;
+      const statusRes = await this.httpRequest<{
+        code?: number;
+        data?: {
+          state?: string;
+          progress?: number;
+          resultJson?: string;
+          failMsg?: string;
+        };
+      }>({
+        url: recordInfoUrl,
+        method: 'GET',
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
 
-      const state = String(
-        data?.status || data?.state || data?.task_status || '',
-      ).toLowerCase();
+      const data = statusRes?.data;
+      const state = String(data?.state ?? '').toLowerCase();
       const progress = Number(data?.progress ?? 0);
       if (!Number.isNaN(progress) && progress > 0) {
         task.progress = Math.min(Math.max(progress, 0), 99);
@@ -884,16 +872,14 @@ export class VideoService {
         );
       }
 
-      if (['success', 'succeeded', 'completed', 'done'].includes(state)) {
-        const videoUrl = this.extractKling26VideoUrl(data);
+      if (state === 'success') {
+        const videoUrl = this.extractKieResultVideoUrl(data?.resultJson);
         if (videoUrl) return videoUrl;
         throw new Error('Kling 2.6 任务完成但未获取到视频 URL');
       }
 
-      if (['fail', 'failed', 'error'].includes(state)) {
-        throw new Error(
-          data?.failMsg || data?.error?.message || 'Kling 2.6 任务失败',
-        );
+      if (state === 'fail') {
+        throw new Error(data?.failMsg || 'Kling 2.6 任务失败');
       }
     }
 
@@ -1050,6 +1036,33 @@ export class VideoService {
     try {
       const deep = JSON.stringify(detail);
       const match = deep.match(/"(https?:\/\/[^\"]+\.mp4[^\"]*)"/);
+      if (match?.[1]) return match[1];
+    } catch {}
+    return null;
+  }
+
+  /**
+   * 从 KIE recordInfo 返回的 resultJson 中解析视频 URL（格式：{ resultUrls: string[] }）
+   * 文档：https://docs.kie.ai/market/common/get-task-detail
+   */
+  private extractKieResultVideoUrl(resultJson?: string): string | null {
+    if (!resultJson || typeof resultJson !== 'string') return null;
+    try {
+      const parsed = JSON.parse(resultJson);
+      const urls = parsed?.resultUrls;
+      if (Array.isArray(urls) && urls.length > 0) {
+        const first = urls[0];
+        if (typeof first === 'string' && first.startsWith('http')) return first;
+      }
+      const url =
+        parsed?.video_url ||
+        parsed?.videoUrl ||
+        parsed?.url ||
+        parsed?.output?.url ||
+        parsed?.result?.url;
+      if (typeof url === 'string' && url.startsWith('http')) return url;
+      const deep = JSON.stringify(parsed);
+      const match = deep.match(/"(https?:\/\/[^\"]+\.(?:mp4|m3u8)[^\"]*)"/);
       if (match?.[1]) return match[1];
     } catch {}
     return null;

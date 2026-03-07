@@ -27,10 +27,7 @@ export class DrawController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '创建绘画任务' })
-  async create(
-    @GetUser('id') userId: string,
-    @Body() dto: CreateDrawTaskDto,
-  ) {
+  async create(@GetUser('id') userId: string, @Body() dto: CreateDrawTaskDto) {
     return this.drawService.createTask(userId, dto);
   }
 
@@ -45,7 +42,12 @@ export class DrawController {
   ) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 10;
-    return this.drawService.getMyTasks(userId, page, pageSize, source || 'draw');
+    return this.drawService.getMyTasks(
+      userId,
+      page,
+      pageSize,
+      source || 'draw',
+    );
   }
 
   @Get('tasks/status')

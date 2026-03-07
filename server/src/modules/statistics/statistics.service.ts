@@ -69,15 +69,52 @@ export class StatisticsService {
       aigcModel3d,
     ] = await Promise.all([
       this.userRepository.count(),
-      this.userRepository.createQueryBuilder('u').where('u.createdAt >= :t', { t: todayStart }).getCount(),
-      this.userRepository.createQueryBuilder('u').where('u.createdAt >= :y AND u.createdAt < :t', { y: yesterdayStart, t: todayStart }).getCount(),
+      this.userRepository
+        .createQueryBuilder('u')
+        .where('u.createdAt >= :t', { t: todayStart })
+        .getCount(),
+      this.userRepository
+        .createQueryBuilder('u')
+        .where('u.createdAt >= :y AND u.createdAt < :t', {
+          y: yesterdayStart,
+          t: todayStart,
+        })
+        .getCount(),
       this.groupRepository.count({ where: { isDelete: false } }),
-      this.groupRepository.createQueryBuilder('g').where('g.isDelete = 0 AND g.createdAt >= :t', { t: todayStart }).getCount(),
-      this.groupRepository.createQueryBuilder('g').where('g.isDelete = 0 AND g.createdAt >= :y AND g.createdAt < :t', { y: yesterdayStart, t: todayStart }).getCount(),
+      this.groupRepository
+        .createQueryBuilder('g')
+        .where('g.isDelete = 0 AND g.createdAt >= :t', { t: todayStart })
+        .getCount(),
+      this.groupRepository
+        .createQueryBuilder('g')
+        .where('g.isDelete = 0 AND g.createdAt >= :y AND g.createdAt < :t', {
+          y: yesterdayStart,
+          t: todayStart,
+        })
+        .getCount(),
       this.orderRepository.count({ where: { status: OrderStatus.PAID } }),
-      this.orderRepository.createQueryBuilder('o').select('SUM(o.amount)', 'v').where('o.status = :s', { s: OrderStatus.PAID }).getRawOne<{ v: string }>(),
-      this.orderRepository.createQueryBuilder('o').select('SUM(o.amount)', 'v').where('o.status = :s AND o.payTime >= :t', { s: OrderStatus.PAID, t: todayStart }).getRawOne<{ v: string }>(),
-      this.orderRepository.createQueryBuilder('o').select('SUM(o.amount)', 'v').where('o.status = :s AND o.payTime >= :y AND o.payTime < :t', { s: OrderStatus.PAID, y: yesterdayStart, t: todayStart }).getRawOne<{ v: string }>(),
+      this.orderRepository
+        .createQueryBuilder('o')
+        .select('SUM(o.amount)', 'v')
+        .where('o.status = :s', { s: OrderStatus.PAID })
+        .getRawOne<{ v: string }>(),
+      this.orderRepository
+        .createQueryBuilder('o')
+        .select('SUM(o.amount)', 'v')
+        .where('o.status = :s AND o.payTime >= :t', {
+          s: OrderStatus.PAID,
+          t: todayStart,
+        })
+        .getRawOne<{ v: string }>(),
+      this.orderRepository
+        .createQueryBuilder('o')
+        .select('SUM(o.amount)', 'v')
+        .where('o.status = :s AND o.payTime >= :y AND o.payTime < :t', {
+          s: OrderStatus.PAID,
+          y: yesterdayStart,
+          t: todayStart,
+        })
+        .getRawOne<{ v: string }>(),
       this.modelRepository.count({ where: { isActive: true } }),
       this.aigcModuleStat(this.drawRepository, todayStart, yesterdayStart),
       this.aigcModuleStat(this.videoRepository, todayStart, yesterdayStart),
@@ -89,8 +126,13 @@ export class StatisticsService {
     const todayRevenue = parseFloat(todayRevenueRaw?.v || '0');
     const yesterdayRevenue = parseFloat(yesterdayRevenueRaw?.v || '0');
 
-    const aigcTodayTotal = aigcDraw.today + aigcVideo.today + aigcMusic.today + aigcModel3d.today;
-    const aigcYesterdayTotal = aigcDraw.yesterday + aigcVideo.yesterday + aigcMusic.yesterday + aigcModel3d.yesterday;
+    const aigcTodayTotal =
+      aigcDraw.today + aigcVideo.today + aigcMusic.today + aigcModel3d.today;
+    const aigcYesterdayTotal =
+      aigcDraw.yesterday +
+      aigcVideo.yesterday +
+      aigcMusic.yesterday +
+      aigcModel3d.yesterday;
 
     return {
       totalUsers,
@@ -155,7 +197,15 @@ export class StatisticsService {
     const done = todayCompleted + todayFailed;
     const successRate = done > 0 ? todayCompleted / done : null;
 
-    return { today, todayCompleted, todayFailed, yesterday, yesterdayCompleted, yesterdayFailed, successRate };
+    return {
+      today,
+      todayCompleted,
+      todayFailed,
+      yesterday,
+      yesterdayCompleted,
+      yesterdayFailed,
+      successRate,
+    };
   }
 
   async getUserGrowth(days: number = 30) {
@@ -171,9 +221,16 @@ export class StatisticsService {
 
     const map = new Map<string, number>();
     for (let i = 0; i < days; i++) {
-      map.set(dayjs().subtract(days - 1 - i, 'day').format('YYYY-MM-DD'), 0);
+      map.set(
+        dayjs()
+          .subtract(days - 1 - i, 'day')
+          .format('YYYY-MM-DD'),
+        0,
+      );
     }
-    raw.forEach((r) => map.set(dayjs(r.date).format('YYYY-MM-DD'), parseInt(r.count, 10)));
+    raw.forEach((r) =>
+      map.set(dayjs(r.date).format('YYYY-MM-DD'), parseInt(r.count, 10)),
+    );
     return Array.from(map.entries()).map(([date, count]) => ({ date, count }));
   }
 
@@ -192,7 +249,12 @@ export class StatisticsService {
 
     const map = new Map<string, { revenue: number; count: number }>();
     for (let i = 0; i < days; i++) {
-      map.set(dayjs().subtract(days - 1 - i, 'day').format('YYYY-MM-DD'), { revenue: 0, count: 0 });
+      map.set(
+        dayjs()
+          .subtract(days - 1 - i, 'day')
+          .format('YYYY-MM-DD'),
+        { revenue: 0, count: 0 },
+      );
     }
     raw.forEach((r) => {
       map.set(dayjs(r.date).format('YYYY-MM-DD'), {
@@ -230,14 +292,36 @@ export class StatisticsService {
       .addSelect('SUM(log.promptTokens)', 'promptTokens')
       .addSelect('SUM(log.completionTokens)', 'completionTokens')
       .addSelect('COUNT(*)', 'count')
-      .where('log.role = :role AND log.createdAt >= :start', { role: 'assistant', start: startDate })
+      .where('log.role = :role AND log.createdAt >= :start', {
+        role: 'assistant',
+        start: startDate,
+      })
       .groupBy('DATE(log.createdAt)')
       .orderBy('date', 'ASC')
-      .getRawMany<{ date: string; tokens: string; promptTokens: string; completionTokens: string; count: string }>();
+      .getRawMany<{
+        date: string;
+        tokens: string;
+        promptTokens: string;
+        completionTokens: string;
+        count: string;
+      }>();
 
-    const map = new Map<string, { tokens: number; promptTokens: number; completionTokens: number; count: number }>();
+    const map = new Map<
+      string,
+      {
+        tokens: number;
+        promptTokens: number;
+        completionTokens: number;
+        count: number;
+      }
+    >();
     for (let i = 0; i < days; i++) {
-      map.set(dayjs().subtract(days - 1 - i, 'day').format('YYYY-MM-DD'), { tokens: 0, promptTokens: 0, completionTokens: 0, count: 0 });
+      map.set(
+        dayjs()
+          .subtract(days - 1 - i, 'day')
+          .format('YYYY-MM-DD'),
+        { tokens: 0, promptTokens: 0, completionTokens: 0, count: 0 },
+      );
     }
     raw.forEach((r) => {
       map.set(dayjs(r.date).format('YYYY-MM-DD'), {

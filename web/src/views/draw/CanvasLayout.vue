@@ -82,8 +82,36 @@ const videoProvidersDef = [
   { value: 'kling-2', label: 'Kling 2', desc: '可灵2系列', color: '#0ea5e9' },
   { value: 'bytedance/seedance-1-pro', label: 'Seedance 1 Pro', desc: '字节视频', color: '#14b8a6' },
 ]
+const imageProviderToBackendNames: Record<string, string | string[]> = {
+  'gpt-image-1': 'gpt-image-1.5',
+  'flux': ['flux-2-pro', 'flux-kontext-pro', 'flux-kontext-max'],
+  'qwen': ['qwen/text-to-image', 'qwen/image-to-image', 'qwen/image-edit'],
+}
+const videoProviderToBackendNames: Record<string, string | string[]> = {
+  'kling-2': ['kling-2.6/text-to-video', 'kling-2.6/image-to-video', 'kling-2.6/motion-control'],
+  'bytedance/seedance-1-pro': 'bytedance/seedance-1.5-pro',
+}
+const activeImageModelNames = ref<Set<string>>(new Set())
+const activeVideoModelNames = ref<Set<string>>(new Set())
 
-const modelPointsMap = ref<Record<string, number>>({})
+const visibleImageProviders = computed(() => {
+  const set = activeImageModelNames.value
+  if (set.size === 0) return imageProvidersDef
+  return imageProvidersDef.filter(p => {
+    const backends = imageProviderToBackendNames[p.value]
+    const names = Array.isArray(backends) ? backends : [backends ?? p.value]
+    return names.some((b: string) => set.has(b))
+  })
+})
+const visibleVideoProviders = computed(() => {
+  const set = activeVideoModelNames.value
+  if (set.size === 0) return videoProvidersDef
+  return videoProvidersDef.filter(p => {
+    const backends = videoProviderToBackendNames[p.value]
+    const names = Array.isArray(backends) ? backends : [backends ?? p.value]
+    return names.some((b: string) => set.has(b))
+  })
+})
 
 // 图像模型参数配置（与 DrawLayout.vue 对齐）
 const imageModelConfigs: Record<string, any> = {
@@ -234,32 +262,29 @@ const videoModelConfigs: Record<string, any> = {
   },
 }
 
-// 合并的模型配置
+// 合并的模型配置（gpt-image-1.5 与 gpt-image-1 共用配置）
 const modelConfigs = computed(() => {
-  return promptMode.value === 'video' ? videoModelConfigs : imageModelConfigs
+  if (promptMode.value === 'video') return videoModelConfigs
+  const img = imageModelConfigs
+  return {
+    ...img,
+    'gpt-image-1.5': img['gpt-image-1'] ?? img['gpt-image-1.5'],
+  }
 })
 
 const modelOptions = computed(() => {
-  const defs = promptMode.value === 'video' ? videoProvidersDef : imageProvidersDef
+  const defs = promptMode.value === 'video' ? visibleVideoProviders.value : visibleImageProviders.value
   return defs.map(p => {
-    // 尝试多种匹配方式
     let points = modelPointsMap.value[p.value] ?? 0
-
-    // 如果直接匹配失败，尝试匹配子模型
     if (points === 0) {
-      if (p.value === 'qwen') {
-        points = modelPointsMap.value['qwen/text-to-image'] ?? 0
-      } else if (p.value === 'flux') {
-        points = modelPointsMap.value['flux-2-pro'] ?? 0
-      } else if (p.value === 'kling-2') {
-        points = modelPointsMap.value['kling-2/text-to-video'] ?? 0
-      } else if (p.value === 'bytedance/seedance-1-pro') {
-        points = 60 // 默认积分
-      }
+      if (p.value === 'qwen') points = modelPointsMap.value['qwen/text-to-image'] ?? 0
+      else if (p.value === 'flux') points = modelPointsMap.value['flux-2-pro'] ?? 0
+      else if (p.value === 'kling-2') points = modelPointsMap.value['kling-2/text-to-video'] ?? 0
+      else if (p.value === 'bytedance/seedance-1-pro') points = 60
     }
-
+    const id = promptMode.value === 'image' && p.value === 'gpt-image-1' ? 'gpt-image-1.5' : p.value
     return {
-      id: p.value,
+      id,
       name: p.label,
       tag: `${points}积分`,
       color: p.color
@@ -269,17 +294,45 @@ const modelOptions = computed(() => {
 
 async function fetchModelPoints() {
   try {
-    const res = await getModels({ type: 'image' })
-    const all = (res as any).data || res // 兼容两种返回格式
-    if (Array.isArray(all)) {
-      for (const m of all) {
-        if (m.deductPoints) {
-          modelPointsMap.value[m.modelName] = m.deductPoints
-        }
+    const [imageRes, videoRes] = await Promise.all([
+      getModels({ type: 'image' }),
+      getModels({ type: 'video' }),
+    ])
+    const imageList = (imageRes as any)?.data ?? imageRes
+    const videoList = (videoRes as any)?.data ?? videoRes
+    if (Array.isArray(imageList)) {
+      activeImageModelNames.value = new Set(
+        imageList.map((m: { modelName?: string }) => m.modelName).filter((x): x is string => Boolean(x))
+      )
+      for (const m of imageList) {
+        if (m.deductPoints) modelPointsMap.value[m.modelName] = m.deductPoints
+      }
+    }
+    if (Array.isArray(videoList)) {
+      activeVideoModelNames.value = new Set(
+        videoList.map((m: { modelName?: string }) => m.modelName).filter((x): x is string => Boolean(x))
+      )
+      for (const m of videoList) {
+        if (m.deductPoints) modelPointsMap.value[m.modelName] = m.deductPoints
       }
     }
   } catch { /* ignore */ }
 }
+
+function isSelectedModelInVisible(visibleOptions: Array<{ id: string }>) {
+  return visibleOptions.some(o => o.id === selectedModel.value)
+}
+
+watch([visibleImageProviders, visibleVideoProviders, promptMode], () => {
+  const visible = promptMode.value === 'video' ? visibleVideoProviders.value : visibleImageProviders.value
+  const options = promptMode.value === 'video'
+    ? visible.map(p => ({ id: p.value }))
+    : visible.map(p => ({ id: p.value === 'gpt-image-1' ? 'gpt-image-1.5' : p.value }))
+  const first = options[0]
+  if (options.length && first && !isSelectedModelInVisible(options)) {
+    selectedModel.value = first.id
+  }
+}, { immediate: true })
 
 function handleUndo() {
   canvasStore.undo()

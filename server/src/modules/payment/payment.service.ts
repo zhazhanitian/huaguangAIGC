@@ -240,7 +240,18 @@ export class PaymentService {
    */
   async updatePackage(
     id: string,
-    updates: Partial<Pick<Package, 'name' | 'description' | 'price' | 'points' | 'memberDays' | 'isActive' | 'order'>>,
+    updates: Partial<
+      Pick<
+        Package,
+        | 'name'
+        | 'description'
+        | 'price'
+        | 'points'
+        | 'memberDays'
+        | 'isActive'
+        | 'order'
+      >
+    >,
   ): Promise<Package> {
     const pkg = await this.getPackageById(id);
     Object.assign(pkg, updates);

@@ -9,10 +9,7 @@ import { UserModule } from '../user/user.module';
  * 签到模块
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([SigninLog]),
-    UserModule,
-  ],
+  imports: [TypeOrmModule.forFeature([SigninLog]), UserModule],
   providers: [SigninService],
   controllers: [SigninController],
   exports: [SigninService],

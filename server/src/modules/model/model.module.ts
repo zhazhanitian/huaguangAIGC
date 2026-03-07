@@ -10,9 +10,7 @@ import { ModelSeedService } from './model-seed.service';
  * 模型模块 - AI 模型配置、密钥管理、对话调用
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([AiModel, ModelKey, ApiKey]),
-  ],
+  imports: [TypeOrmModule.forFeature([AiModel, ModelKey, ApiKey])],
   providers: [ModelService, ModelSeedService],
   controllers: [ModelController],
   exports: [ModelService],

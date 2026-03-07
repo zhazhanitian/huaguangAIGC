@@ -25,7 +25,9 @@ export class MindMapProcessor {
     const { taskId } = job.data;
     this.logger.log(`开始处理思维导图任务: ${taskId}`);
 
-    const task = await this.mindmapRepository.findOne({ where: { id: taskId } });
+    const task = await this.mindmapRepository.findOne({
+      where: { id: taskId },
+    });
     if (!task) {
       this.logger.error(`思维导图任务不存在: ${taskId}`);
       return;

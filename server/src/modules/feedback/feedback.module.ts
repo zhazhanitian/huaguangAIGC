@@ -9,9 +9,7 @@ import { FeedbackController } from './feedback.controller';
  * 用户反馈提交、管理员回复与状态管理
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Feedback]),
-  ],
+  imports: [TypeOrmModule.forFeature([Feedback])],
   providers: [FeedbackService],
   controllers: [FeedbackController],
   exports: [FeedbackService],

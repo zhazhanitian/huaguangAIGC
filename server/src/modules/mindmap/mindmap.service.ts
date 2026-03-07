@@ -21,7 +21,10 @@ export class MindMapService {
   /**
    * 创建思维导图任务：入队处理
    */
-  async createTask(userId: string, dto: CreateMindMapTaskDto): Promise<MindMapTask> {
+  async createTask(
+    userId: string,
+    dto: CreateMindMapTaskDto,
+  ): Promise<MindMapTask> {
     const task = this.mindmapRepository.create({
       userId,
       title: dto.title,
@@ -30,7 +33,11 @@ export class MindMapService {
     });
     const saved = await this.mindmapRepository.save(task);
 
-    await this.mindmapQueue.add('process', { taskId: saved.id }, { attempts: 3 });
+    await this.mindmapQueue.add(
+      'process',
+      { taskId: saved.id },
+      { attempts: 3 },
+    );
 
     return saved;
   }
@@ -81,9 +88,10 @@ export class MindMapService {
       // 确保是有效的 MarkMap 格式（以 - 开头的行）
       const lines = markdown.split('\n').filter((l) => l.trim());
       const validLines = lines.filter((l) => l.trim().startsWith('-'));
-      const markdownContent = validLines.length > 0
-        ? validLines.map((l) => l.trimEnd()).join('\n')
-        : `- ${task.title}\n  - ${task.prompt}`;
+      const markdownContent =
+        validLines.length > 0
+          ? validLines.map((l) => l.trimEnd()).join('\n')
+          : `- ${task.title}\n  - ${task.prompt}`;
 
       task.markdownContent = markdownContent;
       task.status = MindMapTaskStatus.COMPLETED;
@@ -109,7 +117,12 @@ export class MindMapService {
     userId: string,
     page: number = 1,
     pageSize: number = 10,
-  ): Promise<{ list: MindMapTask[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: MindMapTask[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.mindmapRepository.findAndCount({
       where: { userId },
       order: { createdAt: 'DESC' },
@@ -123,7 +136,9 @@ export class MindMapService {
    * 获取任务详情
    */
   async getTaskDetail(userId: string, taskId: string): Promise<MindMapTask> {
-    const task = await this.mindmapRepository.findOne({ where: { id: taskId } });
+    const task = await this.mindmapRepository.findOne({
+      where: { id: taskId },
+    });
     if (!task) {
       throw new NotFoundException('任务不存在');
     }

@@ -1,9 +1,4 @@
-import {
-  IsString,
-  IsOptional,
-  IsObject,
-  MaxLength,
-} from 'class-validator';
+import { IsString, IsOptional, IsObject, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SiteConfig } from '../saas.entity';
 

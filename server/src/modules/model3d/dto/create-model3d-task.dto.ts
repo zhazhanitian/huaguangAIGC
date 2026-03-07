@@ -11,7 +11,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Model3dTaskType } from '../model3d.entity';
 
 export class CreateModel3dTaskDto {
-  @ApiPropertyOptional({ description: '任务类型', enum: Model3dTaskType, default: Model3dTaskType.TEXT2MODEL })
+  @ApiPropertyOptional({
+    description: '任务类型',
+    enum: Model3dTaskType,
+    default: Model3dTaskType.TEXT2MODEL,
+  })
   @IsOptional()
   @IsEnum(Model3dTaskType)
   taskType?: Model3dTaskType;

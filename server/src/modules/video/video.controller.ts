@@ -27,10 +27,7 @@ export class VideoController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '创建视频任务' })
-  async create(
-    @GetUser('id') userId: string,
-    @Body() dto: CreateVideoTaskDto,
-  ) {
+  async create(@GetUser('id') userId: string, @Body() dto: CreateVideoTaskDto) {
     return this.videoService.createTask(userId, dto);
   }
 
@@ -85,10 +82,7 @@ export class VideoController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '重试失败视频任务' })
-  async retryTask(
-    @GetUser('id') userId: string,
-    @Param('id') taskId: string,
-  ) {
+  async retryTask(@GetUser('id') userId: string, @Param('id') taskId: string) {
     return this.videoService.retryTask(userId, taskId);
   }
 
@@ -96,10 +90,7 @@ export class VideoController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '删除视频任务' })
-  async deleteTask(
-    @GetUser('id') userId: string,
-    @Param('id') taskId: string,
-  ) {
+  async deleteTask(@GetUser('id') userId: string, @Param('id') taskId: string) {
     return this.videoService.deleteTask(userId, taskId);
   }
 

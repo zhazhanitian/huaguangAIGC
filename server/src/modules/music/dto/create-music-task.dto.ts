@@ -23,7 +23,11 @@ export class CreateMusicTaskDto {
   @MaxLength(80)
   title?: string;
 
-  @ApiProperty({ description: '提示词/歌词/描述', minLength: 1, maxLength: 5000 })
+  @ApiProperty({
+    description: '提示词/歌词/描述',
+    minLength: 1,
+    maxLength: 5000,
+  })
   @IsString()
   @MinLength(1)
   @MaxLength(5000)
@@ -96,7 +100,11 @@ export class CreateMusicTaskDto {
   @MaxLength(50)
   personaModel?: string;
 
-  @ApiPropertyOptional({ description: '服务商', enum: MusicProvider, default: MusicProvider.SUNO })
+  @ApiPropertyOptional({
+    description: '服务商',
+    enum: MusicProvider,
+    default: MusicProvider.SUNO,
+  })
   @IsOptional()
   @IsEnum(MusicProvider)
   provider?: MusicProvider;

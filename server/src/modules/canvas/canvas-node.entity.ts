@@ -59,7 +59,12 @@ export class CanvasNode {
   @Column({ type: 'varchar', length: 100, nullable: true, comment: '风格' })
   style: string | null;
 
-  @Column({ type: 'varchar', length: 60, nullable: true, comment: '模型供应商' })
+  @Column({
+    type: 'varchar',
+    length: 60,
+    nullable: true,
+    comment: '模型供应商',
+  })
   provider: string | null;
 
   @Column({ type: 'varchar', length: 60, nullable: true, comment: '任务类型' })

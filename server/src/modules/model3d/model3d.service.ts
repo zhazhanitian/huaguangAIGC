@@ -21,12 +21,16 @@ import { CreateModel3dTaskDto } from './dto/create-model3d-task.dto';
 import { UserService } from '../user/user.service';
 import { AiModel } from '../model/model.entity';
 import { RealtimeService } from '../realtime/realtime.service';
-import type { TaskEventPayload, TaskEventType } from '../realtime/realtime.types';
+import type {
+  TaskEventPayload,
+  TaskEventType,
+} from '../realtime/realtime.types';
 import { BadWordsService } from '../badwords/badwords.service';
 import { CreatePrintOrderDto } from './dto/create-print-order.dto';
 import { PayPrintOrderDto } from './dto/pay-print-order.dto';
 
-const POINTS_PER_MODEL3D_FALLBACK = Number(process.env.POINTS_PER_MODEL3D) || 30;
+const POINTS_PER_MODEL3D_FALLBACK =
+  Number(process.env.POINTS_PER_MODEL3D) || 30;
 const AI3D_VERSION = '2025-05-13';
 const AI3D_REGION = process.env.TENCENTCLOUD_AI3D_REGION || 'ap-guangzhou';
 const AI3D_ENDPOINT =
@@ -39,7 +43,9 @@ const AI3D_POLL_INTERVAL_MS = Number(process.env.AI3D_POLL_INTERVAL_MS) || 4000;
 const AI3D_POLL_TIMEOUT_MS =
   Number(process.env.AI3D_POLL_TIMEOUT_MS) || 12 * 60 * 1000;
 
-type Ai3dClientInstance = InstanceType<typeof tencentcloud.ai3d.v20250513.Client>;
+type Ai3dClientInstance = InstanceType<
+  typeof tencentcloud.ai3d.v20250513.Client
+>;
 type Ai3dQueryStatus = 'WAIT' | 'RUN' | 'FAIL' | 'DONE' | string;
 type Ai3dResultFile = {
   Type?: string;
@@ -66,14 +72,19 @@ export class Model3dService {
     private readonly badWordsService: BadWordsService,
   ) {}
 
-  private toPayload(task: Model3dTask, type: TaskEventType): Omit<TaskEventPayload, 'type'> {
+  private toPayload(
+    task: Model3dTask,
+    type: TaskEventType,
+  ): Omit<TaskEventPayload, 'type'> {
     return {
       module: 'model3d',
       taskId: task.id,
       status: task.status,
       progress: task.progress,
       errorMessage: task.errorMessage,
-      updatedAt: task.updatedAt ? new Date(task.updatedAt).toISOString() : undefined,
+      updatedAt: task.updatedAt
+        ? new Date(task.updatedAt).toISOString()
+        : undefined,
       provider: task.provider,
       taskType: task.taskType,
       resultModelUrl: task.resultModelUrl,
@@ -93,7 +104,10 @@ export class Model3dService {
     return POINTS_PER_MODEL3D_FALLBACK;
   }
 
-  async createTask(userId: string, dto: CreateModel3dTaskDto): Promise<Model3dTask> {
+  async createTask(
+    userId: string,
+    dto: CreateModel3dTaskDto,
+  ): Promise<Model3dTask> {
     // 敏感词检测
     if (dto.prompt) {
       await this.badWordsService.assertNoSensitiveWords(dto.prompt, userId);
@@ -104,7 +118,9 @@ export class Model3dService {
       throw new BadRequestException('图生3D任务需要 inputImageUrl');
     }
 
-    const deductPoints = await this.resolvePoints(dto.provider || 'tencent-hunyuan-3d-pro');
+    const deductPoints = await this.resolvePoints(
+      dto.provider || 'tencent-hunyuan-3d-pro',
+    );
     await this.userService.deductBalance(userId, deductPoints);
 
     const task = this.model3dRepository.create({
@@ -118,7 +134,11 @@ export class Model3dService {
       status: Model3dTaskStatus.PENDING,
     });
     const saved = await this.model3dRepository.save(task);
-    await this.model3dQueue.add('process', { taskId: saved.id }, { attempts: 3 });
+    await this.model3dQueue.add(
+      'process',
+      { taskId: saved.id },
+      { attempts: 3 },
+    );
     this.emit(userId, 'task.created', saved);
     return saved;
   }
@@ -127,7 +147,12 @@ export class Model3dService {
     userId: string,
     page: number = 1,
     pageSize: number = 10,
-  ): Promise<{ list: Model3dTask[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: Model3dTask[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.model3dRepository.findAndCount({
       where: { userId },
       order: { createdAt: 'DESC' },
@@ -156,7 +181,9 @@ export class Model3dService {
   }
 
   async createPrintOrder(userId: string, dto: CreatePrintOrderDto) {
-    const task = await this.model3dRepository.findOne({ where: { id: dto.taskId } });
+    const task = await this.model3dRepository.findOne({
+      where: { id: dto.taskId },
+    });
     if (!task) {
       throw new NotFoundException('3D模型任务不存在');
     }
@@ -206,7 +233,9 @@ export class Model3dService {
   }
 
   async payPrintOrder(userId: string, orderId: string, dto: PayPrintOrderDto) {
-    const order = await this.printOrderRepository.findOne({ where: { id: orderId, userId } });
+    const order = await this.printOrderRepository.findOne({
+      where: { id: orderId, userId },
+    });
     if (!order) {
       throw new NotFoundException('打印订单不存在');
     }
@@ -227,7 +256,12 @@ export class Model3dService {
     userId: string,
     page: number = 1,
     pageSize: number = 10,
-  ): Promise<{ list: Model3dPrintOrder[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: Model3dPrintOrder[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.printOrderRepository.findAndCount({
       where: { userId },
       order: { createdAt: 'DESC' },
@@ -237,8 +271,13 @@ export class Model3dService {
     return { list, total, page, pageSize };
   }
 
-  async getTasksStatusBatch(userId: string, ids: string[]): Promise<Model3dTask[]> {
-    const uniq = Array.from(new Set((ids || []).map((x) => String(x || '').trim()).filter(Boolean)));
+  async getTasksStatusBatch(
+    userId: string,
+    ids: string[],
+  ): Promise<Model3dTask[]> {
+    const uniq = Array.from(
+      new Set((ids || []).map((x) => String(x || '').trim()).filter(Boolean)),
+    );
     if (uniq.length === 0) return [];
     return this.model3dRepository.find({
       where: { userId, id: In(uniq) },
@@ -248,7 +287,12 @@ export class Model3dService {
   async getGallery(
     page: number = 1,
     pageSize: number = 20,
-  ): Promise<{ list: Model3dTask[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: Model3dTask[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.model3dRepository.findAndCount({
       where: { isPublic: true, status: Model3dTaskStatus.COMPLETED },
       order: { createdAt: 'DESC' },
@@ -263,7 +307,11 @@ export class Model3dService {
     if (!task) {
       throw new NotFoundException('任务不存在');
     }
-    if (task.userId !== userId && !task.isPublic && task.status !== Model3dTaskStatus.COMPLETED) {
+    if (
+      task.userId !== userId &&
+      !task.isPublic &&
+      task.status !== Model3dTaskStatus.COMPLETED
+    ) {
       throw new NotFoundException('无权查看');
     }
     if (task.status === Model3dTaskStatus.COMPLETED) {
@@ -292,7 +340,11 @@ export class Model3dService {
       await this.model3dRepository.save(task);
       this.emit(task.userId, 'task.updated', task);
 
-      await this.pollTencentAi3dResult(task, submitResult.jobId, submitResult.mode);
+      await this.pollTencentAi3dResult(
+        task,
+        submitResult.jobId,
+        submitResult.mode,
+      );
       this.logger.log(`3D 任务完成: ${task.id}, jobId=${submitResult.jobId}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -303,7 +355,10 @@ export class Model3dService {
       await this.model3dRepository.save(task);
       this.emit(task.userId, 'task.failed', task);
       try {
-        await this.userService.addBalance(task.userId, Number(task.deductPoints));
+        await this.userService.addBalance(
+          task.userId,
+          Number(task.deductPoints),
+        );
       } catch (refundErr) {
         this.logger.error(`退还积分失败: ${task.userId}`, refundErr);
       }
@@ -316,7 +371,9 @@ export class Model3dService {
       return this.ai3dClient;
     }
     if (!AI3D_SECRET_ID || !AI3D_SECRET_KEY) {
-      throw new Error('未配置腾讯云 3D 凭证（TENCENTCLOUD_SECRET_ID / TENCENTCLOUD_SECRET_KEY）');
+      throw new Error(
+        '未配置腾讯云 3D 凭证（TENCENTCLOUD_SECRET_ID / TENCENTCLOUD_SECRET_KEY）',
+      );
     }
     const Ai3dClient = tencentcloud.ai3d.v20250513.Client;
     this.ai3dClient = new Ai3dClient({
@@ -468,7 +525,8 @@ export class Model3dService {
         }
         const nextParams = {
           ...((task.params as Record<string, unknown>) || {}),
-          tencentResultType: String(result.Type || '').toUpperCase() || undefined,
+          tencentResultType:
+            String(result.Type || '').toUpperCase() || undefined,
           tencentOriginalResultUrl: result.Url,
         };
         task.params = nextParams;
@@ -513,16 +571,25 @@ export class Model3dService {
     return 8;
   }
 
-  private pickResultFile(files: Ai3dResultFile[], wantedType?: string): Ai3dResultFile | null {
+  private pickResultFile(
+    files: Ai3dResultFile[],
+    wantedType?: string,
+  ): Ai3dResultFile | null {
     if (!files?.length) return null;
     const preferred = (wantedType || '').toUpperCase();
     if (preferred) {
-      const exact = files.find((f) => String(f.Type || '').toUpperCase() === preferred);
+      const exact = files.find(
+        (f) => String(f.Type || '').toUpperCase() === preferred,
+      );
       if (exact?.Url) return exact;
     }
-    const glb = files.find((f) => String(f.Type || '').toUpperCase() === 'GLB' && f.Url);
+    const glb = files.find(
+      (f) => String(f.Type || '').toUpperCase() === 'GLB' && f.Url,
+    );
     if (glb) return glb;
-    const obj = files.find((f) => String(f.Type || '').toUpperCase() === 'OBJ' && f.Url);
+    const obj = files.find(
+      (f) => String(f.Type || '').toUpperCase() === 'OBJ' && f.Url,
+    );
     if (obj) return obj;
     return files.find((f) => Boolean(f.Url)) || null;
   }
@@ -531,7 +598,9 @@ export class Model3dService {
     if (!files?.length) return null;
     const withPreview = files.find((f) => Boolean(f.PreviewImageUrl));
     if (withPreview?.PreviewImageUrl) return withPreview.PreviewImageUrl;
-    const image = files.find((f) => String(f.Type || '').toUpperCase() === 'IMAGE' && f.Url);
+    const image = files.find(
+      (f) => String(f.Type || '').toUpperCase() === 'IMAGE' && f.Url,
+    );
     return image?.Url || null;
   }
 
@@ -554,7 +623,9 @@ export class Model3dService {
       task.resultModelUrl = previewUrl;
       return this.model3dRepository.save(task);
     }
-    const originalUrl = String(params.tencentOriginalResultUrl || task.resultModelUrl).trim();
+    const originalUrl = String(
+      params.tencentOriginalResultUrl || task.resultModelUrl,
+    ).trim();
     if (!originalUrl) return task;
     try {
       const client = this.getAi3dClient();
@@ -586,7 +657,9 @@ export class Model3dService {
   }
 
   async deleteTask(userId: string, taskId: string): Promise<void> {
-    const task = await this.model3dRepository.findOne({ where: { id: taskId, userId } });
+    const task = await this.model3dRepository.findOne({
+      where: { id: taskId, userId },
+    });
     if (!task) {
       throw new NotFoundException('任务不存在');
     }
@@ -594,7 +667,9 @@ export class Model3dService {
   }
 
   async retryTask(userId: string, taskId: string): Promise<Model3dTask> {
-    const oldTask = await this.model3dRepository.findOne({ where: { id: taskId, userId } });
+    const oldTask = await this.model3dRepository.findOne({
+      where: { id: taskId, userId },
+    });
     if (!oldTask) {
       throw new NotFoundException('任务不存在');
     }
@@ -614,7 +689,9 @@ export class Model3dService {
   }
 
   async togglePublic(userId: string, taskId: string): Promise<Model3dTask> {
-    const task = await this.model3dRepository.findOne({ where: { id: taskId, userId } });
+    const task = await this.model3dRepository.findOne({
+      where: { id: taskId, userId },
+    });
     if (!task) {
       throw new NotFoundException('任务不存在');
     }
@@ -628,7 +705,12 @@ export class Model3dService {
   async getAllTasks(
     page: number = 1,
     pageSize: number = 20,
-  ): Promise<{ list: Model3dTask[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: Model3dTask[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.model3dRepository.findAndCount({
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,

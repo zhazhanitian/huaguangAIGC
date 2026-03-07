@@ -1,7 +1,18 @@
-import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { BadWord, ViolationLog, BadWordLevel, ViolationAction } from './badwords.entity';
+import {
+  BadWord,
+  ViolationLog,
+  BadWordLevel,
+  ViolationAction,
+} from './badwords.entity';
 import { User } from '../user/user.entity';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -36,7 +47,7 @@ export interface CheckContentResult {
 @Injectable()
 export class BadWordsService implements OnModuleInit {
   private readonly logger = new Logger(BadWordsService.name);
-  
+
   /** 敏感词缓存，避免每次查询数据库 */
   private wordsCache: BadWord[] = [];
   private cacheExpiry: number = 0;
@@ -65,22 +76,29 @@ export class BadWordsService implements OnModuleInit {
     // 从 JSON 文件加载敏感词
     const jsonPath = path.join(__dirname, 'sensitive-words.json');
     let jsonData: any = { categories: {} };
-    
+
     try {
       const jsonContent = fs.readFileSync(jsonPath, 'utf-8');
       jsonData = JSON.parse(jsonContent);
     } catch (err) {
-      this.logger.warn(`无法加载敏感词 JSON 文件: ${err.message}，使用内置词库`);
+      this.logger.warn(
+        `无法加载敏感词 JSON 文件: ${err.message}，使用内置词库`,
+      );
     }
 
     const words: Array<{ word: string; level: BadWordLevel }> = [];
 
     // 从 JSON 文件提取敏感词
-    for (const [categoryName, category] of Object.entries(jsonData.categories || {})) {
+    for (const [categoryName, category] of Object.entries(
+      jsonData.categories || {},
+    )) {
       const cat = category as { level?: string; words?: string[] };
-      const level = cat.level === 'high' ? BadWordLevel.HIGH
-                  : cat.level === 'low' ? BadWordLevel.LOW
-                  : BadWordLevel.MEDIUM;
+      const level =
+        cat.level === 'high'
+          ? BadWordLevel.HIGH
+          : cat.level === 'low'
+            ? BadWordLevel.LOW
+            : BadWordLevel.MEDIUM;
       for (const w of cat.words || []) {
         words.push({ word: w, level });
       }
@@ -94,7 +112,11 @@ export class BadWordsService implements OnModuleInit {
     for (const { word, level } of words) {
       const exists = await this.badWordRepository.findOne({ where: { word } });
       if (!exists) {
-        const entity = this.badWordRepository.create({ word, level, isActive: true });
+        const entity = this.badWordRepository.create({
+          word,
+          level,
+          isActive: true,
+        });
         try {
           await this.badWordRepository.save(entity);
           addedCount++;
@@ -111,7 +133,9 @@ export class BadWordsService implements OnModuleInit {
 
     const totalCount = await this.badWordRepository.count();
     if (addedCount > 0 || updatedCount > 0) {
-      this.logger.log(`敏感词库同步完成：新增 ${addedCount} 个，更新级别 ${updatedCount} 个，数据库总计 ${totalCount} 个`);
+      this.logger.log(
+        `敏感词库同步完成：新增 ${addedCount} 个，更新级别 ${updatedCount} 个，数据库总计 ${totalCount} 个`,
+      );
     } else {
       this.logger.log(`敏感词库已是最新，数据库总计 ${totalCount} 个`);
     }
@@ -121,7 +145,9 @@ export class BadWordsService implements OnModuleInit {
    * 刷新缓存
    */
   async refreshCache(): Promise<void> {
-    this.wordsCache = await this.badWordRepository.find({ where: { isActive: true } });
+    this.wordsCache = await this.badWordRepository.find({
+      where: { isActive: true },
+    });
     this.cacheExpiry = Date.now() + this.CACHE_TTL;
     this.logger.debug(`敏感词缓存已刷新，共 ${this.wordsCache.length} 个`);
   }
@@ -141,16 +167,19 @@ export class BadWordsService implements OnModuleInit {
    * @throws BadRequestException 仅当检测到 HIGH 级别敏感词时抛出异常
    * @returns CheckContentResult 包含分级敏感词信息
    */
-  async assertNoSensitiveWords(content: string, userId?: string): Promise<CheckContentResult> {
+  async assertNoSensitiveWords(
+    content: string,
+    userId?: string,
+  ): Promise<CheckContentResult> {
     const result = await this.checkContent(content, userId);
-    
+
     // 只有 HIGH 级别才直接拒绝
     if (result.highWords.length > 0) {
       throw new BadRequestException(
-        `内容包含严重违规词汇，禁止生成！此行为已记录。`
+        `内容包含严重违规词汇，禁止生成！此行为已记录。`,
       );
     }
-    
+
     return result;
   }
 
@@ -208,8 +237,8 @@ export class BadWordsService implements OnModuleInit {
 
     const passed = violations.length === 0;
     const canGenerate = highWords.length === 0; // 无HIGH级别可生成
-    const needConfirm = mediumWords.length > 0;  // 有MEDIUM需确认
-    const hasWarning = lowWords.length > 0;      // 有LOW显示标签
+    const needConfirm = mediumWords.length > 0; // 有MEDIUM需确认
+    const hasWarning = lowWords.length > 0; // 有LOW显示标签
 
     return {
       passed,
@@ -271,7 +300,12 @@ export class BadWordsService implements OnModuleInit {
    */
   async updateWord(
     id: string,
-    data: { word?: string; level?: BadWordLevel; category?: string; isActive?: boolean },
+    data: {
+      word?: string;
+      level?: BadWordLevel;
+      category?: string;
+      isActive?: boolean;
+    },
   ): Promise<BadWord> {
     const entity = await this.badWordRepository.findOne({ where: { id } });
     if (!entity) {
@@ -315,8 +349,19 @@ export class BadWordsService implements OnModuleInit {
   async getWords(
     page: number = 1,
     pageSize: number = 50,
-    filters?: { keyword?: string; level?: BadWordLevel; category?: string; isActive?: boolean },
-  ): Promise<{ list: BadWord[]; total: number; page: number; pageSize: number; categories: string[] }> {
+    filters?: {
+      keyword?: string;
+      level?: BadWordLevel;
+      category?: string;
+      isActive?: boolean;
+    },
+  ): Promise<{
+    list: BadWord[];
+    total: number;
+    page: number;
+    pageSize: number;
+    categories: string[];
+  }> {
     const qb = this.badWordRepository.createQueryBuilder('bw');
 
     if (filters?.keyword) {
@@ -329,7 +374,9 @@ export class BadWordsService implements OnModuleInit {
       qb.andWhere('bw.category = :category', { category: filters.category });
     }
     if (filters?.isActive !== undefined) {
-      qb.andWhere('bw.isActive = :isActive', { isActive: filters.isActive ? 1 : 0 });
+      qb.andWhere('bw.isActive = :isActive', {
+        isActive: filters.isActive ? 1 : 0,
+      });
     }
 
     qb.orderBy('bw.createdAt', 'DESC')
@@ -344,7 +391,7 @@ export class BadWordsService implements OnModuleInit {
       .select('DISTINCT bw.category', 'category')
       .where('bw.category IS NOT NULL')
       .getRawMany();
-    const categories = categoriesRaw.map(r => r.category).filter(Boolean);
+    const categories = categoriesRaw.map((r) => r.category).filter(Boolean);
 
     return { list, total, page, pageSize, categories };
   }
@@ -352,11 +399,22 @@ export class BadWordsService implements OnModuleInit {
   /**
    * 获取统计信息
    */
-  async getStats(): Promise<{ total: number; lowCount: number; mediumCount: number; highCount: number }> {
+  async getStats(): Promise<{
+    total: number;
+    lowCount: number;
+    mediumCount: number;
+    highCount: number;
+  }> {
     const total = await this.badWordRepository.count();
-    const lowCount = await this.badWordRepository.count({ where: { level: BadWordLevel.LOW } });
-    const mediumCount = await this.badWordRepository.count({ where: { level: BadWordLevel.MEDIUM } });
-    const highCount = await this.badWordRepository.count({ where: { level: BadWordLevel.HIGH } });
+    const lowCount = await this.badWordRepository.count({
+      where: { level: BadWordLevel.LOW },
+    });
+    const mediumCount = await this.badWordRepository.count({
+      where: { level: BadWordLevel.MEDIUM },
+    });
+    const highCount = await this.badWordRepository.count({
+      where: { level: BadWordLevel.HIGH },
+    });
     return { total, lowCount, mediumCount, highCount };
   }
 
@@ -379,9 +437,9 @@ export class BadWordsService implements OnModuleInit {
     });
 
     // 关联查询用户名
-    const userIds = logs.map(l => l.userId).filter(Boolean) as string[];
+    const userIds = logs.map((l) => l.userId).filter(Boolean) as string[];
     const uniqueUserIds = [...new Set(userIds)];
-    
+
     let userMap: Map<string, string> = new Map();
     if (uniqueUserIds.length > 0) {
       const users = await this.userRepository
@@ -389,11 +447,11 @@ export class BadWordsService implements OnModuleInit {
         .select(['user.id', 'user.username'])
         .whereInIds(uniqueUserIds)
         .getMany();
-      userMap = new Map(users.map(u => [u.id, u.username]));
+      userMap = new Map(users.map((u) => [u.id, u.username]));
     }
 
     // 合并用户名到违规记录
-    const list = logs.map(log => ({
+    const list = logs.map((log) => ({
       ...log,
       username: log.userId ? userMap.get(log.userId) || undefined : undefined,
     }));

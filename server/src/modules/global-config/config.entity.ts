@@ -20,7 +20,11 @@ export class Config {
   @Column({ type: 'text', comment: '配置值' })
   configVal: string;
 
-  @Column({ type: 'tinyint', default: false, comment: '是否公开（前端可直接读取）' })
+  @Column({
+    type: 'tinyint',
+    default: false,
+    comment: '是否公开（前端可直接读取）',
+  })
   isPublic: boolean;
 
   @Column({ type: 'text', nullable: true, comment: '配置说明' })

@@ -57,7 +57,12 @@ export class Model3dTask {
   })
   taskType: Model3dTaskType;
 
-  @Column({ type: 'varchar', length: 100, default: '3d-gen-v3.1', comment: '服务商/模型' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    default: '3d-gen-v3.1',
+    comment: '服务商/模型',
+  })
   provider: string;
 
   @Column({ type: 'text', comment: '提示词' })
@@ -89,7 +94,13 @@ export class Model3dTask {
   @Column({ type: 'json', nullable: true, comment: '扩展参数' })
   params: Model3dParams | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0, comment: '扣除积分数' })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    comment: '扣除积分数',
+  })
   deductPoints: number;
 
   @Column({ type: 'tinyint', default: 0, comment: '是否公开到画廊' })
@@ -138,7 +149,12 @@ export class Model3dPrintOrder {
   @Column({ type: 'text', nullable: true, comment: '备注' })
   remark: string | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, comment: '订单金额（元）' })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    comment: '订单金额（元）',
+  })
   amount: number;
 
   @Column({ type: 'text', comment: '模型文件 URL' })
@@ -150,7 +166,12 @@ export class Model3dPrintOrder {
   @Column({ type: 'text', nullable: true, comment: '支付二维码链接' })
   qrCodeUrl: string | null;
 
-  @Column({ type: 'varchar', length: 50, nullable: true, comment: '第三方交易号' })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    comment: '第三方交易号',
+  })
   tradeNo: string | null;
 
   @Column({

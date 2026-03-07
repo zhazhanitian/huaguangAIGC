@@ -21,10 +21,7 @@ export class DocsService {
   /**
    * 创建文档任务：入队处理
    */
-  async createTask(
-    userId: string,
-    dto: CreateDocsTaskDto,
-  ): Promise<DocsTask> {
+  async createTask(userId: string, dto: CreateDocsTaskDto): Promise<DocsTask> {
     const task = this.docsRepository.create({
       userId,
       title: dto.title,
@@ -104,7 +101,12 @@ ${formatInstruction}
     userId: string,
     page: number = 1,
     pageSize: number = 10,
-  ): Promise<{ list: DocsTask[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: DocsTask[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.docsRepository.findAndCount({
       where: { userId },
       order: { createdAt: 'DESC' },

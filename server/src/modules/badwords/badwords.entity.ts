@@ -40,7 +40,11 @@ export class BadWord {
   })
   level: BadWordLevel;
 
-  @Column({ length: 100, nullable: true, comment: '分类（如色情/政治/暴力等）' })
+  @Column({
+    length: 100,
+    nullable: true,
+    comment: '分类（如色情/政治/暴力等）',
+  })
   category: string | null;
 
   @Column({ type: 'tinyint', default: 1, comment: '是否启用' })

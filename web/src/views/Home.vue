@@ -116,7 +116,7 @@ function navigateTo(path: string) {
 <template>
   <div class="home-container">
     <!-- Hero Banner -->
-    <div class="hero-section">
+    <!-- <div class="hero-section">
       <div class="hero-background">
         <div class="glow-orb orb-1"></div>
         <div class="glow-orb orb-2"></div>
@@ -137,7 +137,7 @@ function navigateTo(path: string) {
           </button>
         </div>
       </div>
-    </div>
+    </div> -->
 
     <!-- Modules Grid -->
     <div class="modules-section">
@@ -397,7 +397,7 @@ function navigateTo(path: string) {
 
 /* --- Modules Section --- */
 .modules-section {
-  padding: 100px 5%;
+  padding: 60px 5%;
   max-width: 1400px;
   margin: 0 auto;
 }

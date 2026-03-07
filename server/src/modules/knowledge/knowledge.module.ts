@@ -9,9 +9,7 @@ import { KnowledgeController } from './knowledge.controller';
  * 支持创建知识库、添加文档、关键词搜索（可升级为向量检索）
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([KnowledgeBase, KnowledgeDocument]),
-  ],
+  imports: [TypeOrmModule.forFeature([KnowledgeBase, KnowledgeDocument])],
   providers: [KnowledgeService],
   controllers: [KnowledgeController],
   exports: [KnowledgeService],

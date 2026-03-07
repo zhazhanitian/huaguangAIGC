@@ -26,7 +26,9 @@ export class BadWordsController {
 
   @Post('check')
   @UseGuards(OptionalJwtAuthGuard)
-  @ApiOperation({ summary: '检测文本（可公开，用于前端预检，如有token则记录用户ID）' })
+  @ApiOperation({
+    summary: '检测文本（可公开，用于前端预检，如有token则记录用户ID）',
+  })
   async checkContent(
     @Body() dto: CheckContentDto,
     @GetUser('id') userId?: string,

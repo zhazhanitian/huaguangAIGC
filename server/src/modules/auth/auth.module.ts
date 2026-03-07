@@ -21,7 +21,10 @@ import { InvitationModule } from '../invitation/invitation.module';
         const expiresIn = configService.get<string>('JWT_EXPIRES_IN', '7d');
         const signOptions: JwtSignOptions = { expiresIn } as JwtSignOptions;
         return {
-          secret: configService.get<string>('JWT_SECRET', 'huaguang-aigc-jwt-secret-2026'),
+          secret: configService.get<string>(
+            'JWT_SECRET',
+            'huaguang-aigc-jwt-secret-2026',
+          ),
           signOptions,
         };
       },

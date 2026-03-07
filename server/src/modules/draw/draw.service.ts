@@ -19,20 +19,29 @@ import { CreateDrawTaskDto } from './dto/create-draw-task.dto';
 import { UserService } from '../user/user.service';
 import { AiModel, ModelKey } from '../model/model.entity';
 import { RealtimeService } from '../realtime/realtime.service';
-import type { TaskEventType, TaskEventPayload } from '../realtime/realtime.types';
+import type {
+  TaskEventType,
+  TaskEventPayload,
+} from '../realtime/realtime.types';
 import { GlobalConfigService } from '../global-config/global-config.service';
 import { BadWordsService } from '../badwords/badwords.service';
 
 const POINTS_PER_DRAW_FALLBACK = Number(process.env.POINTS_PER_DRAW) || 10;
-const KIE_API_URL_FALLBACK = (process.env.KIE_API_URL || 'https://api.kie.ai').replace(/\/+$/, '');
+const KIE_API_URL_FALLBACK = (
+  process.env.KIE_API_URL || 'https://api.kie.ai'
+).replace(/\/+$/, '');
 const INTERNAL_TASK_SOURCE_KEY = '__taskSource';
 type DrawTaskSource = 'draw' | 'canvas';
 
 @Injectable()
 export class DrawService {
   private readonly logger = new Logger(DrawService.name);
-  private proxyCache: { fetchedAt: number; httpProxy: string; httpsProxy: string; noProxy: string } | null =
-    null;
+  private proxyCache: {
+    fetchedAt: number;
+    httpProxy: string;
+    httpsProxy: string;
+    noProxy: string;
+  } | null = null;
   private proxyAgentCache = new Map<string, ProxyAgent>();
 
   constructor(
@@ -50,14 +59,19 @@ export class DrawService {
     private readonly badWordsService: BadWordsService,
   ) {}
 
-  private toPayload(task: DrawTask, type: TaskEventType): Omit<TaskEventPayload, 'type'> {
+  private toPayload(
+    task: DrawTask,
+    type: TaskEventType,
+  ): Omit<TaskEventPayload, 'type'> {
     return {
       module: 'draw',
       taskId: task.id,
       status: task.status,
       progress: task.progress,
       errorMessage: task.errorMessage,
-      updatedAt: task.updatedAt ? new Date(task.updatedAt).toISOString() : undefined,
+      updatedAt: task.updatedAt
+        ? new Date(task.updatedAt).toISOString()
+        : undefined,
       provider: task.provider,
       taskType: task.taskType,
       imageUrl: task.imageUrl,
@@ -92,12 +106,17 @@ export class DrawService {
     return this.getTaskSourceFromParams(task.params);
   }
 
-  private isTaskSourceMatch(task: Pick<DrawTask, 'params'>, source: DrawTaskSource): boolean {
+  private isTaskSourceMatch(
+    task: Pick<DrawTask, 'params'>,
+    source: DrawTaskSource,
+  ): boolean {
     const taskSource = this.getTaskSource(task);
     return taskSource === source;
   }
 
-  private getTaskParams(task: Pick<DrawTask, 'params'>): Record<string, unknown> {
+  private getTaskParams(
+    task: Pick<DrawTask, 'params'>,
+  ): Record<string, unknown> {
     const raw = ((task.params || {}) as Record<string, unknown>) || {};
     const params = { ...raw };
     delete params[INTERNAL_TASK_SOURCE_KEY];
@@ -109,7 +128,9 @@ export class DrawService {
    */
   async createTask(userId: string, dto: CreateDrawTaskDto): Promise<DrawTask> {
     // 敏感词检测
-    const textToCheck = [dto.prompt, dto.negativePrompt].filter(Boolean).join(' ');
+    const textToCheck = [dto.prompt, dto.negativePrompt]
+      .filter(Boolean)
+      .join(' ');
     await this.badWordsService.assertNoSensitiveWords(textToCheck, userId);
 
     const providerName = dto.provider ?? '';
@@ -119,25 +140,44 @@ export class DrawService {
     await this.userService.deductBalance(userId, deductPoints);
 
     const taskSource = this.normalizeTaskSource(dto.source);
-    const normalizedParams = { ...(dto.params || {}) } as Record<string, unknown>;
+    const normalizedParams = { ...(dto.params || {}) } as Record<
+      string,
+      unknown
+    >;
     normalizedParams[INTERNAL_TASK_SOURCE_KEY] = taskSource;
     const sourceImageUrl =
       typeof dto.sourceImageUrl === 'string' ? dto.sourceImageUrl.trim() : '';
     if (sourceImageUrl) {
-      const hasImageUrl = typeof normalizedParams.imageUrl === 'string' && normalizedParams.imageUrl.trim().length > 0;
+      const hasImageUrl =
+        typeof normalizedParams.imageUrl === 'string' &&
+        normalizedParams.imageUrl.trim().length > 0;
       if (!hasImageUrl) {
         normalizedParams.imageUrl = sourceImageUrl;
       }
-      if (!Array.isArray(normalizedParams.imageUrls) || (normalizedParams.imageUrls as unknown[]).length === 0) {
+      if (
+        !Array.isArray(normalizedParams.imageUrls) ||
+        (normalizedParams.imageUrls as unknown[]).length === 0
+      ) {
         normalizedParams.imageUrls = [sourceImageUrl];
       }
-      if (!Array.isArray(normalizedParams.urls) || (normalizedParams.urls as unknown[]).length === 0) {
+      if (
+        !Array.isArray(normalizedParams.urls) ||
+        (normalizedParams.urls as unknown[]).length === 0
+      ) {
         normalizedParams.urls = [sourceImageUrl];
       }
-      if (!Array.isArray(normalizedParams.fileUrls) || (normalizedParams.fileUrls as unknown[]).length === 0) {
+      if (
+        !Array.isArray(normalizedParams.fileUrls) ||
+        (normalizedParams.fileUrls as unknown[]).length === 0
+      ) {
         normalizedParams.fileUrls = [sourceImageUrl];
       }
-      if (!(typeof normalizedParams.fileUrl === 'string' && normalizedParams.fileUrl.trim().length > 0)) {
+      if (
+        !(
+          typeof normalizedParams.fileUrl === 'string' &&
+          normalizedParams.fileUrl.trim().length > 0
+        )
+      ) {
         normalizedParams.fileUrl = sourceImageUrl;
       }
     }
@@ -171,18 +211,28 @@ export class DrawService {
     page: number = 1,
     pageSize: number = 10,
     source: string = 'draw',
-  ): Promise<{ list: DrawTask[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: DrawTask[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const normalizedSource = this.normalizeTaskSource(source);
     let list: DrawTask[] = [];
     let total = 0;
 
     try {
-      const qb = this.drawRepository.createQueryBuilder('task').where('task.userId = :userId', { userId });
+      const qb = this.drawRepository
+        .createQueryBuilder('task')
+        .where('task.userId = :userId', { userId });
 
       if (normalizedSource === 'canvas') {
-        qb.andWhere(`JSON_UNQUOTE(JSON_EXTRACT(task.params, '$.${INTERNAL_TASK_SOURCE_KEY}')) = :source`, {
-          source: 'canvas',
-        });
+        qb.andWhere(
+          `JSON_UNQUOTE(JSON_EXTRACT(task.params, '$.${INTERNAL_TASK_SOURCE_KEY}')) = :source`,
+          {
+            source: 'canvas',
+          },
+        );
       } else {
         qb.andWhere(
           `(JSON_EXTRACT(task.params, '$.${INTERNAL_TASK_SOURCE_KEY}') IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(task.params, '$.${INTERNAL_TASK_SOURCE_KEY}')) = :source)`,
@@ -204,24 +254,33 @@ export class DrawService {
         where: { userId },
         order: { createdAt: 'DESC' },
       });
-      const filtered = allList.filter((task) => this.isTaskSourceMatch(task, normalizedSource));
+      const filtered = allList.filter((task) =>
+        this.isTaskSourceMatch(task, normalizedSource),
+      );
       total = filtered.length;
       list = filtered.slice((page - 1) * pageSize, page * pageSize);
     }
     // Important: never block list response on remote image mirroring.
     // If upstream image hosts are slow/blocked, awaiting this can easily exceed frontend timeout.
-    void Promise.all(list.map((task) => this.maybeMirrorTaskImage(task))).catch((err) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`后台转存任务图片失败(getMyTasks): ${msg}`);
-    });
+    void Promise.all(list.map((task) => this.maybeMirrorTaskImage(task))).catch(
+      (err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`后台转存任务图片失败(getMyTasks): ${msg}`);
+      },
+    );
     return { list, total, page, pageSize };
   }
 
   /**
    * 批量获取任务状态（用于前端低频兜底轮询，避免 N+1）
    */
-  async getTasksStatusBatch(userId: string, ids: string[]): Promise<DrawTask[]> {
-    const uniq = Array.from(new Set((ids || []).map((x) => String(x || '').trim()).filter(Boolean)));
+  async getTasksStatusBatch(
+    userId: string,
+    ids: string[],
+  ): Promise<DrawTask[]> {
+    const uniq = Array.from(
+      new Set((ids || []).map((x) => String(x || '').trim()).filter(Boolean)),
+    );
     if (uniq.length === 0) return [];
     return this.drawRepository.find({
       where: { userId, id: In(uniq) },
@@ -241,7 +300,7 @@ export class DrawService {
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
-    
+
     // 获取每个任务的作者信息
     const userMap = new Map<string, string>();
     for (const task of list) {
@@ -255,16 +314,18 @@ export class DrawService {
       }
     }
 
-    const mappedList = list.map(task => {
+    const mappedList = list.map((task) => {
       const data = { ...task } as any;
       data.authorName = userMap.get(task.userId) || '匿名';
       return data;
     });
 
-    void Promise.all(list.map((task) => this.maybeMirrorTaskImage(task))).catch((err) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`后台转存任务图片失败(getGallery): ${msg}`);
-    });
+    void Promise.all(list.map((task) => this.maybeMirrorTaskImage(task))).catch(
+      (err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`后台转存任务图片失败(getGallery): ${msg}`);
+      },
+    );
     return { list: mappedList, total, page, pageSize };
   }
 
@@ -277,7 +338,11 @@ export class DrawService {
       throw new NotFoundException('任务不存在');
     }
     // 非本人且非公开，禁止查看
-    if (task.userId !== userId && !task.isPublic && task.status !== DrawTaskStatus.COMPLETED) {
+    if (
+      task.userId !== userId &&
+      !task.isPublic &&
+      task.status !== DrawTaskStatus.COMPLETED
+    ) {
       throw new NotFoundException('无权查看');
     }
     // Also don't block status response; mirroring can be slow.
@@ -299,9 +364,30 @@ export class DrawService {
       let imageUrl: string | null = null;
 
       // 优先用 GrsAI 统一接口
-      const grsProviders = ['nano-banana-pro', 'nano-banana-fast', 'nano-banana', 'nano-banana-pro-vt', 'nano-banana-pro-cl', 'nano-banana-pro-vip', 'nano-banana-pro-4k-vip', 'gpt-image-1.5', 'sora-image'];
-      const apimartProviders = ['doubao-seedance-4-5', 'flux-2-pro', 'flux-kontext-pro', 'flux-kontext-max'];
-      const kieMarketProviders = ['z-image', 'qwen/text-to-image', 'qwen/image-to-image', 'qwen/image-edit', 'grok-imagine/text-to-image'];
+      const grsProviders = [
+        'nano-banana-pro',
+        'nano-banana-fast',
+        'nano-banana',
+        'nano-banana-pro-vt',
+        'nano-banana-pro-cl',
+        'nano-banana-pro-vip',
+        'nano-banana-pro-4k-vip',
+        'gpt-image-1.5',
+        'sora-image',
+      ];
+      const apimartProviders = [
+        'doubao-seedance-4-5',
+        'flux-2-pro',
+        'flux-kontext-pro',
+        'flux-kontext-max',
+      ];
+      const kieMarketProviders = [
+        'z-image',
+        'qwen/text-to-image',
+        'qwen/image-to-image',
+        'qwen/image-edit',
+        'grok-imagine/text-to-image',
+      ];
       if (grsProviders.includes(task.provider)) {
         imageUrl = await this.processGrsAI(task);
       } else if (apimartProviders.includes(task.provider)) {
@@ -349,7 +435,10 @@ export class DrawService {
       this.emit(task.userId, 'task.failed', task);
       // 失败时退还积分
       try {
-        await this.userService.addBalance(task.userId, Number(task.deductPoints));
+        await this.userService.addBalance(
+          task.userId,
+          Number(task.deductPoints),
+        );
       } catch (refundErr) {
         this.logger.error(`退还积分失败: ${task.userId}`, refundErr);
       }
@@ -360,9 +449,12 @@ export class DrawService {
   /**
    * 模拟进度计算（对数增长，前快后慢）
    */
-  private calculateSimulatedProgress(attempt: number, pollIntervalMs: number): number {
+  private calculateSimulatedProgress(
+    attempt: number,
+    pollIntervalMs: number,
+  ): number {
     const elapsedSeconds = (attempt * pollIntervalMs) / 1000;
-    
+
     // 0-5s: 10% -> 40% (快速响应)
     if (elapsedSeconds <= 5) {
       return 10 + (elapsedSeconds / 5) * 30;
@@ -425,7 +517,10 @@ export class DrawService {
     if (model.apiKey) {
       return {
         apiKey: String(model.apiKey || '').trim(),
-        baseUrl: this.normalizeBaseUrl(model.baseUrl) || this.normalizeBaseUrl(fallbackBaseUrl) || '',
+        baseUrl:
+          this.normalizeBaseUrl(model.baseUrl) ||
+          this.normalizeBaseUrl(fallbackBaseUrl) ||
+          '',
       };
     }
 
@@ -440,7 +535,10 @@ export class DrawService {
    */
   private async processKieMarket(task: DrawTask): Promise<string> {
     // 优先使用"同名模型"的 key；若未配置，允许使用一个共享的 `kie-market` key（只需配置一次）。
-    let direct = await this.resolveModelAuth(task.provider, KIE_API_URL_FALLBACK);
+    let direct = await this.resolveModelAuth(
+      task.provider,
+      KIE_API_URL_FALLBACK,
+    );
 
     // 如果数据库未配置，使用环境变量 KIE_API_KEY 作为回退
     if (!direct?.apiKey) {
@@ -450,7 +548,9 @@ export class DrawService {
       }
     }
 
-    const shared = direct?.apiKey ? null : await this.resolveModelAuth('kie-market', KIE_API_URL_FALLBACK);
+    const shared = direct?.apiKey
+      ? null
+      : await this.resolveModelAuth('kie-market', KIE_API_URL_FALLBACK);
     const auth = direct?.apiKey ? direct : shared;
     if (!auth?.apiKey) {
       throw new Error(
@@ -465,57 +565,97 @@ export class DrawService {
     const input: Record<string, unknown> = {};
     if (task.provider === 'z-image') {
       input.prompt = task.prompt;
-      input.aspect_ratio = typeof rawParams.aspectRatio === 'string' ? rawParams.aspectRatio : '1:1';
+      input.aspect_ratio =
+        typeof rawParams.aspectRatio === 'string'
+          ? rawParams.aspectRatio
+          : '1:1';
     } else if (task.provider === 'qwen/text-to-image') {
       input.prompt = task.prompt;
-      if (typeof rawParams.imageSize === 'string') input.image_size = rawParams.imageSize;
-      if (typeof rawParams.numInferenceSteps === 'number') input.num_inference_steps = rawParams.numInferenceSteps;
+      if (typeof rawParams.imageSize === 'string')
+        input.image_size = rawParams.imageSize;
+      if (typeof rawParams.numInferenceSteps === 'number')
+        input.num_inference_steps = rawParams.numInferenceSteps;
       if (typeof rawParams.seed === 'number') input.seed = rawParams.seed;
-      if (typeof rawParams.guidanceScale === 'number') input.guidance_scale = rawParams.guidanceScale;
-      if (typeof rawParams.enableSafetyChecker === 'boolean') input.enable_safety_checker = rawParams.enableSafetyChecker;
-      if (typeof rawParams.outputFormat === 'string') input.output_format = rawParams.outputFormat;
-      if (typeof rawParams.negativePrompt === 'string') input.negative_prompt = rawParams.negativePrompt;
-      if (typeof rawParams.acceleration === 'string') input.acceleration = rawParams.acceleration;
+      if (typeof rawParams.guidanceScale === 'number')
+        input.guidance_scale = rawParams.guidanceScale;
+      if (typeof rawParams.enableSafetyChecker === 'boolean')
+        input.enable_safety_checker = rawParams.enableSafetyChecker;
+      if (typeof rawParams.outputFormat === 'string')
+        input.output_format = rawParams.outputFormat;
+      if (typeof rawParams.negativePrompt === 'string')
+        input.negative_prompt = rawParams.negativePrompt;
+      if (typeof rawParams.acceleration === 'string')
+        input.acceleration = rawParams.acceleration;
     } else if (task.provider === 'qwen/image-to-image') {
       input.prompt = task.prompt;
-      const imageUrl = typeof rawParams.imageUrl === 'string' ? rawParams.imageUrl.trim() : '';
-      if (!imageUrl) throw new Error('qwen/image-to-image 需要提供参考图 imageUrl');
+      const imageUrl =
+        typeof rawParams.imageUrl === 'string' ? rawParams.imageUrl.trim() : '';
+      if (!imageUrl)
+        throw new Error('qwen/image-to-image 需要提供参考图 imageUrl');
       input.image_url = this.getBase64Image(imageUrl);
-      if (typeof rawParams.strength === 'number') input.strength = rawParams.strength;
-      if (typeof rawParams.outputFormat === 'string') input.output_format = rawParams.outputFormat;
-      if (typeof rawParams.acceleration === 'string') input.acceleration = rawParams.acceleration;
-      if (typeof rawParams.negativePrompt === 'string') input.negative_prompt = rawParams.negativePrompt;
+      if (typeof rawParams.strength === 'number')
+        input.strength = rawParams.strength;
+      if (typeof rawParams.outputFormat === 'string')
+        input.output_format = rawParams.outputFormat;
+      if (typeof rawParams.acceleration === 'string')
+        input.acceleration = rawParams.acceleration;
+      if (typeof rawParams.negativePrompt === 'string')
+        input.negative_prompt = rawParams.negativePrompt;
       if (typeof rawParams.seed === 'number') input.seed = rawParams.seed;
-      if (typeof rawParams.numInferenceSteps === 'number') input.num_inference_steps = rawParams.numInferenceSteps;
-      if (typeof rawParams.guidanceScale === 'number') input.guidance_scale = rawParams.guidanceScale;
-      if (typeof rawParams.enableSafetyChecker === 'boolean') input.enable_safety_checker = rawParams.enableSafetyChecker;
+      if (typeof rawParams.numInferenceSteps === 'number')
+        input.num_inference_steps = rawParams.numInferenceSteps;
+      if (typeof rawParams.guidanceScale === 'number')
+        input.guidance_scale = rawParams.guidanceScale;
+      if (typeof rawParams.enableSafetyChecker === 'boolean')
+        input.enable_safety_checker = rawParams.enableSafetyChecker;
     } else if (task.provider === 'qwen/image-edit') {
       input.prompt = task.prompt;
-      const imageUrl = typeof rawParams.imageUrl === 'string' ? rawParams.imageUrl.trim() : '';
-      if (!imageUrl) throw new Error('qwen/image-edit 需要提供待编辑图片 imageUrl');
+      const imageUrl =
+        typeof rawParams.imageUrl === 'string' ? rawParams.imageUrl.trim() : '';
+      if (!imageUrl)
+        throw new Error('qwen/image-edit 需要提供待编辑图片 imageUrl');
       input.image_url = this.getBase64Image(imageUrl);
-      if (typeof rawParams.acceleration === 'string') input.acceleration = rawParams.acceleration;
-      if (typeof rawParams.imageSize === 'string') input.image_size = rawParams.imageSize;
-      if (typeof rawParams.numInferenceSteps === 'number') input.num_inference_steps = rawParams.numInferenceSteps;
+      if (typeof rawParams.acceleration === 'string')
+        input.acceleration = rawParams.acceleration;
+      if (typeof rawParams.imageSize === 'string')
+        input.image_size = rawParams.imageSize;
+      if (typeof rawParams.numInferenceSteps === 'number')
+        input.num_inference_steps = rawParams.numInferenceSteps;
       if (typeof rawParams.seed === 'number') input.seed = rawParams.seed;
-      if (typeof rawParams.guidanceScale === 'number') input.guidance_scale = rawParams.guidanceScale;
-      if (typeof rawParams.syncMode === 'boolean') input.sync_mode = rawParams.syncMode;
-      if (typeof rawParams.numImages === 'string') input.num_images = rawParams.numImages;
-      if (typeof rawParams.enableSafetyChecker === 'boolean') input.enable_safety_checker = rawParams.enableSafetyChecker;
-      if (typeof rawParams.outputFormat === 'string') input.output_format = rawParams.outputFormat;
-      if (typeof rawParams.negativePrompt === 'string') input.negative_prompt = rawParams.negativePrompt;
+      if (typeof rawParams.guidanceScale === 'number')
+        input.guidance_scale = rawParams.guidanceScale;
+      if (typeof rawParams.syncMode === 'boolean')
+        input.sync_mode = rawParams.syncMode;
+      if (typeof rawParams.numImages === 'string')
+        input.num_images = rawParams.numImages;
+      if (typeof rawParams.enableSafetyChecker === 'boolean')
+        input.enable_safety_checker = rawParams.enableSafetyChecker;
+      if (typeof rawParams.outputFormat === 'string')
+        input.output_format = rawParams.outputFormat;
+      if (typeof rawParams.negativePrompt === 'string')
+        input.negative_prompt = rawParams.negativePrompt;
     } else if (task.provider === 'grok-imagine/text-to-image') {
       // grok-imagine: 文生图模式
       input.prompt = task.prompt;
-      input.aspect_ratio = typeof rawParams.aspectRatio === 'string' ? rawParams.aspectRatio : '1:1';
-      if (typeof rawParams.imageSize === 'string') input.image_size = rawParams.imageSize;
-      if (typeof rawParams.numInferenceSteps === 'number') input.num_inference_steps = rawParams.numInferenceSteps;
+      input.aspect_ratio =
+        typeof rawParams.aspectRatio === 'string'
+          ? rawParams.aspectRatio
+          : '1:1';
+      if (typeof rawParams.imageSize === 'string')
+        input.image_size = rawParams.imageSize;
+      if (typeof rawParams.numInferenceSteps === 'number')
+        input.num_inference_steps = rawParams.numInferenceSteps;
       if (typeof rawParams.seed === 'number') input.seed = rawParams.seed;
-      if (typeof rawParams.guidanceScale === 'number') input.guidance_scale = rawParams.guidanceScale;
-      if (typeof rawParams.numImages === 'string') input.num_images = rawParams.numImages;
-      if (typeof rawParams.enableSafetyChecker === 'boolean') input.enable_safety_checker = rawParams.enableSafetyChecker;
-      if (typeof rawParams.outputFormat === 'string') input.output_format = rawParams.outputFormat;
-      if (typeof rawParams.negativePrompt === 'string') input.negative_prompt = rawParams.negativePrompt;
+      if (typeof rawParams.guidanceScale === 'number')
+        input.guidance_scale = rawParams.guidanceScale;
+      if (typeof rawParams.numImages === 'string')
+        input.num_images = rawParams.numImages;
+      if (typeof rawParams.enableSafetyChecker === 'boolean')
+        input.enable_safety_checker = rawParams.enableSafetyChecker;
+      if (typeof rawParams.outputFormat === 'string')
+        input.output_format = rawParams.outputFormat;
+      if (typeof rawParams.negativePrompt === 'string')
+        input.negative_prompt = rawParams.negativePrompt;
     } else {
       throw new Error(`不支持的 KIE Market 模型: ${task.provider}`);
     }
@@ -543,7 +683,10 @@ export class DrawService {
 
     const kieTaskId = createRes?.data?.taskId;
     if (!kieTaskId) {
-      const err = createRes?.message || createRes?.msg || JSON.stringify(createRes).slice(0, 300);
+      const err =
+        createRes?.message ||
+        createRes?.msg ||
+        JSON.stringify(createRes).slice(0, 300);
       throw new Error(`KIE 创建任务失败: ${err}`);
     }
 
@@ -582,7 +725,10 @@ export class DrawService {
       const state = String(statusRes?.data?.state || '').toLowerCase();
       const apiProgress = Number(statusRes?.data?.progress ?? NaN);
       if (!Number.isNaN(apiProgress)) {
-        task.progress = Math.max(task.progress, Math.min(99, Math.round(apiProgress)));
+        task.progress = Math.max(
+          task.progress,
+          Math.min(99, Math.round(apiProgress)),
+        );
         await this.drawRepository.save(task);
       }
 
@@ -595,10 +741,7 @@ export class DrawService {
           parsed = null;
         }
         const url =
-          parsed?.resultUrls?.[0] ||
-          parsed?.resultUrl ||
-          parsed?.url ||
-          null;
+          parsed?.resultUrls?.[0] || parsed?.resultUrl || parsed?.url || null;
         if (!url) {
           throw new Error('KIE 任务已成功但未返回 resultUrls');
         }
@@ -606,7 +749,8 @@ export class DrawService {
       }
 
       if (state === 'fail') {
-        const reason = statusRes?.data?.failMsg || statusRes?.data?.failCode || '任务失败';
+        const reason =
+          statusRes?.data?.failMsg || statusRes?.data?.failCode || '任务失败';
         throw new Error(`KIE 任务失败: ${reason}`);
       }
 
@@ -625,7 +769,11 @@ export class DrawService {
    * 结果轮询：/v1/tasks/{task_id}
    */
   private getBase64Image(urlStr: string): string {
-    if (!urlStr.includes('127.0.0.1') && !urlStr.includes('localhost') && urlStr.startsWith('http')) {
+    if (
+      !urlStr.includes('127.0.0.1') &&
+      !urlStr.includes('localhost') &&
+      urlStr.startsWith('http')
+    ) {
       return urlStr;
     }
     try {
@@ -650,20 +798,28 @@ export class DrawService {
 
   private async processApimart(task: DrawTask): Promise<string> {
     const endpoint = process.env.APIMART_API_URL || 'https://api.apimart.ai';
-    const apiKey = process.env.APIMART_API_KEY || 'sk-QDveW1X9IX9GAkWuQ9GbL9NAZSaJA9OfXQ5lbySqYe1zVAIV';
+    const apiKey =
+      process.env.APIMART_API_KEY ||
+      'sk-QDveW1X9IX9GAkWuQ9GbL9NAZSaJA9OfXQ5lbySqYe1zVAIV';
     if (!apiKey) {
       throw new Error('未配置 APIMART_API_KEY');
     }
 
     const rawParams = this.getTaskParams(task);
     const model = String(rawParams.model || task.provider);
-    const imageUrlsRaw = Array.isArray(rawParams.imageUrls) ? rawParams.imageUrls : [];
+    const imageUrlsRaw = Array.isArray(rawParams.imageUrls)
+      ? rawParams.imageUrls
+      : [];
     const imageUrls = imageUrlsRaw
       .map((url) => (typeof url === 'string' ? url.trim() : ''))
       .filter((url) => Boolean(url))
       .map((url) => this.getBase64Image(url));
-    const size = typeof rawParams.size === 'string' ? rawParams.size : undefined;
-    const resolution = typeof rawParams.resolution === 'string' ? rawParams.resolution : undefined;
+    const size =
+      typeof rawParams.size === 'string' ? rawParams.size : undefined;
+    const resolution =
+      typeof rawParams.resolution === 'string'
+        ? rawParams.resolution
+        : undefined;
     const n = typeof rawParams.n === 'number' ? rawParams.n : undefined;
 
     const body: Record<string, unknown> = {
@@ -675,7 +831,8 @@ export class DrawService {
     if (model === 'doubao-seedance-4-5') {
       if (size) body.size = size;
       if (resolution) body.resolution = resolution;
-      if (typeof n === 'number') body.n = Math.max(1, Math.min(15, Math.floor(n)));
+      if (typeof n === 'number')
+        body.n = Math.max(1, Math.min(15, Math.floor(n)));
       if (imageUrls.length > 0) body.image_urls = imageUrls.slice(0, 10);
     } else if (model === 'flux-2-pro' || model === 'flux-2-flex') {
       if (size) body.size = size;
@@ -694,7 +851,9 @@ export class DrawService {
       throw new Error(`不支持的 Apimart 模型: ${model}`);
     }
 
-    this.logger.log(`Apimart 请求: ${endpoint}/v1/images/generations model=${model}`);
+    this.logger.log(
+      `Apimart 请求: ${endpoint}/v1/images/generations model=${model}`,
+    );
 
     const createRes = await this.httpRequest<{
       code?: number;
@@ -707,14 +866,16 @@ export class DrawService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body,
     });
 
-    const taskId = createRes?.data?.[0]?.task_id || createRes?.task_id || createRes?.id;
+    const taskId =
+      createRes?.data?.[0]?.task_id || createRes?.task_id || createRes?.id;
     if (!taskId) {
-      const errMsg = createRes?.error?.message || JSON.stringify(createRes).slice(0, 300);
+      const errMsg =
+        createRes?.error?.message || JSON.stringify(createRes).slice(0, 300);
       throw new Error(`Apimart 创建任务失败: ${errMsg}`);
     }
 
@@ -723,10 +884,10 @@ export class DrawService {
 
     for (let i = 0; i < maxAttempts; i++) {
       await this.sleep(pollInterval);
-      
+
       // 使用平滑模拟进度
       const simulated = this.calculateSimulatedProgress(i + 1, pollInterval);
-      
+
       // 先更新模拟进度（如果 API 没返回进度，就用这个）
       if (task.progress < simulated) {
         task.progress = Math.round(simulated);
@@ -737,7 +898,7 @@ export class DrawService {
         url: `${endpoint}/v1/tasks/${taskId}`,
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
         },
       });
 
@@ -746,25 +907,28 @@ export class DrawService {
       const result = Array.isArray(rawResult)
         ? (rawResult[0] ?? {})
         : (rawResult ?? {});
-      const resultData = result?.data && typeof result.data === 'object' ? result.data : null;
-      const taskResult = resultData && !Array.isArray(resultData) ? resultData : result;
+      const resultData =
+        result?.data && typeof result.data === 'object' ? result.data : null;
+      const taskResult =
+        resultData && !Array.isArray(resultData) ? resultData : result;
 
       const status: string = String(
-        taskResult?.status ??
-        result?.status ??
-        '',
+        taskResult?.status ?? result?.status ?? '',
       ).toLowerCase();
 
       const percent = Number(
         taskResult?.progress ??
-        taskResult?.percentage ??
-        result?.progress ??
-        result?.percentage ??
-        NaN,
+          taskResult?.percentage ??
+          result?.progress ??
+          result?.percentage ??
+          NaN,
       );
       if (!Number.isNaN(percent)) {
         // 如果 API 返回了真实进度，优先使用（取最大值，防止进度倒退）
-        task.progress = Math.max(task.progress, Math.min(99, Math.round(percent)));
+        task.progress = Math.max(
+          task.progress,
+          Math.min(99, Math.round(percent)),
+        );
         await this.drawRepository.save(task);
       }
 
@@ -791,7 +955,11 @@ export class DrawService {
         result?.outputs?.[0]?.url ||
         result?.images?.[0]?.url;
 
-      if (status === 'succeeded' || status === 'completed' || status === 'success') {
+      if (
+        status === 'succeeded' ||
+        status === 'completed' ||
+        status === 'success'
+      ) {
         if (imageUrl) return imageUrl;
         throw new Error('Apimart 任务已完成但未返回图片 URL');
       }
@@ -825,9 +993,10 @@ export class DrawService {
     // DALL-E 3 仅支持三种尺寸
     const validSizes = ['1024x1024', '1024x1792', '1792x1024'] as const;
     const taskParams = this.getTaskParams(task);
-    const rawSize = (taskParams.width && taskParams.height)
-      ? `${taskParams.width}x${taskParams.height}`
-      : '1024x1024';
+    const rawSize =
+      taskParams.width && taskParams.height
+        ? `${taskParams.width}x${taskParams.height}`
+        : '1024x1024';
     const size = validSizes.includes(rawSize as (typeof validSizes)[number])
       ? (rawSize as (typeof validSizes)[number])
       : '1024x1024';
@@ -864,13 +1033,16 @@ export class DrawService {
     // POST /api/v1/mj/generate
     // 任务详情：文档未给出具体路径，这里做多路径兼容轮询
     const endpointFallback = KIE_API_URL_FALLBACK;
-    const apiKeyFallback = process.env.MIDJOURNEY_API_KEY || process.env.KIE_API_KEY;
+    const apiKeyFallback =
+      process.env.MIDJOURNEY_API_KEY || process.env.KIE_API_KEY;
 
     const auth = await this.resolveModelAuth('midjourney', endpointFallback);
     const baseUrl = this.normalizeBaseUrl(auth?.baseUrl) || endpointFallback;
     const apiKey = auth?.apiKey || apiKeyFallback;
     if (!apiKey) {
-      throw new Error('未配置 Midjourney API Key（请在管理端模型管理中为 midjourney 配置 Key）');
+      throw new Error(
+        '未配置 Midjourney API Key（请在管理端模型管理中为 midjourney 配置 Key）',
+      );
     }
 
     const rawParams = this.getTaskParams(task);
@@ -889,16 +1061,25 @@ export class DrawService {
     };
     const normalizedTaskType = taskTypeMap[rawTaskType] || 'mj_txt2img';
 
-    const fileUrlsRaw = Array.isArray(rawParams.fileUrls) ? rawParams.fileUrls : [];
+    const fileUrlsRaw = Array.isArray(rawParams.fileUrls)
+      ? rawParams.fileUrls
+      : [];
     const fileUrlsFromLegacy =
       typeof rawParams.fileUrl === 'string'
         ? [rawParams.fileUrl]
-        : (Array.isArray(rawParams.urls) ? rawParams.urls : []);
+        : Array.isArray(rawParams.urls)
+          ? rawParams.urls
+          : [];
     const mergedFileUrls = [...fileUrlsRaw, ...fileUrlsFromLegacy]
       .map((u) => (typeof u === 'string' ? u.trim() : ''))
       .filter(Boolean)
       .map((u) => this.getBase64Image(u));
-    const firstInputUrl = mergedFileUrls[0] || (typeof rawParams.fileUrl === 'string' ? this.getBase64Image(rawParams.fileUrl.trim()) : '') || '';
+    const firstInputUrl =
+      mergedFileUrls[0] ||
+      (typeof rawParams.fileUrl === 'string'
+        ? this.getBase64Image(rawParams.fileUrl.trim())
+        : '') ||
+      '';
 
     const needsInputImage =
       normalizedTaskType === 'mj_img2img' ||
@@ -906,7 +1087,9 @@ export class DrawService {
       normalizedTaskType === 'mj_style_reference' ||
       normalizedTaskType === 'mj_omni_reference';
     if (needsInputImage && !firstInputUrl) {
-      throw new Error(`Midjourney ${normalizedTaskType} 需要提供输入图片 URL（fileUrl/fileUrls）`);
+      throw new Error(
+        `Midjourney ${normalizedTaskType} 需要提供输入图片 URL（fileUrl/fileUrls）`,
+      );
     }
 
     const body: Record<string, unknown> = {
@@ -914,14 +1097,19 @@ export class DrawService {
       prompt: task.prompt,
     };
     if (typeof rawParams.speed === 'string') body.speed = rawParams.speed;
-    if (typeof rawParams.aspectRatio === 'string') body.aspectRatio = rawParams.aspectRatio;
+    if (typeof rawParams.aspectRatio === 'string')
+      body.aspectRatio = rawParams.aspectRatio;
     if (typeof rawParams.version === 'string') body.version = rawParams.version;
     if (typeof rawParams.variety === 'number') body.variety = rawParams.variety;
-    if (typeof rawParams.stylization === 'number') body.stylization = rawParams.stylization;
-    if (typeof rawParams.weirdness === 'number') body.weirdness = rawParams.weirdness;
+    if (typeof rawParams.stylization === 'number')
+      body.stylization = rawParams.stylization;
+    if (typeof rawParams.weirdness === 'number')
+      body.weirdness = rawParams.weirdness;
     if (typeof rawParams.ow === 'number') body.ow = rawParams.ow;
-    if (typeof rawParams.waterMark === 'string') body.waterMark = rawParams.waterMark;
-    if (typeof rawParams.callBackUrl === 'string') body.callBackUrl = rawParams.callBackUrl;
+    if (typeof rawParams.waterMark === 'string')
+      body.waterMark = rawParams.waterMark;
+    if (typeof rawParams.callBackUrl === 'string')
+      body.callBackUrl = rawParams.callBackUrl;
 
     if (needsInputImage) {
       body.fileUrls = [firstInputUrl];
@@ -946,8 +1134,14 @@ export class DrawService {
 
     const mjTaskId = createRes?.data?.taskId;
     if (!mjTaskId) {
-      const err = createRes?.message || createRes?.msg || JSON.stringify(createRes).slice(0, 300);
-      await logMidjourney('create_failed', `baseUrl=${baseUrl} resp=${String(err).slice(0, 300)}`);
+      const err =
+        createRes?.message ||
+        createRes?.msg ||
+        JSON.stringify(createRes).slice(0, 300);
+      await logMidjourney(
+        'create_failed',
+        `baseUrl=${baseUrl} resp=${String(err).slice(0, 300)}`,
+      );
       throw new Error(`Midjourney 创建任务失败: ${err}`);
     }
 
@@ -992,15 +1186,21 @@ export class DrawService {
 
       if (!statusRes) {
         if (i === maxAttempts - 1) {
-          await logMidjourney('status_failed', `baseUrl=${baseUrl} err=${String(lastErr || 'unknown').slice(0, 300)}`);
-          throw new Error(`Midjourney 查询任务详情失败: ${lastErr || 'unknown'}`);
+          await logMidjourney(
+            'status_failed',
+            `baseUrl=${baseUrl} err=${String(lastErr || 'unknown').slice(0, 300)}`,
+          );
+          throw new Error(
+            `Midjourney 查询任务详情失败: ${lastErr || 'unknown'}`,
+          );
         }
         continue;
       }
 
       const data = statusRes?.data ?? statusRes;
       const state = String(data?.state ?? data?.status ?? '').toLowerCase();
-      const successFlag = typeof data?.successFlag === 'number' ? data.successFlag : null;
+      const successFlag =
+        typeof data?.successFlag === 'number' ? data.successFlag : null;
 
       // 文档结构：data.resultInfoJson.resultUrls = [{ resultUrl: "..." }, ...]
       const resultInfoUrls = data?.resultInfoJson?.resultUrls;
@@ -1011,7 +1211,11 @@ export class DrawService {
       }
 
       // 兼容：直接返回数组字符串 resultUrls
-      const resultUrls = data?.resultUrls ?? data?.data?.resultUrls ?? data?.result?.resultUrls ?? [];
+      const resultUrls =
+        data?.resultUrls ??
+        data?.data?.resultUrls ??
+        data?.result?.resultUrls ??
+        [];
       if (Array.isArray(resultUrls) && resultUrls.length > 0) {
         const first = resultUrls[0] as any;
         if (typeof first === 'string') return first;
@@ -1019,7 +1223,8 @@ export class DrawService {
         if (url) return String(url);
       }
 
-      const rawJson = typeof data?.resultJson === 'string' ? data.resultJson : '';
+      const rawJson =
+        typeof data?.resultJson === 'string' ? data.resultJson : '';
       if (rawJson) {
         try {
           const parsed = JSON.parse(rawJson);
@@ -1032,13 +1237,29 @@ export class DrawService {
 
       // successFlag: 0(生成中) 1(成功) 2(失败) 3(生成失败)
       if (successFlag === 2 || successFlag === 3) {
-        const reason = data?.errorMessage || data?.failMsg || data?.msg || data?.message || '任务失败';
-        await logMidjourney('task_failed', `baseUrl=${baseUrl} reason=${String(reason).slice(0, 300)}`);
+        const reason =
+          data?.errorMessage ||
+          data?.failMsg ||
+          data?.msg ||
+          data?.message ||
+          '任务失败';
+        await logMidjourney(
+          'task_failed',
+          `baseUrl=${baseUrl} reason=${String(reason).slice(0, 300)}`,
+        );
         throw new Error(`Midjourney 任务失败: ${reason}`);
       }
       if (state === 'fail' || state === 'failed' || state === 'error') {
-        const reason = data?.errorMessage || data?.failMsg || data?.msg || data?.message || '任务失败';
-        await logMidjourney('task_failed', `baseUrl=${baseUrl} reason=${String(reason).slice(0, 300)}`);
+        const reason =
+          data?.errorMessage ||
+          data?.failMsg ||
+          data?.msg ||
+          data?.message ||
+          '任务失败';
+        await logMidjourney(
+          'task_failed',
+          `baseUrl=${baseUrl} reason=${String(reason).slice(0, 300)}`,
+        );
         throw new Error(`Midjourney 任务失败: ${reason}`);
       }
     }
@@ -1054,10 +1275,13 @@ export class DrawService {
    */
   private async processGrsAI(task: DrawTask): Promise<string> {
     const BASE_URL = process.env.GRSAI_API_URL || 'https://grsaiapi.com';
-    const API_KEY = process.env.GRSAI_API_KEY || 'sk-4e5fa91a66d54303ba527d2b4b8e5e09';
+    const API_KEY =
+      process.env.GRSAI_API_KEY || 'sk-4e5fa91a66d54303ba527d2b4b8e5e09';
 
     const isNanoBanana = task.provider.startsWith('nano-banana');
-    const endpoint = isNanoBanana ? '/v1/draw/nano-banana' : '/v1/draw/completions';
+    const endpoint = isNanoBanana
+      ? '/v1/draw/nano-banana'
+      : '/v1/draw/completions';
 
     const rawParams = this.getTaskParams(task);
     const model = (rawParams as any)?.model || task.provider;
@@ -1079,25 +1303,34 @@ export class DrawService {
     // 参考图 URL
     if ((rawParams as any)?.urls) {
       const rawUrls = (rawParams as any).urls;
-      body.urls = Array.isArray(rawUrls) ? rawUrls.map((u: string) => this.getBase64Image(u)) : rawUrls;
+      body.urls = Array.isArray(rawUrls)
+        ? rawUrls.map((u: string) => this.getBase64Image(u))
+        : rawUrls;
     }
 
     this.logger.log(`GrsAI 请求: ${BASE_URL}${endpoint} model=${model}`);
 
     // 提交任务
-    const createRes = await this.httpRequest<{ code?: number; data?: { id: string }; msg?: string; id?: string }>({
+    const createRes = await this.httpRequest<{
+      code?: number;
+      data?: { id: string };
+      msg?: string;
+      id?: string;
+    }>({
       url: `${BASE_URL}${endpoint}`,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`,
+        Authorization: `Bearer ${API_KEY}`,
       },
       body,
     });
 
     const taskId = createRes?.data?.id || createRes?.id;
     if (!taskId) {
-      throw new Error(`GrsAI 创建任务失败: ${JSON.stringify(createRes).slice(0, 200)}`);
+      throw new Error(
+        `GrsAI 创建任务失败: ${JSON.stringify(createRes).slice(0, 200)}`,
+      );
     }
 
     this.logger.log(`GrsAI 任务已创建: ${taskId}`);
@@ -1111,40 +1344,50 @@ export class DrawService {
 
       const resultRes = await this.httpRequest<{
         code?: number;
-        data?: { status: string; progress?: number; results?: Array<{ url: string }>; url?: string };
+        data?: {
+          status: string;
+          progress?: number;
+          results?: Array<{ url: string }>;
+          url?: string;
+        };
         msg?: string;
       }>({
         url: `${BASE_URL}/v1/draw/result`,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${API_KEY}`,
+          Authorization: `Bearer ${API_KEY}`,
         },
         body: { id: taskId },
       });
 
       const data = resultRes?.data;
-      
+
       const simulated = this.calculateSimulatedProgress(i + 1, pollInterval);
       const apiProgress = data?.progress;
-      
-      // 优先用 API 进度，否则用模拟进度
-      const finalProgress = (apiProgress !== undefined && apiProgress > 0)
-        ? apiProgress
-        : simulated;
 
-      task.progress = Math.round(Math.min(99, Math.max(task.progress, finalProgress)));
+      // 优先用 API 进度，否则用模拟进度
+      const finalProgress =
+        apiProgress !== undefined && apiProgress > 0 ? apiProgress : simulated;
+
+      task.progress = Math.round(
+        Math.min(99, Math.max(task.progress, finalProgress)),
+      );
       await this.drawRepository.save(task);
 
       if (data?.status === 'succeeded') {
         const url = data.results?.[0]?.url || data.url;
         if (url) {
-          this.logger.log(`GrsAI 任务完成: ${taskId}, url=${url.slice(0, 80)}...`);
+          this.logger.log(
+            `GrsAI 任务完成: ${taskId}, url=${url.slice(0, 80)}...`,
+          );
           return url;
         }
       }
       if (data?.status === 'failed') {
-        throw new Error(`GrsAI 任务失败: ${JSON.stringify(data).slice(0, 200)}`);
+        throw new Error(
+          `GrsAI 任务失败: ${JSON.stringify(data).slice(0, 200)}`,
+        );
       }
     }
 
@@ -1156,7 +1399,9 @@ export class DrawService {
    */
   private async processGenericApi(task: DrawTask): Promise<string> {
     const provider = task.provider;
-    const endpoint = process.env[`${provider.toUpperCase()}_API_URL`] || `https://api.${provider}.ai/v1`;
+    const endpoint =
+      process.env[`${provider.toUpperCase()}_API_URL`] ||
+      `https://api.${provider}.ai/v1`;
     const apiKey = process.env[`${provider.toUpperCase()}_API_KEY`];
 
     if (!apiKey) {
@@ -1164,30 +1409,44 @@ export class DrawService {
     }
 
     const processedParams = this.getTaskParams(task);
-    const imageKeys = ['image_url', 'imageUrl', 'urls', 'fileUrl', 'fileUrls', 'imageUrls', 'image_urls'];
+    const imageKeys = [
+      'image_url',
+      'imageUrl',
+      'urls',
+      'fileUrl',
+      'fileUrls',
+      'imageUrls',
+      'image_urls',
+    ];
     for (const key of imageKeys) {
       if (processedParams[key]) {
         if (typeof processedParams[key] === 'string') {
-          processedParams[key] = this.getBase64Image(processedParams[key] as string);
+          processedParams[key] = this.getBase64Image(
+            processedParams[key] as string,
+          );
         } else if (Array.isArray(processedParams[key])) {
-          processedParams[key] = (processedParams[key] as string[]).map((u) => this.getBase64Image(u));
+          processedParams[key] = (processedParams[key] as string[]).map((u) =>
+            this.getBase64Image(u),
+          );
         }
       }
     }
 
-    const createRes = await this.httpRequest<{ task_id?: string; id?: string }>({
-      url: `${endpoint}/generate`,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+    const createRes = await this.httpRequest<{ task_id?: string; id?: string }>(
+      {
+        url: `${endpoint}/generate`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: {
+          prompt: task.prompt,
+          negative_prompt: task.negativePrompt,
+          ...processedParams,
+        },
       },
-      body: {
-        prompt: task.prompt,
-        negative_prompt: task.negativePrompt,
-        ...processedParams,
-      },
-    });
+    );
 
     const taskId = createRes?.task_id || createRes?.id;
     if (!taskId) {
@@ -1199,15 +1458,19 @@ export class DrawService {
 
     for (let i = 0; i < maxAttempts; i++) {
       await this.sleep(pollInterval);
-      
+
       const simulated = this.calculateSimulatedProgress(i + 1, pollInterval);
       task.progress = Math.round(simulated);
       await this.drawRepository.save(task);
 
-      const statusRes = await this.httpRequest<{ status: string; image_url?: string; result?: { url?: string } }>({
+      const statusRes = await this.httpRequest<{
+        status: string;
+        image_url?: string;
+        result?: { url?: string };
+      }>({
         url: `${endpoint}/task/${taskId}`,
         method: 'GET',
-        headers: { 'Authorization': `Bearer ${apiKey}` },
+        headers: { Authorization: `Bearer ${apiKey}` },
       });
 
       if (statusRes?.status === 'completed') {
@@ -1230,7 +1493,8 @@ export class DrawService {
     body?: unknown;
     retries?: number;
   }): Promise<T> {
-    const maxAttempts = typeof options.retries === 'number' ? Math.max(1, options.retries) : 3;
+    const maxAttempts =
+      typeof options.retries === 'number' ? Math.max(1, options.retries) : 3;
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -1256,14 +1520,22 @@ export class DrawService {
         const cause = err?.cause;
         const causeCode = cause?.code ? String(cause.code) : '';
         const causeMsg = cause?.message ? String(cause.message) : '';
-        const extra = (causeCode || causeMsg) ? ` | cause=${[causeCode, causeMsg].filter(Boolean).join(' ')}` : '';
-        lastError = new Error(`请求失败: ${options.method} ${options.url} | ${msg}${extra}`);
-
-        const retryable = /ECONNRESET|ETIMEDOUT|ECONNREFUSED|fetch failed|socket disconnected/i.test(
-          `${msg} ${causeMsg} ${causeCode}`,
+        const extra =
+          causeCode || causeMsg
+            ? ` | cause=${[causeCode, causeMsg].filter(Boolean).join(' ')}`
+            : '';
+        lastError = new Error(
+          `请求失败: ${options.method} ${options.url} | ${msg}${extra}`,
         );
+
+        const retryable =
+          /ECONNRESET|ETIMEDOUT|ECONNREFUSED|fetch failed|socket disconnected/i.test(
+            `${msg} ${causeMsg} ${causeCode}`,
+          );
         if (retryable && attempt < maxAttempts) {
-          this.logger.warn(`网络暂时不稳定(${attempt}/${maxAttempts})，${Math.pow(2, attempt)}s 后重试: ${options.url}`);
+          this.logger.warn(
+            `网络暂时不稳定(${attempt}/${maxAttempts})，${Math.pow(2, attempt)}s 后重试: ${options.url}`,
+          );
           await this.sleep(Math.pow(2, attempt) * 1000);
           continue;
         }
@@ -1282,7 +1554,9 @@ export class DrawService {
       }
 
       if ((res.status >= 500 || res.status === 429) && attempt < maxAttempts) {
-        this.logger.warn(`上游 ${res.status}(${attempt}/${maxAttempts})，重试: ${options.url}`);
+        this.logger.warn(
+          `上游 ${res.status}(${attempt}/${maxAttempts})，重试: ${options.url}`,
+        );
         await this.sleep(Math.pow(2, attempt) * 1000);
         lastError = new Error(`HTTP ${res.status}: ${text}`);
         continue;
@@ -1324,7 +1598,10 @@ export class DrawService {
     return '.png';
   }
 
-  private async persistImageToLocal(remoteUrl: string, taskId: string): Promise<string> {
+  private async persistImageToLocal(
+    remoteUrl: string,
+    taskId: string,
+  ): Promise<string> {
     const url = (remoteUrl || '').trim();
     if (!url) return '';
     if (this.isLocalUploadUrl(url)) {
@@ -1346,7 +1623,10 @@ export class DrawService {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 60_000);
       try {
-        res = await fetch(url, { dispatcher: dispatcher as any, signal: controller.signal } as any);
+        res = await fetch(url, {
+          dispatcher: dispatcher as any,
+          signal: controller.signal,
+        } as any);
         if (res.ok) break;
       } catch {
         if (attempt < 3) {
@@ -1390,7 +1670,10 @@ export class DrawService {
   private maybeProxyHint(url: string, causeCode: string, msg: string): string {
     const u = String(url || '');
     const isKie = u.includes('api.kie.ai');
-    const isReset = causeCode === 'ECONNRESET' || /ECONNRESET/i.test(msg) || /fetch failed/i.test(msg);
+    const isReset =
+      causeCode === 'ECONNRESET' ||
+      /ECONNRESET/i.test(msg) ||
+      /fetch failed/i.test(msg);
     if (!isKie || !isReset) return '';
     return '（提示：当前机器到 api.kie.ai 的 TLS 握手被重置，通常是网络/防火墙拦截；可在"系统配置"里设置 HTTPS_PROXY/HTTP_PROXY 后重试）';
   }
@@ -1414,7 +1697,10 @@ export class DrawService {
     return h === rr || h.endsWith(`.${rr}`);
   }
 
-  private async getProxySettings(): Promise<{ proxyUrl: string; noProxy: string }> {
+  private async getProxySettings(): Promise<{
+    proxyUrl: string;
+    noProxy: string;
+  }> {
     const now = Date.now();
     if (this.proxyCache && now - this.proxyCache.fetchedAt < 15_000) {
       const proxyUrl = this.proxyCache.httpsProxy || this.proxyCache.httpProxy;
@@ -1425,14 +1711,20 @@ export class DrawService {
       this.globalConfig.getConfig('HTTPS_PROXY'),
       this.globalConfig.getConfig('NO_PROXY'),
     ]);
-    const httpProxy = String(httpProxyCfg || process.env.HTTP_PROXY || '').trim();
-    const httpsProxy = String(httpsProxyCfg || process.env.HTTPS_PROXY || '').trim();
+    const httpProxy = String(
+      httpProxyCfg || process.env.HTTP_PROXY || '',
+    ).trim();
+    const httpsProxy = String(
+      httpsProxyCfg || process.env.HTTPS_PROXY || '',
+    ).trim();
     const noProxy = String(noProxyCfg || process.env.NO_PROXY || '').trim();
     this.proxyCache = { fetchedAt: now, httpProxy, httpsProxy, noProxy };
     return { proxyUrl: httpsProxy || httpProxy, noProxy };
   }
 
-  private async getDispatcherForUrl(url: string): Promise<ProxyAgent | undefined> {
+  private async getDispatcherForUrl(
+    url: string,
+  ): Promise<ProxyAgent | undefined> {
     const { proxyUrl, noProxy } = await this.getProxySettings();
     if (!proxyUrl) return undefined;
     let hostname = '';
@@ -1443,7 +1735,8 @@ export class DrawService {
     }
     if (hostname) {
       const rules = this.parseNoProxyList(noProxy);
-      if (rules.some((r) => this.hostMatchesNoProxy(hostname, r))) return undefined;
+      if (rules.some((r) => this.hostMatchesNoProxy(hostname, r)))
+        return undefined;
     }
     const cached = this.proxyAgentCache.get(proxyUrl);
     if (cached) return cached;
@@ -1497,7 +1790,10 @@ export class DrawService {
   /**
    * 批量重试全部失败任务（当前用户）
    */
-  async retryAllFailedTasks(userId: string, source: string = 'draw'): Promise<{
+  async retryAllFailedTasks(
+    userId: string,
+    source: string = 'draw',
+  ): Promise<{
     totalFailed: number;
     retried: number;
     skipped: number;
@@ -1510,7 +1806,9 @@ export class DrawService {
       },
       order: { createdAt: 'DESC' },
     });
-    const failedTasks = failedTasksAll.filter((task) => this.isTaskSourceMatch(task, sourceNormalized));
+    const failedTasks = failedTasksAll.filter((task) =>
+      this.isTaskSourceMatch(task, sourceNormalized),
+    );
 
     if (!failedTasks.length) {
       return { totalFailed: 0, retried: 0, skipped: 0 };
@@ -1567,7 +1865,12 @@ export class DrawService {
   async getAllTasks(
     page: number = 1,
     pageSize: number = 20,
-  ): Promise<{ list: DrawTask[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: DrawTask[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.drawRepository.findAndCount({
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,

@@ -419,8 +419,13 @@ const providersDef = [
   { value: 'qwen', label: '通义万相', desc: '阿里通义系列（文生图/图生图/编辑）', color: '#38bdf8' },
   { value: 'midjourney', label: 'Midjourney', desc: 'MJ 艺术级绘画，风格多样', color: '#a78bfa' },
 ]
-
-const modelPointsMap = ref<Record<string, number>>({})
+/** 前端 provider value -> 后端 modelName（或多个），用于按后台启用列表过滤 */
+const imageProviderToBackendNames: Record<string, string | string[]> = {
+  'gpt-image-1': 'gpt-image-1.5',
+  'flux': ['flux-2-pro', 'flux-kontext-pro', 'flux-kontext-max'],
+  'qwen': ['qwen/text-to-image', 'qwen/image-to-image', 'qwen/image-edit'],
+}
+const activeImageModelNames = ref<Set<string>>(new Set())
 const selectedFluxSubModel = ref<'flux-2-pro' | 'flux-kontext-pro' | 'flux-kontext-max'>('flux-2-pro')
 const selectedQwenSubModel = ref<'qwen/text-to-image' | 'qwen/image-to-image' | 'qwen/image-edit'>('qwen/text-to-image')
 
@@ -431,8 +436,18 @@ const actualProvider = computed(() => {
   return p || 'nano-banana-pro'
 })
 
+const modelPointsMap = ref<Record<string, number>>({})
+const visibleProviders = computed(() => {
+  const set = activeImageModelNames.value
+  if (set.size === 0) return providersDef
+  return providersDef.filter(p => {
+    const backends = imageProviderToBackendNames[p.value]
+    const names = Array.isArray(backends) ? backends : [backends ?? p.value]
+    return names.some(b => set.has(b))
+  })
+})
 const providers = computed(() =>
-  providersDef.map(p => {
+  visibleProviders.value.map(p => {
     const modelNameForPoints =
       p.value === 'flux' ? selectedFluxSubModel.value :
         p.value === 'qwen' ? selectedQwenSubModel.value :
@@ -449,12 +464,22 @@ async function fetchDrawModelPoints() {
     const res = await getModels({ type: 'image' })
     const all = (res as any).data || res // 兼容两种返回格式
     if (Array.isArray(all)) {
+      activeImageModelNames.value = new Set(
+        all.map((m: { modelName?: string }) => m.modelName).filter((x): x is string => Boolean(x))
+      )
       for (const m of all) {
         if (m.deductPoints) modelPointsMap.value[m.modelName] = m.deductPoints
       }
     }
   } catch { /* ignore */ }
 }
+
+watch(visibleProviders, (list) => {
+  const first = list[0]
+  if (list.length && first && !list.some(p => p.value === form.value.provider)) {
+    form.value.provider = first.value
+  }
+}, { immediate: true })
 
 type ModelConfig = {
   ratios: { value: string; label: string; icon: string }[];

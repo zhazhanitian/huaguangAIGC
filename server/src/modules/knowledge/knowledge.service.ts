@@ -1,7 +1,15 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { KnowledgeBase, KnowledgeDocument, DocumentStatus } from './knowledge.entity';
+import {
+  KnowledgeBase,
+  KnowledgeDocument,
+  DocumentStatus,
+} from './knowledge.entity';
 import { CreateBaseDto } from './dto/create-base.dto';
 import { AddDocumentDto } from './dto/add-document.dto';
 
@@ -40,7 +48,10 @@ export class KnowledgeService {
   /**
    * 确保用户对知识库有权限
    */
-  private async ensureBaseAccess(userId: string, baseId: string): Promise<KnowledgeBase> {
+  private async ensureBaseAccess(
+    userId: string,
+    baseId: string,
+  ): Promise<KnowledgeBase> {
     const base = await this.baseRepository.findOne({ where: { id: baseId } });
     if (!base) {
       throw new NotFoundException('知识库不存在');
@@ -54,7 +65,10 @@ export class KnowledgeService {
   /**
    * 确保用户对知识库有写权限
    */
-  private async ensureBaseWrite(userId: string, baseId: string): Promise<KnowledgeBase> {
+  private async ensureBaseWrite(
+    userId: string,
+    baseId: string,
+  ): Promise<KnowledgeBase> {
     const base = await this.baseRepository.findOne({ where: { id: baseId } });
     if (!base) {
       throw new NotFoundException('知识库不存在');
@@ -106,7 +120,10 @@ export class KnowledgeService {
   /**
    * 获取知识库下的文档列表
    */
-  async getDocuments(baseId: string, userId: string): Promise<KnowledgeDocument[]> {
+  async getDocuments(
+    baseId: string,
+    userId: string,
+  ): Promise<KnowledgeDocument[]> {
     await this.ensureBaseAccess(userId, baseId);
     return this.docRepository.find({
       where: { knowledgeBaseId: baseId },
@@ -144,7 +161,8 @@ export class KnowledgeService {
       },
     });
 
-    const results: { documentId: string; title: string; excerpt: string }[] = [];
+    const results: { documentId: string; title: string; excerpt: string }[] =
+      [];
     const q = query.trim().toLowerCase();
     if (!q) return results;
 

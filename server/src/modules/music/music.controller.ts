@@ -27,10 +27,7 @@ export class MusicController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '创建音乐任务' })
-  async create(
-    @GetUser('id') userId: string,
-    @Body() dto: CreateMusicTaskDto,
-  ) {
+  async create(@GetUser('id') userId: string, @Body() dto: CreateMusicTaskDto) {
     return this.musicService.createTask(userId, dto);
   }
 
@@ -96,10 +93,7 @@ export class MusicController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '重试失败音乐任务' })
-  async retryTask(
-    @GetUser('id') userId: string,
-    @Param('id') taskId: string,
-  ) {
+  async retryTask(@GetUser('id') userId: string, @Param('id') taskId: string) {
     return this.musicService.retryTask(userId, taskId);
   }
 
@@ -107,10 +101,7 @@ export class MusicController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '删除音乐任务' })
-  async deleteTask(
-    @GetUser('id') userId: string,
-    @Param('id') taskId: string,
-  ) {
+  async deleteTask(@GetUser('id') userId: string, @Param('id') taskId: string) {
     return this.musicService.deleteTask(userId, taskId);
   }
 

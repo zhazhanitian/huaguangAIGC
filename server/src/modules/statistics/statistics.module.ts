@@ -14,8 +14,15 @@ import { StatisticsController } from './statistics.controller';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      User, ChatGroup, ChatLog, Order, AiModel,
-      DrawTask, VideoTask, MusicTask, Model3dTask,
+      User,
+      ChatGroup,
+      ChatLog,
+      Order,
+      AiModel,
+      DrawTask,
+      VideoTask,
+      MusicTask,
+      Model3dTask,
     ]),
   ],
   providers: [StatisticsService],

@@ -23,10 +23,7 @@ export class DocsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '创建文档任务' })
-  async create(
-    @GetUser('id') userId: string,
-    @Body() dto: CreateDocsTaskDto,
-  ) {
+  async create(@GetUser('id') userId: string, @Body() dto: CreateDocsTaskDto) {
     return this.docsService.createTask(userId, dto);
   }
 

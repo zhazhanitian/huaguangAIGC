@@ -82,10 +82,10 @@ async function handleLogin() {
           </a-button>
         </a-form-item>
       </a-form>
-      <p class="footer">
+      <!-- <p class="footer">
         还没有账号？
         <router-link to="/register">立即注册</router-link>
-      </p>
+      </p> -->
     </div>
   </div>
 </template>

@@ -1,10 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bull';
-import {
-  DigitalHuman,
-  DigitalHumanTask,
-} from './digital-human.entity';
+import { DigitalHuman, DigitalHumanTask } from './digital-human.entity';
 import { DigitalHumanService } from './digital-human.service';
 import { DigitalHumanController } from './digital-human.controller';
 import { DigitalHumanProcessor } from './digital-human.processor';

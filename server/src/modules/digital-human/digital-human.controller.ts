@@ -88,10 +88,7 @@ export class DigitalHumanController {
   @Public()
   @Get(':id')
   @ApiOperation({ summary: '获取数字人详情' })
-  async getHuman(
-    @Param('id') id: string,
-    @GetUser('id') userId?: string,
-  ) {
+  async getHuman(@Param('id') id: string, @GetUser('id') userId?: string) {
     return this.digitalHumanService.getHumanById(id, userId);
   }
 }

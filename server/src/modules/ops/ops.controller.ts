@@ -1,5 +1,10 @@
 import { Controller, Get, Query, UseGuards, Res } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../../common/guards/admin.guard';
@@ -14,7 +19,12 @@ export class OpsController {
   @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '运维统计（队列/WS/进程/任务，支持窗口+筛选）' })
-  @ApiQuery({ name: 'windowMin', required: false, type: Number, description: '时间窗口（分钟），默认15' })
+  @ApiQuery({
+    name: 'windowMin',
+    required: false,
+    type: Number,
+    description: '时间窗口（分钟），默认15',
+  })
   @ApiQuery({ name: 'module', required: false, type: String })
   @ApiQuery({ name: 'provider', required: false, type: String })
   @ApiQuery({ name: 'taskType', required: false, type: String })

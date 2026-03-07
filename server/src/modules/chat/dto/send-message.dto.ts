@@ -55,7 +55,9 @@ export class SendMessageDto {
   @MaxLength(10000)
   content: string;
 
-  @ApiPropertyOptional({ description: '指定模型名称，不传则使用对话组默认模型' })
+  @ApiPropertyOptional({
+    description: '指定模型名称，不传则使用对话组默认模型',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)

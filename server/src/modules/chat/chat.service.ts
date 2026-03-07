@@ -7,7 +7,11 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChatGroup, ChatLog, ChatRole, ChatLogStatus } from './chat.entity';
-import { ModelService, ChatMessage, ChatAttachment } from '../model/model.service';
+import {
+  ModelService,
+  ChatMessage,
+  ChatAttachment,
+} from '../model/model.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UserService } from '../user/user.service';
 import { AiModel } from '../model/model.entity';
@@ -40,7 +44,7 @@ export class ChatService {
 
   private async resolvePoints(modelName: string): Promise<number> {
     const m = await this.aiModelRepository.findOne({ where: { modelName } });
-    return (m && m.deductPoints > 0) ? m.deductPoints : 0;
+    return m && m.deductPoints > 0 ? m.deductPoints : 0;
   }
 
   private async resolveDefaultChatModel(): Promise<string> {
@@ -76,10 +80,7 @@ export class ChatService {
   /**
    * 创建对话组
    */
-  async createGroup(
-    userId: string,
-    dto: CreateGroupDto,
-  ): Promise<ChatGroup> {
+  async createGroup(userId: string, dto: CreateGroupDto): Promise<ChatGroup> {
     const modelName = await this.resolveChatModel(dto.modelName);
     const group = this.groupRepository.create({
       userId,
@@ -135,7 +136,10 @@ export class ChatService {
     return plain.length > 24 ? `${plain.slice(0, 24)}...` : plain;
   }
 
-  private async maybeAutoRenameGroup(group: ChatGroup, content: string): Promise<void> {
+  private async maybeAutoRenameGroup(
+    group: ChatGroup,
+    content: string,
+  ): Promise<void> {
     const title = (group.title || '').trim();
     if (title && title !== '新对话') return;
     group.title = this.buildAutoTitle(content);
@@ -199,7 +203,10 @@ export class ChatService {
     await this.logRepository.save(userLog);
 
     const history = await this.getConversationHistory(groupId);
-    const messages: ChatMessage[] = [...history, { role: 'user', content, attachments }];
+    const messages: ChatMessage[] = [
+      ...history,
+      { role: 'user', content, attachments },
+    ];
 
     let assistantContent: string;
     try {
@@ -268,7 +275,10 @@ export class ChatService {
     await this.logRepository.save(userLog);
 
     const history = await this.getConversationHistory(groupId);
-    const messages: ChatMessage[] = [...history, { role: 'user', content, attachments }];
+    const messages: ChatMessage[] = [
+      ...history,
+      { role: 'user', content, attachments },
+    ];
 
     const stream = this.modelService.chatStream(model, messages);
 
@@ -320,7 +330,12 @@ export class ChatService {
     pageSize: number = 20,
   ): Promise<{
     list: ChatLog[];
-    messages: Array<{ id: string; role: ChatRole; content: string; createdAt: Date }>;
+    messages: Array<{
+      id: string;
+      role: ChatRole;
+      content: string;
+      createdAt: Date;
+    }>;
     total: number;
     page: number;
     pageSize: number;

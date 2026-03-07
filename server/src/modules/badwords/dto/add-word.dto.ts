@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsEnum, MaxLength, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  MaxLength,
+  IsBoolean,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BadWordLevel } from '../badwords.entity';
 
@@ -11,7 +17,11 @@ export class AddWordDto {
   @MaxLength(200)
   word: string;
 
-  @ApiPropertyOptional({ description: '等级', enum: BadWordLevel, default: 'medium' })
+  @ApiPropertyOptional({
+    description: '等级',
+    enum: BadWordLevel,
+    default: 'medium',
+  })
   @IsOptional()
   @IsEnum(BadWordLevel)
   level?: BadWordLevel;

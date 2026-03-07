@@ -27,6 +27,13 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  @Public()
+  @Post('admin/login')
+  @ApiOperation({ summary: '管理后台登录（仅管理员）' })
+  async adminLogin(@Body() dto: LoginDto) {
+    return this.authService.adminLogin(dto);
+  }
+
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -53,7 +60,11 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '更新当前用户资料' })
-  async updateProfile(@GetUser() user: User, @Body() body: { username?: string; email?: string; avatar?: string; sign?: string }) {
+  async updateProfile(
+    @GetUser() user: User,
+    @Body()
+    body: { username?: string; email?: string; avatar?: string; sign?: string },
+  ) {
     return this.authService.updateProfile(user.id, body);
   }
 }

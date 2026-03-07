@@ -27,10 +27,7 @@ export class FeedbackController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '提交反馈' })
-  async submit(
-    @GetUser('id') userId: string,
-    @Body() dto: SubmitFeedbackDto,
-  ) {
+  async submit(@GetUser('id') userId: string, @Body() dto: SubmitFeedbackDto) {
     return this.feedbackService.submit(userId, dto);
   }
 
@@ -61,10 +58,7 @@ export class FeedbackController {
   @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '管理员-回复反馈' })
-  async replyFeedback(
-    @Param('id') id: string,
-    @Body() dto: ReplyFeedbackDto,
-  ) {
+  async replyFeedback(@Param('id') id: string, @Body() dto: ReplyFeedbackDto) {
     return this.feedbackService.replyFeedback(id, dto);
   }
 

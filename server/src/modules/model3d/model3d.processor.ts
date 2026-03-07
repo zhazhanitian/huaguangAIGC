@@ -21,7 +21,9 @@ export class Model3dProcessor {
     const { taskId } = job.data;
     this.logger.log(`开始处理 3D 任务: ${taskId}`);
 
-    const task = await this.model3dRepository.findOne({ where: { id: taskId } });
+    const task = await this.model3dRepository.findOne({
+      where: { id: taskId },
+    });
     if (!task) {
       this.logger.error(`3D 任务不存在: ${taskId}`);
       return;

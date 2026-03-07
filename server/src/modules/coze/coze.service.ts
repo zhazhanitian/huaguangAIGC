@@ -91,7 +91,10 @@ export class CozeService {
   /**
    * 获取用户在某机器人下的对话列表
    */
-  async getConversations(userId: string, botId: string): Promise<CozeConversation[]> {
+  async getConversations(
+    userId: string,
+    botId: string,
+  ): Promise<CozeConversation[]> {
     return this.conversationRepository.find({
       where: { userId, botId },
       order: { createdAt: 'DESC' },
@@ -101,7 +104,10 @@ export class CozeService {
   /**
    * 获取对话消息列表
    */
-  async getMessages(conversationId: string, userId: string): Promise<CozeMessage[]> {
+  async getMessages(
+    conversationId: string,
+    userId: string,
+  ): Promise<CozeMessage[]> {
     const conv = await this.conversationRepository.findOne({
       where: { id: conversationId, userId },
     });
@@ -153,7 +159,8 @@ export class CozeService {
     });
     await this.messageRepository.save(userMsg);
 
-    const baseUrl = bot.baseUrl || process.env.COZE_BASE_URL || 'https://api.coze.cn/v1';
+    const baseUrl =
+      bot.baseUrl || process.env.COZE_BASE_URL || 'https://api.coze.cn/v1';
     const url = `${baseUrl.replace(/\/$/, '')}/chat`;
 
     const body: Record<string, unknown> = {
@@ -172,7 +179,7 @@ export class CozeService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${bot.apiKey}`,
+        Authorization: `Bearer ${bot.apiKey}`,
       },
       body,
     });

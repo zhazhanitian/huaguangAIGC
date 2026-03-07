@@ -39,9 +39,13 @@ export class RealtimeGateway {
       // Payload shape depends on your JwtStrategy; we only need user id.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const payload: any = await this.jwtService.verifyAsync(token);
-      const userId = String(payload?.id || payload?.sub || payload?.userId || '').trim();
+      const userId = String(
+        payload?.id || payload?.sub || payload?.userId || '',
+      ).trim();
       if (!userId) {
-        this.logger.debug(`reject connection: invalid payload socket=${client.id}`);
+        this.logger.debug(
+          `reject connection: invalid payload socket=${client.id}`,
+        );
         client.disconnect(true);
         return;
       }
@@ -64,13 +68,16 @@ export class RealtimeGateway {
 
   private extractToken(client: Socket): string | null {
     const authToken = client.handshake.auth?.token;
-    if (typeof authToken === 'string' && authToken.trim()) return authToken.trim();
+    if (typeof authToken === 'string' && authToken.trim())
+      return authToken.trim();
 
     const header = client.handshake.headers?.authorization;
-    if (typeof header === 'string' && header.toLowerCase().startsWith('bearer ')) {
+    if (
+      typeof header === 'string' &&
+      header.toLowerCase().startsWith('bearer ')
+    ) {
       return header.slice('bearer '.length).trim() || null;
     }
     return null;
   }
 }
-

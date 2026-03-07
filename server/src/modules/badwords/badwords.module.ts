@@ -10,9 +10,7 @@ import { User } from '../user/user.entity';
  * 敏感词管理、内容检测、违规记录
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([BadWord, ViolationLog, User]),
-  ],
+  imports: [TypeOrmModule.forFeature([BadWord, ViolationLog, User])],
   providers: [BadWordsService],
   controllers: [BadWordsController],
   exports: [BadWordsService],

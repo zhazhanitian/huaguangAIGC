@@ -10,10 +10,7 @@ import { Config } from '../global-config/config.entity';
  * 邀请模块
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Invitation, Config]),
-    UserModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Invitation, Config]), UserModule],
   providers: [InvitationService],
   controllers: [InvitationController],
   exports: [InvitationService],

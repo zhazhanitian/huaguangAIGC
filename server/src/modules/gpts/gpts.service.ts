@@ -6,7 +6,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { GptsApp, GptsCategory, GptsChatGroup, GptsChatLog, GptsAppStatus } from './gpts.entity';
+import {
+  GptsApp,
+  GptsCategory,
+  GptsChatGroup,
+  GptsChatLog,
+  GptsAppStatus,
+} from './gpts.entity';
 import { ModelService, ChatMessage } from '../model/model.service';
 import { CreateGptsAppDto } from './dto/create-gpts-app.dto';
 import { UpdateGptsAppDto } from './dto/update-gpts-app.dto';
@@ -33,10 +39,7 @@ export class GptsService {
   /**
    * 获取公开应用列表（支持分类、关键词）
    */
-  async getApps(
-    categoryId?: string,
-    keyword?: string,
-  ): Promise<GptsApp[]> {
+  async getApps(categoryId?: string, keyword?: string): Promise<GptsApp[]> {
     const qb = this.appRepository
       .createQueryBuilder('app')
       .where('app.isPublic = :isPublic', { isPublic: true })
@@ -46,13 +49,15 @@ export class GptsService {
       qb.andWhere('app.categoryId = :categoryId', { categoryId });
     }
     if (keyword) {
-      qb.andWhere(
-        '(app.name LIKE :keyword OR app.description LIKE :keyword)',
-        { keyword: `%${keyword}%` },
-      );
+      qb.andWhere('(app.name LIKE :keyword OR app.description LIKE :keyword)', {
+        keyword: `%${keyword}%`,
+      });
     }
 
-    return qb.orderBy('app.order', 'ASC').addOrderBy('app.usageCount', 'DESC').getMany();
+    return qb
+      .orderBy('app.order', 'ASC')
+      .addOrderBy('app.usageCount', 'DESC')
+      .getMany();
   }
 
   /**
@@ -73,7 +78,8 @@ export class GptsService {
       throw new NotFoundException('应用不存在');
     }
     const isOwner = userId && app.userId === userId;
-    const isAccessible = app.status === GptsAppStatus.ACTIVE && (app.isPublic || isOwner);
+    const isAccessible =
+      app.status === GptsAppStatus.ACTIVE && (app.isPublic || isOwner);
     if (!isAccessible) {
       throw new NotFoundException('应用不可用');
     }
@@ -95,7 +101,11 @@ export class GptsService {
   /**
    * 更新应用（仅创建者）
    */
-  async updateApp(userId: string, appId: string, dto: UpdateGptsAppDto): Promise<GptsApp> {
+  async updateApp(
+    userId: string,
+    appId: string,
+    dto: UpdateGptsAppDto,
+  ): Promise<GptsApp> {
     const app = await this.appRepository.findOne({ where: { id: appId } });
     if (!app) {
       throw new NotFoundException('应用不存在');
@@ -137,7 +147,10 @@ export class GptsService {
   /**
    * 获取用户的对话组列表（可按应用筛选）
    */
-  async getChatGroups(userId: string, appId?: string): Promise<GptsChatGroup[]> {
+  async getChatGroups(
+    userId: string,
+    appId?: string,
+  ): Promise<GptsChatGroup[]> {
     const where: Record<string, unknown> = { userId };
     if (appId) {
       where.appId = appId;
@@ -151,7 +164,10 @@ export class GptsService {
   /**
    * 确保用户拥有该对话组
    */
-  private async ensureGroupOwnership(userId: string, groupId: string): Promise<GptsChatGroup> {
+  private async ensureGroupOwnership(
+    userId: string,
+    groupId: string,
+  ): Promise<GptsChatGroup> {
     const group = await this.groupRepository.findOne({
       where: { id: groupId, userId },
     });
@@ -164,7 +180,10 @@ export class GptsService {
   /**
    * 获取对话历史转为 ChatMessage
    */
-  private async getConversationHistory(groupId: string, limit = HISTORY_LIMIT): Promise<ChatMessage[]> {
+  private async getConversationHistory(
+    groupId: string,
+    limit = HISTORY_LIMIT,
+  ): Promise<ChatMessage[]> {
     const logs = await this.logRepository
       .createQueryBuilder('log')
       .where('log.groupId = :groupId', { groupId })
@@ -369,7 +388,10 @@ export class GptsService {
   /**
    * 更新分类
    */
-  async updateCategory(id: string, dto: UpdateCategoryDto): Promise<GptsCategory> {
+  async updateCategory(
+    id: string,
+    dto: UpdateCategoryDto,
+  ): Promise<GptsCategory> {
     const cat = await this.categoryRepository.findOne({ where: { id } });
     if (!cat) {
       throw new NotFoundException('分类不存在');

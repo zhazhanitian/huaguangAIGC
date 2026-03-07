@@ -41,12 +41,11 @@ export class PaymentController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '创建订单' })
-  async createOrder(@GetUser('id') userId: string, @Body() dto: CreateOrderDto) {
-    return this.paymentService.createOrder(
-      userId,
-      dto.packageId,
-      dto.payType,
-    );
+  async createOrder(
+    @GetUser('id') userId: string,
+    @Body() dto: CreateOrderDto,
+  ) {
+    return this.paymentService.createOrder(userId, dto.packageId, dto.payType);
   }
 
   /** 微信支付回调（公开，支付平台回调） */

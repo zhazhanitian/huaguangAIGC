@@ -11,7 +11,11 @@ export class CreatePptTaskDto {
   @MaxLength(200)
   title: string;
 
-  @ApiProperty({ description: 'PPT 提示词/主题描述', minLength: 1, maxLength: 2000 })
+  @ApiProperty({
+    description: 'PPT 提示词/主题描述',
+    minLength: 1,
+    maxLength: 2000,
+  })
   @IsString()
   @MinLength(1)
   @MaxLength(2000)

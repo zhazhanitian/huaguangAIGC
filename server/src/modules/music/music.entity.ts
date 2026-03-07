@@ -83,7 +83,13 @@ export class MusicTask {
   @Column({ type: 'json', nullable: true, comment: '扩展参数' })
   params: MusicParams | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0, comment: '扣除积分数' })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    comment: '扣除积分数',
+  })
   deductPoints: number;
 
   @Column({ type: 'tinyint', default: 0, comment: '是否公开到画廊' })

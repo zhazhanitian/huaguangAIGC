@@ -36,7 +36,11 @@ export class PptTask {
   @Column({ type: 'text', nullable: true, comment: 'PPT 大纲 JSON' })
   outline: string | null;
 
-  @Column({ type: 'text', nullable: true, comment: 'PPT 内容 JSON（每页幻灯片）' })
+  @Column({
+    type: 'text',
+    nullable: true,
+    comment: 'PPT 内容 JSON（每页幻灯片）',
+  })
   content: string | null;
 
   @Column({ type: 'text', nullable: true, comment: '生成文件 URL' })

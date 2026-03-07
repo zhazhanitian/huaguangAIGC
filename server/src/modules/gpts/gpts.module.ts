@@ -1,6 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { GptsApp, GptsCategory, GptsChatGroup, GptsChatLog } from './gpts.entity';
+import {
+  GptsApp,
+  GptsCategory,
+  GptsChatGroup,
+  GptsChatLog,
+} from './gpts.entity';
 import { GptsService } from './gpts.service';
 import { GptsController } from './gpts.controller';
 import { ModelModule } from '../model/model.module';
@@ -11,7 +16,12 @@ import { ModelModule } from '../model/model.module';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([GptsApp, GptsCategory, GptsChatGroup, GptsChatLog]),
+    TypeOrmModule.forFeature([
+      GptsApp,
+      GptsCategory,
+      GptsChatGroup,
+      GptsChatLog,
+    ]),
     ModelModule,
   ],
   providers: [GptsService],

@@ -81,10 +81,7 @@ export class GptsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '删除应用' })
-  async deleteApp(
-    @GetUser('id') userId: string,
-    @Param('id') appId: string,
-  ) {
+  async deleteApp(@GetUser('id') userId: string, @Param('id') appId: string) {
     await this.gptsService.deleteApp(userId, appId);
     return { message: '删除成功' };
   }

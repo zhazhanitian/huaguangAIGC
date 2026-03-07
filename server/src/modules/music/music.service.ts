@@ -16,14 +16,22 @@ import { CreateMusicTaskDto } from './dto/create-music-task.dto';
 import { UserService } from '../user/user.service';
 import { AiModel } from '../model/model.entity';
 import { RealtimeService } from '../realtime/realtime.service';
-import type { TaskEventPayload, TaskEventType } from '../realtime/realtime.types';
+import type {
+  TaskEventPayload,
+  TaskEventType,
+} from '../realtime/realtime.types';
 import { GlobalConfigService } from '../global-config/global-config.service';
 import { BadWordsService } from '../badwords/badwords.service';
 
 const POINTS_PER_MUSIC_FALLBACK = Number(process.env.POINTS_PER_MUSIC) || 20;
-const KIE_API_URL = (process.env.KIE_API_URL || 'https://api.kie.ai').replace(/\/+$/, '');
-const KIE_API_KEY = process.env.KIE_API_KEY || 'a27f776a5028b2e0b3d3208293e8c9ac';
-const KIE_CALLBACK_URL = process.env.KIE_CALLBACK_URL || 'https://example.com/kie-callback';
+const KIE_API_URL = (process.env.KIE_API_URL || 'https://api.kie.ai').replace(
+  /\/+$/,
+  '',
+);
+const KIE_API_KEY =
+  process.env.KIE_API_KEY || 'a27f776a5028b2e0b3d3208293e8c9ac';
+const KIE_CALLBACK_URL =
+  process.env.KIE_CALLBACK_URL || 'https://example.com/kie-callback';
 const execFileAsync = promisify(execFile);
 
 const KIE_OPERATION_CREATE_PATH: Record<string, string> = {
@@ -63,8 +71,12 @@ const KIE_OPERATION_QUERY_PATH: Record<string, string> = {
 @Injectable()
 export class MusicService {
   private readonly logger = new Logger(MusicService.name);
-  private proxyCache: { fetchedAt: number; httpProxy: string; httpsProxy: string; noProxy: string } | null =
-    null;
+  private proxyCache: {
+    fetchedAt: number;
+    httpProxy: string;
+    httpsProxy: string;
+    noProxy: string;
+  } | null = null;
   private proxyAgentCache = new Map<string, ProxyAgent>();
 
   constructor(
@@ -80,14 +92,19 @@ export class MusicService {
     private readonly badWordsService: BadWordsService,
   ) {}
 
-  private toPayload(task: MusicTask, type: TaskEventType): Omit<TaskEventPayload, 'type'> {
+  private toPayload(
+    task: MusicTask,
+    type: TaskEventType,
+  ): Omit<TaskEventPayload, 'type'> {
     return {
       module: 'music',
       taskId: task.id,
       status: task.status,
       progress: task.progress,
       errorMessage: task.errorMessage,
-      updatedAt: task.updatedAt ? new Date(task.updatedAt).toISOString() : undefined,
+      updatedAt: task.updatedAt
+        ? new Date(task.updatedAt).toISOString()
+        : undefined,
       provider: task.provider,
       audioUrl: task.audioUrl,
       coverUrl: task.coverUrl,
@@ -100,11 +117,15 @@ export class MusicService {
 
   private async resolvePoints(modelHint?: string): Promise<number> {
     const sunoModelMap: Record<string, string> = {
-      V3_5: 'suno-v3.5', V4: 'suno-v4', V4_5PLUS: 'suno-v4.5plus',
+      V3_5: 'suno-v3.5',
+      V4: 'suno-v4',
+      V4_5PLUS: 'suno-v4.5plus',
     };
     const dbName = sunoModelMap[modelHint ?? ''] ?? modelHint;
     if (dbName) {
-      const m = await this.modelRepository.findOne({ where: { modelName: dbName } });
+      const m = await this.modelRepository.findOne({
+        where: { modelName: dbName },
+      });
       if (m && m.deductPoints > 0) return m.deductPoints;
     }
     return POINTS_PER_MUSIC_FALLBACK;
@@ -113,7 +134,10 @@ export class MusicService {
   /**
    * 创建音乐任务：敏感词检测、校验余额、扣积分、入队
    */
-  async createTask(userId: string, dto: CreateMusicTaskDto): Promise<MusicTask> {
+  async createTask(
+    userId: string,
+    dto: CreateMusicTaskDto,
+  ): Promise<MusicTask> {
     // 敏感词检测
     const textToCheck = [dto.prompt, dto.title].filter(Boolean).join(' ');
     if (textToCheck) {
@@ -163,9 +187,15 @@ export class MusicService {
         instrumental,
         ...(dto.negativeTags ? { negativeTags: dto.negativeTags } : {}),
         ...(dto.vocalGender ? { vocalGender: dto.vocalGender } : {}),
-        ...(typeof dto.styleWeight === 'number' ? { styleWeight: dto.styleWeight } : {}),
-        ...(typeof dto.weirdnessConstraint === 'number' ? { weirdnessConstraint: dto.weirdnessConstraint } : {}),
-        ...(typeof dto.audioWeight === 'number' ? { audioWeight: dto.audioWeight } : {}),
+        ...(typeof dto.styleWeight === 'number'
+          ? { styleWeight: dto.styleWeight }
+          : {}),
+        ...(typeof dto.weirdnessConstraint === 'number'
+          ? { weirdnessConstraint: dto.weirdnessConstraint }
+          : {}),
+        ...(typeof dto.audioWeight === 'number'
+          ? { audioWeight: dto.audioWeight }
+          : {}),
         ...(dto.personaId ? { personaId: dto.personaId } : {}),
         ...(dto.personaModel ? { personaModel: dto.personaModel } : {}),
         ...(dto.params ?? {}),
@@ -175,10 +205,14 @@ export class MusicService {
     });
     const saved = await this.musicRepository.save(task);
 
-    await this.musicQueue.add('process', { taskId: saved.id }, {
-      attempts: 5,
-      backoff: { type: 'exponential', delay: 10000 },
-    });
+    await this.musicQueue.add(
+      'process',
+      { taskId: saved.id },
+      {
+        attempts: 5,
+        backoff: { type: 'exponential', delay: 10000 },
+      },
+    );
     this.emit(userId, 'task.created', saved);
     return saved;
   }
@@ -190,7 +224,12 @@ export class MusicService {
     userId: string,
     page: number = 1,
     pageSize: number = 10,
-  ): Promise<{ list: MusicTask[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: MusicTask[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.musicRepository.findAndCount({
       where: { userId },
       order: { createdAt: 'DESC' },
@@ -200,8 +239,13 @@ export class MusicService {
     return { list, total, page, pageSize };
   }
 
-  async getTasksStatusBatch(userId: string, ids: string[]): Promise<MusicTask[]> {
-    const uniq = Array.from(new Set((ids || []).map((x) => String(x || '').trim()).filter(Boolean)));
+  async getTasksStatusBatch(
+    userId: string,
+    ids: string[],
+  ): Promise<MusicTask[]> {
+    const uniq = Array.from(
+      new Set((ids || []).map((x) => String(x || '').trim()).filter(Boolean)),
+    );
     if (uniq.length === 0) return [];
     return this.musicRepository.find({
       where: { userId, id: In(uniq) },
@@ -214,7 +258,12 @@ export class MusicService {
   async getGallery(
     page: number = 1,
     pageSize: number = 20,
-  ): Promise<{ list: MusicTask[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: MusicTask[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.musicRepository.findAndCount({
       where: { isPublic: true, status: MusicTaskStatus.COMPLETED },
       order: { createdAt: 'DESC' },
@@ -232,7 +281,11 @@ export class MusicService {
     if (!task) {
       throw new NotFoundException('任务不存在');
     }
-    if (task.userId !== userId && !task.isPublic && task.status !== MusicTaskStatus.COMPLETED) {
+    if (
+      task.userId !== userId &&
+      !task.isPublic &&
+      task.status !== MusicTaskStatus.COMPLETED
+    ) {
       throw new NotFoundException('无权查看');
     }
     return task;
@@ -282,7 +335,10 @@ export class MusicService {
       await this.musicRepository.save(task);
       this.emit(task.userId, 'task.failed', task);
       try {
-        await this.userService.addBalance(task.userId, Number(task.deductPoints));
+        await this.userService.addBalance(
+          task.userId,
+          Number(task.deductPoints),
+        );
       } catch (refundErr) {
         this.logger.error(`退还积分失败: ${task.userId}`, refundErr);
       }
@@ -329,7 +385,7 @@ export class MusicService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${KIE_API_KEY}`,
+          Authorization: `Bearer ${KIE_API_KEY}`,
         },
         body: createBody,
       });
@@ -338,7 +394,9 @@ export class MusicService {
       if (!taskId) {
         lastError = `Kie 创建任务失败: ${createRes?.msg || '未返回 taskId'}`;
         if (round < maxCreateRounds) {
-          this.logger.warn(`音乐任务创建失败，准备重试创建(${round}/${maxCreateRounds}): ${lastError}`);
+          this.logger.warn(
+            `音乐任务创建失败，准备重试创建(${round}/${maxCreateRounds}): ${lastError}`,
+          );
           await this.sleep(1500 * round);
           continue;
         }
@@ -368,7 +426,7 @@ export class MusicService {
         }>({
           url: `${KIE_API_URL}/api/v1/generate/record-info?taskId=${encodeURIComponent(taskId)}`,
           method: 'GET',
-          headers: { 'Authorization': `Bearer ${KIE_API_KEY}` },
+          headers: { Authorization: `Bearer ${KIE_API_KEY}` },
         });
 
         const status = statusRes?.data?.status || '';
@@ -382,15 +440,31 @@ export class MusicService {
           };
         }
         if (status === 'FIRST_SUCCESS' || status === 'TEXT_SUCCESS') {
-          task.progress = Math.max(task.progress, status === 'FIRST_SUCCESS' ? 88 : 72);
+          task.progress = Math.max(
+            task.progress,
+            status === 'FIRST_SUCCESS' ? 88 : 72,
+          );
           await this.musicRepository.save(task);
           continue;
         }
-        if (['CREATE_TASK_FAILED', 'GENERATE_AUDIO_FAILED', 'CALLBACK_EXCEPTION', 'SENSITIVE_WORD_ERROR'].includes(status)) {
-          const failureMsg = statusRes?.data?.errorMessage || statusRes?.msg || status;
+        if (
+          [
+            'CREATE_TASK_FAILED',
+            'GENERATE_AUDIO_FAILED',
+            'CALLBACK_EXCEPTION',
+            'SENSITIVE_WORD_ERROR',
+          ].includes(status)
+        ) {
+          const failureMsg =
+            statusRes?.data?.errorMessage || statusRes?.msg || status;
           lastError = `Kie 任务失败: ${failureMsg}`;
-          if (this.isRetryableKieFailure(status, failureMsg) && round < maxCreateRounds) {
-            this.logger.warn(`Kie 可恢复失败，重建任务(${round}/${maxCreateRounds}): ${failureMsg}`);
+          if (
+            this.isRetryableKieFailure(status, failureMsg) &&
+            round < maxCreateRounds
+          ) {
+            this.logger.warn(
+              `Kie 可恢复失败，重建任务(${round}/${maxCreateRounds}): ${failureMsg}`,
+            );
             shouldRecreate = true;
             break;
           }
@@ -401,7 +475,9 @@ export class MusicService {
       if (!shouldRecreate) {
         lastError = `Kie 任务超时(轮次 ${round}/${maxCreateRounds})`;
         if (round < maxCreateRounds) {
-          this.logger.warn(`Kie 轮询超时，重建任务(${round}/${maxCreateRounds})`);
+          this.logger.warn(
+            `Kie 轮询超时，重建任务(${round}/${maxCreateRounds})`,
+          );
           continue;
         }
       } else {
@@ -415,16 +491,18 @@ export class MusicService {
   private isRetryableKieFailure(status: string, message: string): boolean {
     const text = `${status} ${message}`.toLowerCase();
     return (
-      text.includes('internal error')
-      || text.includes('please try again later')
-      || text.includes('timeout')
-      || text.includes('service unavailable')
-      || text.includes('temporarily unavailable')
-      || text.includes('server error')
+      text.includes('internal error') ||
+      text.includes('please try again later') ||
+      text.includes('timeout') ||
+      text.includes('service unavailable') ||
+      text.includes('temporarily unavailable') ||
+      text.includes('server error')
     );
   }
 
-  private pickKieOptionalParams(params: MusicTask['params']): Record<string, unknown> {
+  private pickKieOptionalParams(
+    params: MusicTask['params'],
+  ): Record<string, unknown> {
     if (!params) return {};
     const source = params as Record<string, unknown>;
     const out: Record<string, unknown> = {};
@@ -451,26 +529,29 @@ export class MusicService {
   private async callCustomMusicApi(
     task: MusicTask,
   ): Promise<{ audioUrl: string; coverUrl?: string }> {
-    const endpoint = process.env.CUSTOM_MUSIC_API_URL || 'https://api.music.example/v1';
+    const endpoint =
+      process.env.CUSTOM_MUSIC_API_URL || 'https://api.music.example/v1';
     const apiKey = process.env.CUSTOM_MUSIC_API_KEY;
 
     if (!apiKey) {
       throw new Error('未配置 CUSTOM_MUSIC_API_KEY');
     }
 
-    const createRes = await this.httpRequest<{ task_id?: string; id?: string }>({
-      url: `${endpoint}/generate`,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+    const createRes = await this.httpRequest<{ task_id?: string; id?: string }>(
+      {
+        url: `${endpoint}/generate`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: {
+          prompt: task.prompt,
+          style: task.style,
+          ...task.params,
+        },
       },
-      body: {
-        prompt: task.prompt,
-        style: task.style,
-        ...task.params,
-      },
-    });
+    );
 
     const taskId = createRes?.task_id || createRes?.id;
     if (!taskId) {
@@ -492,7 +573,7 @@ export class MusicService {
       }>({
         url: `${endpoint}/task/${taskId}`,
         method: 'GET',
-        headers: { 'Authorization': `Bearer ${apiKey}` },
+        headers: { Authorization: `Bearer ${apiKey}` },
       });
 
       if (statusRes?.status === 'completed' && statusRes.audio_url) {
@@ -562,13 +643,17 @@ export class MusicService {
 
     // Windows 环境下，某些网络链路对 Node TLS 不稳定（ECONNRESET），回退到 PowerShell 请求
     if (process.platform === 'win32') {
-      this.logger.warn(`Node 请求失败，回退 PowerShell: ${options.method} ${options.url} -> ${lastError?.message || 'unknown'}`);
+      this.logger.warn(
+        `Node 请求失败，回退 PowerShell: ${options.method} ${options.url} -> ${lastError?.message || 'unknown'}`,
+      );
       try {
         return await this.httpRequestViaPowerShell<T>(options);
       } catch (psErr) {
         const psMsg = psErr instanceof Error ? psErr.message : String(psErr);
         const nodeMsg = lastError?.message || '未知错误';
-        throw new Error(`Node 请求失败: ${nodeMsg}; PowerShell 回退也失败: ${psMsg}`);
+        throw new Error(
+          `Node 请求失败: ${nodeMsg}; PowerShell 回退也失败: ${psMsg}`,
+        );
       }
     }
     throw lastError || new Error('请求失败');
@@ -598,14 +683,22 @@ export class MusicService {
       ...(method === 'GET'
         ? [
             ...(proxyUrl
-              ? ['$resp = Invoke-RestMethod -Uri $uri -Method Get -Headers $headers -Proxy $proxy -TimeoutSec $timeout']
-              : ['$resp = Invoke-RestMethod -Uri $uri -Method Get -Headers $headers -TimeoutSec $timeout']),
+              ? [
+                  '$resp = Invoke-RestMethod -Uri $uri -Method Get -Headers $headers -Proxy $proxy -TimeoutSec $timeout',
+                ]
+              : [
+                  '$resp = Invoke-RestMethod -Uri $uri -Method Get -Headers $headers -TimeoutSec $timeout',
+                ]),
           ]
         : [
             `$jsonBody = '${esc(bodyJson)}'`,
             ...(proxyUrl
-              ? ['$resp = Invoke-RestMethod -Uri $uri -Method $method -Headers $headers -Body $jsonBody -Proxy $proxy -ContentType "application/json" -TimeoutSec $timeout']
-              : ['$resp = Invoke-RestMethod -Uri $uri -Method $method -Headers $headers -Body $jsonBody -ContentType "application/json" -TimeoutSec $timeout']),
+              ? [
+                  '$resp = Invoke-RestMethod -Uri $uri -Method $method -Headers $headers -Body $jsonBody -Proxy $proxy -ContentType "application/json" -TimeoutSec $timeout',
+                ]
+              : [
+                  '$resp = Invoke-RestMethod -Uri $uri -Method $method -Headers $headers -Body $jsonBody -ContentType "application/json" -TimeoutSec $timeout',
+                ]),
           ]),
       '$resp | ConvertTo-Json -Depth 100 -Compress',
     ].join('; ');
@@ -649,7 +742,10 @@ export class MusicService {
     return h === rr || h.endsWith(`.${rr}`);
   }
 
-  private async getProxySettings(): Promise<{ proxyUrl: string; noProxy: string }> {
+  private async getProxySettings(): Promise<{
+    proxyUrl: string;
+    noProxy: string;
+  }> {
     const now = Date.now();
     if (this.proxyCache && now - this.proxyCache.fetchedAt < 15_000) {
       const proxyUrl = this.proxyCache.httpsProxy || this.proxyCache.httpProxy;
@@ -660,14 +756,20 @@ export class MusicService {
       this.globalConfig.getConfig('HTTPS_PROXY'),
       this.globalConfig.getConfig('NO_PROXY'),
     ]);
-    const httpProxy = String(httpProxyCfg || process.env.HTTP_PROXY || '').trim();
-    const httpsProxy = String(httpsProxyCfg || process.env.HTTPS_PROXY || '').trim();
+    const httpProxy = String(
+      httpProxyCfg || process.env.HTTP_PROXY || '',
+    ).trim();
+    const httpsProxy = String(
+      httpsProxyCfg || process.env.HTTPS_PROXY || '',
+    ).trim();
     const noProxy = String(noProxyCfg || process.env.NO_PROXY || '').trim();
     this.proxyCache = { fetchedAt: now, httpProxy, httpsProxy, noProxy };
     return { proxyUrl: httpsProxy || httpProxy, noProxy };
   }
 
-  private async getDispatcherForUrl(url: string): Promise<ProxyAgent | undefined> {
+  private async getDispatcherForUrl(
+    url: string,
+  ): Promise<ProxyAgent | undefined> {
     const { proxyUrl, noProxy } = await this.getProxySettings();
     if (!proxyUrl) return undefined;
     let hostname = '';
@@ -678,7 +780,8 @@ export class MusicService {
     }
     if (hostname) {
       const rules = this.parseNoProxyList(noProxy);
-      if (rules.some((r) => this.hostMatchesNoProxy(hostname, r))) return undefined;
+      if (rules.some((r) => this.hostMatchesNoProxy(hostname, r)))
+        return undefined;
     }
     const cached = this.proxyAgentCache.get(proxyUrl);
     if (cached) return cached;
@@ -731,7 +834,9 @@ export class MusicService {
       throw new BadRequestException('仅失败任务可重试');
     }
 
-    const deductPoints = await this.resolvePoints(String((task.params as any)?.model));
+    const deductPoints = await this.resolvePoints(
+      String((task.params as any)?.model),
+    );
     await this.userService.deductBalance(userId, deductPoints);
 
     task.status = MusicTaskStatus.PENDING;
@@ -744,10 +849,14 @@ export class MusicService {
     task.deductPoints = deductPoints;
 
     const saved = await this.musicRepository.save(task);
-    await this.musicQueue.add('process', { taskId: saved.id }, {
-      attempts: 5,
-      backoff: { type: 'exponential', delay: 10000 },
-    });
+    await this.musicQueue.add(
+      'process',
+      { taskId: saved.id },
+      {
+        attempts: 5,
+        backoff: { type: 'exponential', delay: 10000 },
+      },
+    );
     return saved;
   }
 
@@ -757,7 +866,12 @@ export class MusicService {
   async getAllTasks(
     page: number = 1,
     pageSize: number = 20,
-  ): Promise<{ list: MusicTask[]; total: number; page: number; pageSize: number }> {
+  ): Promise<{
+    list: MusicTask[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
     const [list, total] = await this.musicRepository.findAndCount({
       order: { createdAt: 'DESC' },
       skip: (page - 1) * pageSize,
@@ -807,7 +921,7 @@ export class MusicService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${KIE_API_KEY}`,
+        Authorization: `Bearer ${KIE_API_KEY}`,
       },
       body,
     });
@@ -834,7 +948,7 @@ export class MusicService {
       url: `${KIE_API_URL}${path}?taskId=${encodeURIComponent(taskId.trim())}`,
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${KIE_API_KEY}`,
+        Authorization: `Bearer ${KIE_API_KEY}`,
       },
     });
     return data;

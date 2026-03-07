@@ -26,7 +26,10 @@ export class InvitationService {
   /**
    * 获取邀请奖励配置
    */
-  private async getRewardConfig(): Promise<{ inviter: number; indirect: number }> {
+  private async getRewardConfig(): Promise<{
+    inviter: number;
+    indirect: number;
+  }> {
     const inviterConfig = await this.configRepository.findOne({
       where: { configKey: CONFIG_INVITER_REWARD },
     });

@@ -9,9 +9,7 @@ import { ArticleController } from './article.controller';
  * 文章发布、分类、公开阅读、管理员 CRUD
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Article, ArticleCategory]),
-  ],
+  imports: [TypeOrmModule.forFeature([Article, ArticleCategory])],
   providers: [ArticleService],
   controllers: [ArticleController],
   exports: [ArticleService],

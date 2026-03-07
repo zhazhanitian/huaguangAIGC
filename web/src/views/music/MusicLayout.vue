@@ -44,43 +44,42 @@ let kiePoll: ReturnType<typeof setInterval> | null = null
 
 const musicPointsMap = ref<Record<string, number>>({})
 const musicDescMap = ref<Record<string, string>>({})
-const modelOptions = computed(() => [
-  {
-    value: 'V4',
-    label: 'V4（经典）',
-    pts: musicPointsMap.value['suno-v4'] ?? 0,
-    desc: musicDescMap.value['suno-v4'] || '兼顾质量与速度，适合大部分创作场景',
-  },
-  {
-    value: 'V4_5',
-    label: 'V4（增强）',
-    pts: musicPointsMap.value['suno-v4'] ?? 0,
-    desc: musicDescMap.value['suno-v4'] || '相对更细腻的编曲与空间感',
-  },
-  {
-    value: 'V4_5PLUS',
-    label: 'V4 Plus（推荐）',
-    pts: musicPointsMap.value['suno-v4plus'] ?? 0,
-    desc: musicDescMap.value['suno-v4.5plus'] || '平台默认推荐，质量/耗时平衡最佳',
-  },
-  {
-    value: 'V4_5ALL',
-    label: 'V4 All（全能）',
-    pts: musicPointsMap.value['suno-v4plus'] ?? 0,
-    desc: musicDescMap.value['suno-v4.5plus'] || '更偏探索向，适合尝试多风格组合',
-  },
-  {
-    value: 'V5',
-    label: 'V5（旗舰）',
-    pts: musicPointsMap.value['suno-v4plus'] ?? 0,
-    desc: musicDescMap.value['suno-v4.5plus'] || '更强的音质与细节表现',
-  },
-])
+const activeMusicModelNames = ref<Set<string>>(new Set())
+/** 前端选项 value -> 后端 modelName */
+const musicOptionToBackend: Record<string, string> = {
+  V4: 'suno-v4',
+  V4_5: 'suno-v4',
+  V4_5PLUS: 'suno-v4.5plus',
+  V4_5ALL: 'suno-v4.5plus',
+  V5: 'suno-v4.5plus',
+}
+const modelOptionsDef = [
+  { value: 'V4', label: 'V4（经典）', ptsKey: 'suno-v4', descKey: 'suno-v4' },
+  { value: 'V4_5', label: 'V4（增强）', ptsKey: 'suno-v4', descKey: 'suno-v4' },
+  { value: 'V4_5PLUS', label: 'V4 Plus（推荐）', ptsKey: 'suno-v4.5plus', descKey: 'suno-v4.5plus' },
+  { value: 'V4_5ALL', label: 'V4 All（全能）', ptsKey: 'suno-v4.5plus', descKey: 'suno-v4.5plus' },
+  { value: 'V5', label: 'V5（旗舰）', ptsKey: 'suno-v4.5plus', descKey: 'suno-v4.5plus' },
+]
+const modelOptions = computed(() => {
+  const set = activeMusicModelNames.value
+  const list = set.size === 0
+    ? modelOptionsDef
+    : modelOptionsDef.filter(opt => set.has(musicOptionToBackend[opt.value] ?? opt.value))
+  return list.map(m => ({
+    value: m.value,
+    label: m.label,
+    pts: musicPointsMap.value[m.ptsKey] ?? 0,
+    desc: musicDescMap.value[m.descKey] || (m.value === 'V4' || m.value === 'V4_5' ? '兼顾质量与速度，适合大部分创作场景' : '平台默认推荐，质量/耗时平衡最佳'),
+  }))
+})
 
 async function fetchMusicModelPoints() {
   try {
     const all = await getModels({ type: 'music' })
     if (Array.isArray(all)) {
+      activeMusicModelNames.value = new Set(
+        all.map((m: { modelName?: string }) => m.modelName).filter((x): x is string => Boolean(x))
+      )
       for (const m of all) {
         if (!m) continue
         if (m.deductPoints) musicPointsMap.value[m.modelName] = m.deductPoints
@@ -91,6 +90,13 @@ async function fetchMusicModelPoints() {
     }
   } catch { /* ignore */ }
 }
+
+watch(modelOptions, (opts) => {
+  const first = opts[0]
+  if (opts.length && first && !opts.some(o => o.value === form.value.model)) {
+    form.value.model = first.value
+  }
+}, { immediate: true })
 
 const operationOptions: Array<{ value: KieMusicOperation; label: string; hint: string }> = [
   { value: 'generate', label: '生成音乐', hint: '/api/v1/generate' },

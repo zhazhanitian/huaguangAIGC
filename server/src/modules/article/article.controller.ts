@@ -33,11 +33,7 @@ export class ArticleController {
   ) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 10;
-    return this.articleService.getPublishedArticles(
-      page,
-      pageSize,
-      categoryId,
-    );
+    return this.articleService.getPublishedArticles(page, pageSize, categoryId);
   }
 
   @Public()

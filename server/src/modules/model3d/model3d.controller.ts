@@ -57,7 +57,9 @@ export class Model3dController {
       // Tencent COS 常见域名
       'tencentcos.cn',
     ];
-    const allowed = allowedSuffixes.some((s) => host === s || host.endsWith(`.${s}`));
+    const allowed = allowedSuffixes.some(
+      (s) => host === s || host.endsWith(`.${s}`),
+    );
     if (!allowed) {
       throw new BadRequestException('不允许代理该域名');
     }
@@ -189,10 +191,7 @@ export class Model3dController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '重试失败 3D 任务' })
-  async retryTask(
-    @GetUser('id') userId: string,
-    @Param('id') taskId: string,
-  ) {
+  async retryTask(@GetUser('id') userId: string, @Param('id') taskId: string) {
     return this.model3dService.retryTask(userId, taskId);
   }
 
@@ -200,10 +199,7 @@ export class Model3dController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '删除 3D 任务' })
-  async deleteTask(
-    @GetUser('id') userId: string,
-    @Param('id') taskId: string,
-  ) {
+  async deleteTask(@GetUser('id') userId: string, @Param('id') taskId: string) {
     return this.model3dService.deleteTask(userId, taskId);
   }
 

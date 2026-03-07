@@ -1,4 +1,10 @@
-import { IsEmail, IsString, MinLength, MaxLength, IsOptional } from 'class-validator';
+import {
+  IsEmail,
+  IsString,
+  MinLength,
+  MaxLength,
+  IsOptional,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
@@ -11,7 +17,10 @@ export class RegisterDto {
   @MaxLength(20, { message: '手机号格式不正确' })
   phone: string;
 
-  @ApiPropertyOptional({ description: '邮箱（可选）', example: 'user@example.com' })
+  @ApiPropertyOptional({
+    description: '邮箱（可选）',
+    example: 'user@example.com',
+  })
   @IsOptional()
   @IsEmail({}, { message: '请输入有效的邮箱地址' })
   email?: string;

@@ -40,10 +40,7 @@ export class SaasController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '创建站点' })
-  async createSite(
-    @GetUser('id') userId: string,
-    @Body() dto: CreateSiteDto,
-  ) {
+  async createSite(@GetUser('id') userId: string, @Body() dto: CreateSiteDto) {
     return this.saasService.createSite(userId, dto);
   }
 
