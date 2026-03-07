@@ -94,7 +94,7 @@ async function fetchMusicModelPoints() {
 watch(modelOptions, (opts) => {
   const first = opts[0]
   if (opts.length && first && !opts.some(o => o.value === form.value.model)) {
-    form.value.model = first.value
+    form.value.model = first.value as CreateMusicTaskData['model']
   }
 }, { immediate: true })
 

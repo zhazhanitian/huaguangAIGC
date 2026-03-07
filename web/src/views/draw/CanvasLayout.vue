@@ -93,6 +93,7 @@ const videoProviderToBackendNames: Record<string, string | string[]> = {
 }
 const activeImageModelNames = ref<Set<string>>(new Set())
 const activeVideoModelNames = ref<Set<string>>(new Set())
+const modelPointsMap = ref<Record<string, number>>({})
 
 const visibleImageProviders = computed(() => {
   const set = activeImageModelNames.value
