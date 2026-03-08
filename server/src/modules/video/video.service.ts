@@ -1533,8 +1533,7 @@ export class VideoService {
     const createBody: Record<string, unknown> = {
       model: 'kling-v2-6-image2video',
       input: task.prompt.slice(0, 2500),
-      image:
-        'https://h2.inkwai.com/bs2/upload-ylab-stunt/se/ai_portal_queue_mmu_image_upscale_aiweb/3214b798-e1b4-4b00-b7af-72b5b0417420_raw_image_0.jpg',
+      image: imageUrl,
       image_tail: imageTail || '',
       negative_prompt: negativePrompt || '',
       mode: 'pro',
