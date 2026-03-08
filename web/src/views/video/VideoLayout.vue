@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Message, Modal } from '@arco-design/web-vue'
 import {
-  IconClose, IconImage, IconPlus, IconVideoCamera, IconDelete, IconRefresh, IconPlayArrowFill, IconCopy,
+  IconClose, IconPlus, IconVideoCamera, IconDelete, IconRefresh, IconPlayArrowFill, IconCopy,
 } from '@arco-design/web-vue/es/icon'
 import {
   createVideoTask, getMyTasks, getGallery, getTasksStatusBatch, retryTask as retryVideoTask, deleteTask as deleteVideoTask,
@@ -46,16 +46,63 @@ const kling26Sound = ref(false)
 const motionResolution = ref<'480p' | '720p' | '1080p'>('720p')
 const motionOrientation = ref<'image' | 'video' | 'auto'>('image')
 
+/* Vidu Q2 CTV 专属 */
+// 分辨率
+const viduq2Resolution = ref<'540p' | '720p' | '1080p'>('720p')
+// 生成音频
+const viduq2Audio = ref(false)
+// 添加水印
+const viduq2Watermark = ref(false)
+// 随机种子
+const viduq2Seed = ref<number>(0)
+
+/* Vidu Q2 Pro 专属 */
+const viduq2ProBgm = ref(false)
+/* 动态幅度 */
+const viduq2ProMovementAmplitude = ref<'auto' | 'small' | 'medium' | 'large'>('auto')
+/* 水印位置 */
+const viduq2ProWmPosition = ref<1 | 2 | 3 | 4>(3)
+/* 水印 URL */
+const viduq2ProWmUrl = ref('')
+
+/* Kling v2.6 文生视频（DMX，与 kling-2 无关） */
+/* 生成音效 */
+const klingV26Sound = ref<'on' | 'off'>('off')
+/* 负向提示词 */
+const klingV26NegativePrompt = ref('')
+
+/* Kling v2.6 图生视频：尾帧图（可选，单独上传入口） */
+const klingV26TailFrameFile = ref<{ url: string; file: File } | null>(null)
+const klingV26TailFrameInputRef = ref<HTMLInputElement>()
+function pickKlingV26TailFrame(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file || !file.type.startsWith('image/')) return
+  const url = URL.createObjectURL(file)
+  if (klingV26TailFrameFile.value) URL.revokeObjectURL(klingV26TailFrameFile.value.url)
+  klingV26TailFrameFile.value = { url, file }
+  ;(e.target as HTMLInputElement).value = ''
+}
+function clearKlingV26TailFrame() {
+  if (klingV26TailFrameFile.value) {
+    URL.revokeObjectURL(klingV26TailFrameFile.value.url)
+    klingV26TailFrameFile.value = null
+  }
+}
+
 /* 首帧/尾帧图 */
 const firstFrameFile = ref<{ url: string; file: File } | null>(null)
 const lastFrameFile = ref<{ url: string; file: File } | null>(null)
+/* 首帧输入框 */
 const firstFrameInputRef = ref<HTMLInputElement>()
+/* 尾帧输入框 */
 const lastFrameInputRef = ref<HTMLInputElement>()
 
 /* Motion Control 素材 */
 const motionRoleImage = ref<{ url: string; file: File } | null>(null)
 const motionVideoFile = ref<{ url: string; file: File } | null>(null)
+/* 角色图输入框 */
 const motionRoleInputRef = ref<HTMLInputElement>()
+/* 动作视频输入框 */
 const motionVideoInputRef = ref<HTMLInputElement>()
 
 function pickFrame(type: 'first' | 'last', e: Event) {
@@ -103,6 +150,7 @@ function clearMotionVideo() {
 /* 参考图（最多3张，不能和首尾帧同时用）*/
 const refImages = ref<{ id: string; file: File; url: string }[]>([])
 const refInputRef = ref<HTMLInputElement>()
+const refInputRefKlingV26 = ref<HTMLInputElement>()
 const FALLBACK_MAX_REF = 3
 
 function addRefImages(files: File[]) {
@@ -126,6 +174,52 @@ function removeRef(id: string) {
 function handleRefSelect(e: Event) { const f = (e.target as HTMLInputElement).files; if (f) addRefImages(Array.from(f)); (e.target as HTMLInputElement).value = '' }
 function handleRefDrop(e: DragEvent) { e.preventDefault(); if (e.dataTransfer?.files) addRefImages(Array.from(e.dataTransfer.files)) }
 
+/** 统一上传区拖放：首帧 / 尾帧 / Kling 首帧·尾帧 / 角色图 / 动作视频 */
+function handleFirstFrameDrop(e: DragEvent) {
+  e.preventDefault()
+  const file = e.dataTransfer?.files?.[0]
+  if (!file?.type.startsWith('image/')) return
+  const url = URL.createObjectURL(file)
+  if (firstFrameFile.value) URL.revokeObjectURL(firstFrameFile.value.url)
+  firstFrameFile.value = { url, file }
+}
+function handleLastFrameDrop(e: DragEvent) {
+  e.preventDefault()
+  const file = e.dataTransfer?.files?.[0]
+  if (!file?.type.startsWith('image/')) return
+  const url = URL.createObjectURL(file)
+  if (lastFrameFile.value) URL.revokeObjectURL(lastFrameFile.value.url)
+  lastFrameFile.value = { url, file }
+}
+function handleKlingV26FirstDrop(e: DragEvent) {
+  e.preventDefault()
+  if (e.dataTransfer?.files) addRefImages(Array.from(e.dataTransfer.files))
+}
+function handleKlingV26TailDrop(e: DragEvent) {
+  e.preventDefault()
+  const file = e.dataTransfer?.files?.[0]
+  if (!file?.type.startsWith('image/')) return
+  const url = URL.createObjectURL(file)
+  if (klingV26TailFrameFile.value) URL.revokeObjectURL(klingV26TailFrameFile.value.url)
+  klingV26TailFrameFile.value = { url, file }
+}
+function handleMotionRoleDrop(e: DragEvent) {
+  e.preventDefault()
+  const file = e.dataTransfer?.files?.[0]
+  if (!file?.type.startsWith('image/')) return
+  const url = URL.createObjectURL(file)
+  if (motionRoleImage.value) URL.revokeObjectURL(motionRoleImage.value.url)
+  motionRoleImage.value = { url, file }
+}
+function handleMotionVideoDrop(e: DragEvent) {
+  e.preventDefault()
+  const file = e.dataTransfer?.files?.[0]
+  if (!file?.type.startsWith('video/')) return
+  const url = URL.createObjectURL(file)
+  if (motionVideoFile.value) URL.revokeObjectURL(motionVideoFile.value.url)
+  motionVideoFile.value = { url, file }
+}
+
 const providersDef = [
   { value: 'veo3.1-fast', label: 'Veo 3.1 Fast', desc: '快速生成，支持首尾帧+参考图', color: '#FF7D00' },
   { value: 'veo3.1-pro', label: 'Veo 3.1 Pro', desc: '高质量生成，支持首尾帧', color: '#4080FF' },
@@ -134,6 +228,10 @@ const providersDef = [
   { value: 'kling-3.0', label: 'Kling 3.0', desc: '可灵3.0，3-15秒，支持1:1/音效', color: '#e11d48' },
   { value: 'kling-2', label: 'Kling 2', desc: '文生/图生/动作控制子模型', color: '#0ea5e9' },
   { value: 'bytedance/seedance-1-pro', label: 'Seedance 1 Pro', desc: '字节视频，支持参考图/首尾帧', color: '#14b8a6' },
+  { value: 'viduq2-ctv', label: 'Vidu Q2 CTV', desc: '多图参考生视频，1-10秒，540p/720p/1080p', color: '#7c3aed' },
+  { value: 'viduq2-pro', label: 'Vidu Q2 Pro', desc: '首尾帧生成视频，1-8秒，动态幅度大', color: '#6366f1' },
+  { value: 'kling-v2-6-text2video', label: 'Kling v2.6 文生视频', desc: 'DMX 可灵文生视频，5/10秒，16:9/9:16/1:1', color: '#f59e0b' },
+  { value: 'kling-v2-6-image2video', label: 'Kling v2.6 图生视频', desc: 'DMX 可灵图生视频，1-2张图，5/10秒', color: '#d97706' },
 ]
 /** 前端 provider value -> 后端 modelName（或多个），用于按后台启用列表过滤 */
 const providerToBackendNames: Record<string, string | string[]> = {
@@ -158,6 +256,8 @@ const visibleProviders = computed(() => {
 })
 const providers = computed(() => visibleProviders.value.map(p => {
   let modelNameForPoints = p.value === 'kling-2' ? selectedKling26SubModel.value : p.value
+  if (p.value === 'kling-v2-6-text2video') modelNameForPoints = 'kling-v2-6-text2video'
+  if (p.value === 'kling-v2-6-image2video') modelNameForPoints = 'kling-v2-6-image2video'
   let points = videoPointsMap.value[modelNameForPoints] ?? 0
 
   // 如果后端没有数据，使用默认积分
@@ -191,6 +291,8 @@ watch(visibleProviders, (list) => {
   }
 }, { immediate: true })
 const actualModel = computed(() => selectedModel.value === 'kling-2' ? selectedKling26SubModel.value : selectedModel.value)
+const isKlingV26Text2VideoModel = computed(() => actualModel.value === 'kling-v2-6-text2video')
+const isKlingV26Image2VideoModel = computed(() => actualModel.value === 'kling-v2-6-image2video')
 const defaultRatioOptions = [
   { value: '16:9', label: '16:9 横屏', icon: '▬' },
   { value: '9:16', label: '9:16 竖屏', icon: '▮' },
@@ -213,6 +315,8 @@ const isKling26Motion = computed(() => actualModel.value === 'kling-2/motion-con
 const ratioOptions = computed(() => {
   if (isKling26Text.value) return kling26RatioOptions
   if (actualModel.value === 'kling-3.0') return klingRatioOptions
+  if (isKlingV26Text2VideoModel.value) return klingRatioOptions
+  if (isKlingV26Image2VideoModel.value) return klingRatioOptions
   return defaultRatioOptions
 })
 const seedanceResolutionOptions: Array<{ value: '720p' | '1080p'; label: string }> = [
@@ -225,6 +329,8 @@ const klingMode = ref<'std' | 'pro'>('pro')
 const klingSound = ref(false)
 const isKlingModel = computed(() => actualModel.value === 'kling-3.0')
 const isSeedanceModel = computed(() => actualModel.value === 'bytedance/seedance-1-pro')
+const isViduq2CtvModel = computed(() => actualModel.value === 'viduq2-ctv')
+const isViduq2ProModel = computed(() => actualModel.value === 'viduq2-pro')
 const showRatio = computed(() => !isKling26Image.value && !isKling26Motion.value)
 const showDuration = computed(() => !isKling26Motion.value)
 const showKling26Sound = computed(() => isKling26Text.value || isKling26Image.value)
@@ -249,6 +355,7 @@ const missingHints = computed(() => {
   const hints: string[] = []
   if (!form.value.prompt?.trim()) hints.push('请输入提示词')
   if (inputMode.value === 'frame' && !firstFrameFile.value) hints.push('需要首帧图片')
+  if (actualModel.value === 'viduq2-pro' && inputMode.value === 'frame' && !lastFrameFile.value) hints.push('需要尾帧图片')
   if (inputMode.value === 'ref' && refImages.value.length === 0) hints.push('需要参考图')
   if (inputMode.value === 'motion') {
     if (!motionRoleImage.value) hints.push('需要角色图')
@@ -350,6 +457,38 @@ const modelConfigs: Record<string, ModelConfig> = {
     supportsPreviewResolution: false,
     hint: '字节 Seedance 1 Pro，支持文本/参考图/首尾帧',
   },
+  'viduq2-ctv': {
+    inputModes: ['ref'],
+    maxRefImages: 10,
+    durations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    supportsPreview: false,
+    supportsPreviewResolution: false, // 不支持预览分辨率
+    hint: 'Vidu Q2 CTV 多图参考生视频，需至少 1 张参考图，支持 1-10 秒、540p/720p/1080p',
+  },
+  'viduq2-pro': {
+    inputModes: ['frame'],
+    maxRefImages: 0,
+    durations: [1, 2, 3, 4, 5, 6, 7, 8],
+    supportsPreview: false,
+    supportsPreviewResolution: false,
+    hint: 'Vidu Q2 Pro 首尾帧生成视频，需首帧+尾帧两张图，1-8 秒，540p/720p/1080p，动态幅度大',
+  },
+  'kling-v2-6-text2video': {
+    inputModes: ['text'],
+    maxRefImages: 0,
+    durations: [5, 10],
+    supportsPreview: false,
+    supportsPreviewResolution: false,
+    hint: 'DMX 可灵 v2.6 文生视频，5/10 秒，16:9/9:16/1:1，高品质模式，支持音效',
+  },
+  'kling-v2-6-image2video': {
+    inputModes: ['ref'],
+    maxRefImages: 1,
+    durations: [5, 10],
+    supportsPreview: false,
+    supportsPreviewResolution: false,
+    hint: 'DMX 可灵 v2.6 图生视频：上传 1 张首帧图，可选项上传尾帧图，5/10 秒，16:9/9:16/1:1',
+  },
 }
 
 const defaultModelConfig: ModelConfig = {
@@ -380,6 +519,10 @@ function providerForApi(): string {
   if (m === 'kling-2/text-to-video') return 'kling-2.6/text-to-video'
   if (m === 'kling-2/image-to-video') return 'kling-2.6/image-to-video'
   if (m === 'kling-2/motion-control') return 'kling-2.6/motion-control'
+  if (m === 'viduq2-ctv') return 'viduq2-ctv'
+  if (m === 'viduq2-pro') return 'viduq2-pro'
+  if (m === 'kling-v2-6-text2video') return 'kling-v2-6-text2video'
+  if (m === 'kling-v2-6-image2video') return 'kling-v2-6-image2video'
   return m
 }
 
@@ -412,6 +555,7 @@ watch(actualModel, () => {
     const target = refImages.value.pop()
     if (target) URL.revokeObjectURL(target.url)
   }
+  if (actualModel.value !== 'kling-v2-6-image2video') clearKlingV26TailFrame()
 }, { immediate: true })
 
 watch(selectedKling26SubModel, (next, prev) => {
@@ -442,26 +586,36 @@ watch(previewMode, () => {
 
 /* === 轮询 === */
 let poll: ReturnType<typeof setInterval> | null = null
+let pollIntervalMs = 3000
 let unsubRealtime: (() => void) | null = null
 const hasPending = computed(() => myTasks.value.some(t => t.status === 'pending' || t.status === 'processing'))
+async function pollOnce() {
+  if (!hasPending.value) return
+  const ids = myTasks.value
+    .filter((x) => x.status === 'pending' || x.status === 'processing')
+    .map((x) => x.id)
+  if (ids.length === 0) return
+  try {
+    const { data } = await getTasksStatusBatch(ids)
+    const list = Array.isArray(data) ? data : []
+    for (const u of list) {
+      const i = myTasks.value.findIndex((x) => x.id === u.id)
+      if (i < 0) continue
+      const cur = myTasks.value[i]!
+      const curTerminal = cur.status === 'failed' || cur.status === 'completed' || cur.status === 'done'
+      const serverTerminal = u.status === 'failed' || u.status === 'completed' || u.status === 'done'
+      if (!curTerminal || serverTerminal) myTasks.value[i] = { ...cur, ...u }
+    }
+  } catch { }
+}
 function startPoll() {
-  if (poll) return; poll = setInterval(async () => {
-    if (realtimeConnected.value) { stopPoll(); return }
+  if (poll) return
+  pollIntervalMs = realtimeConnected.value ? 5000 : 3000
+  poll = setInterval(() => {
     if (document.visibilityState === 'hidden') return
     if (!hasPending.value) { stopPoll(); return }
-    const ids = myTasks.value
-      .filter((x) => x.status === 'pending' || x.status === 'processing')
-      .map((x) => x.id)
-    if (ids.length === 0) return
-    try {
-      const { data } = await getTasksStatusBatch(ids)
-      const list = Array.isArray(data) ? data : []
-      for (const u of list) {
-        const i = myTasks.value.findIndex((x) => x.id === u.id)
-        if (i >= 0) myTasks.value[i] = { ...myTasks.value[i], ...u }
-      }
-    } catch { }
-  }, 10000)
+    pollOnce()
+  }, pollIntervalMs)
 }
 function stopPoll() { if (poll) { clearInterval(poll); poll = null } }
 watch(hasPending, v => v ? startPoll() : stopPoll())
@@ -474,13 +628,29 @@ onMounted(() => {
     const idx = myTasks.value.findIndex((t) => t.id === e.taskId)
     if (idx < 0) return
     const prev = myTasks.value[idx]!
+    const curTerminal = prev.status === 'failed' || prev.status === 'completed' || prev.status === 'done'
+    const incomingTerminal = e.status === 'failed' || e.status === 'completed' || e.status === 'done'
+    if (curTerminal && !incomingTerminal && e.type === 'task.updated') {
+      return
+    }
+    const nextStatus = (curTerminal && !incomingTerminal) ? prev.status : ((e.status as VideoTask['status']) || prev.status)
     myTasks.value[idx] = {
       ...prev,
-      status: (e.status as VideoTask['status']) || prev.status,
+      status: nextStatus,
       progress: typeof e.progress === 'number' ? e.progress : prev.progress,
       errorMessage: (e.errorMessage ?? prev.errorMessage ?? undefined) as VideoTask['errorMessage'],
       videoUrl: e.videoUrl ?? prev.videoUrl,
       resultUrl: e.videoUrl ?? prev.resultUrl,
+    }
+    if (e.type === 'task.failed' || e.type === 'task.completed') {
+      getTasksStatusBatch([e.taskId]).then(({ data }) => {
+        const list = Array.isArray(data) ? data : []
+        const u = list.find((x: VideoTask) => x.id === e.taskId)
+        if (u && (u.status === 'failed' || u.status === 'completed' || u.status === 'done')) {
+          const i = myTasks.value.findIndex((t) => t.id === e.taskId)
+          if (i >= 0) myTasks.value[i] = { ...myTasks.value[i], ...u }
+        }
+      }).catch(() => { })
     }
   })
 })
@@ -492,7 +662,6 @@ onUnmounted(() => {
 
 watch(realtimeConnected, (connected) => {
   if (connected) {
-    stopPoll()
     const ids = myTasks.value
       .filter((t) => t.status === 'pending' || t.status === 'processing')
       .map((t) => t.id)
@@ -502,11 +671,16 @@ watch(realtimeConnected, (connected) => {
           const list = Array.isArray(data) ? data : []
           for (const u of list) {
             const i = myTasks.value.findIndex((x) => x.id === u.id)
-            if (i >= 0) myTasks.value[i] = { ...myTasks.value[i], ...u }
+            if (i < 0) continue
+            const cur = myTasks.value[i]!
+            const curTerminal = cur.status === 'failed' || cur.status === 'completed' || cur.status === 'done'
+            const serverTerminal = u.status === 'failed' || u.status === 'completed' || u.status === 'done'
+            if (!curTerminal || serverTerminal) myTasks.value[i] = { ...cur, ...u }
           }
         })
         .catch(() => { })
     }
+    if (hasPending.value) startPoll()
   } else if (hasPending.value) startPoll()
 })
 
@@ -542,19 +716,28 @@ async function handleGenerate() {
   try {
     const currentModel = modelForApi()
     const params: Record<string, unknown> = {
+      // 模型
       model: currentModel,
+      // 输入模式
       inputMode: inputMode.value,
     }
+    // 时长
     if (showDuration.value) {
       params.duration = form.value.duration ?? durationOptions.value[0]
     }
+    // 比例
     if (showRatio.value) {
       params.aspectRatio = selectedRatio.value
     }
+    // 提供者
     const payload: CreateVideoTaskData = {
+      // 提供者
       provider: providerForApi(),
+      // 任务类型
       taskType: taskMode.value,
+      // 提示词
       prompt: form.value.prompt.trim(),
+      // 参数
       params,
     }
     if (previewMode.value && currentModel === 'sora-2-pro-preview') {
@@ -576,6 +759,44 @@ async function handleGenerate() {
         ; (payload.params as Record<string, unknown>).fixed_lens = seedanceFixedLens.value
         ; (payload.params as Record<string, unknown>).generate_audio = seedanceGenerateAudio.value
     }
+    // Vidu Q2 CTV 专属
+    if (isViduq2CtvModel.value) {
+      const p = payload.params as Record<string, unknown>
+      // 分辨率
+      p.resolution = viduq2Resolution.value
+      // 生成音频
+      p.audio = viduq2Audio.value
+      // 添加水印
+      p.watermark = viduq2Watermark.value
+      // 随机种子
+      p.seed = viduq2Seed.value || 0
+    }
+    // Vidu Q2 Pro 专属（首尾帧）
+    if (isViduq2ProModel.value) {
+      const p = payload.params as Record<string, unknown>
+      p.resolution = viduq2Resolution.value
+      p.watermark = viduq2Watermark.value
+      p.seed = viduq2Seed.value || 0
+      p.movement_amplitude = viduq2ProMovementAmplitude.value
+      p.bgm = viduq2ProBgm.value
+      p.wm_position = viduq2ProWmPosition.value
+      if (viduq2ProWmUrl.value?.trim()) p.wm_url = viduq2ProWmUrl.value.trim()
+    }
+    if (isKlingV26Text2VideoModel.value) {
+      const p = payload.params as Record<string, unknown>
+      p.mode = 'pro'
+      p.sound = klingV26Sound.value
+      p.aspectRatio = selectedRatio.value
+      p.duration = form.value.duration ?? 5
+      if (klingV26NegativePrompt.value?.trim()) p.negative_prompt = klingV26NegativePrompt.value.trim()
+    }
+    if (isKlingV26Image2VideoModel.value) {
+      const p = payload.params as Record<string, unknown>
+      p.sound = klingV26Sound.value
+      p.aspectRatio = selectedRatio.value
+      p.duration = form.value.duration ?? 5
+      if (klingV26NegativePrompt.value?.trim()) p.negative_prompt = klingV26NegativePrompt.value.trim()
+    }
     if (taskMode.value === 'img2video') {
       if (inputMode.value === 'frame') {
         payload.imageUrl = await uploadImageAndGetUrl(firstFrameFile.value!.file)
@@ -585,7 +806,10 @@ async function handleGenerate() {
       } else if (inputMode.value === 'ref') {
         const urls = await Promise.all(refImages.value.map((r) => uploadImageAndGetUrl(r.file)))
         payload.imageUrl = urls[0]
-          ; (payload.params as Record<string, unknown>).urls = urls.slice(0, maxRef.value)
+        ;(payload.params as Record<string, unknown>).urls = urls.slice(0, maxRef.value)
+        if (isKlingV26Image2VideoModel.value && klingV26TailFrameFile.value) {
+          ;(payload.params as Record<string, unknown>).image_tail = await uploadImageAndGetUrl(klingV26TailFrameFile.value.file)
+        }
       } else if (inputMode.value === 'motion') {
         payload.imageUrl = await uploadImageAndGetUrl(motionRoleImage.value!.file)
           ; (payload.params as Record<string, unknown>).motionVideoUrl = await uploadVideoAndGetUrl(motionVideoFile.value!.file)
@@ -747,8 +971,10 @@ function handleDeleteTask(task: VideoTask) {
               <IconClose :size="10" />
             </button>
           </div>
-          <div v-else class="dropzone-sm" @click="firstFrameInputRef?.click()">
-            <IconImage :size="18" class="upload-icon" /><span>点击上传首帧</span>
+          <div v-else class="dropzone" @dragover.prevent @drop="handleFirstFrameDrop" @click="firstFrameInputRef?.click()">
+            <IconPlus :size="44" class="upload-plus" />
+            <span class="dz-text">点击或拖拽上传首帧</span>
+            <span class="dz-hint">视频起始画面，必填</span>
           </div>
           <input ref="firstFrameInputRef" type="file" accept="image/*" class="hidden-input"
             @change="pickFrame('first', $event)" />
@@ -760,15 +986,17 @@ function handleDeleteTask(task: VideoTask) {
               <IconClose :size="10" />
             </button>
           </div>
-          <div v-else class="dropzone-sm" @click="lastFrameInputRef?.click()">
-            <IconImage :size="18" class="upload-icon" /><span>点击上传尾帧</span>
+          <div v-else class="dropzone" @dragover.prevent @drop="handleLastFrameDrop" @click="lastFrameInputRef?.click()">
+            <IconPlus :size="44" class="upload-plus" />
+            <span class="dz-text">点击或拖拽上传尾帧</span>
+            <span class="dz-hint">可选，视频结束画面</span>
           </div>
           <input ref="lastFrameInputRef" type="file" accept="image/*" class="hidden-input"
             @change="pickFrame('last', $event)" />
         </section>
 
-        <!-- 参考图 -->
-        <section v-if="inputMode === 'ref' && canUseRefMode" class="fg">
+        <!-- 参考图（非 Kling v2.6 图生时） -->
+        <section v-if="inputMode === 'ref' && canUseRefMode && !isKlingV26Image2VideoModel" class="fg">
           <div class="fl-row">
             <label class="fl">参考图</label>
             <span class="fl-count">{{ refImages.length }}/{{ maxRef }}</span>
@@ -793,6 +1021,39 @@ function handleDeleteTask(task: VideoTask) {
             @change="handleRefSelect" />
         </section>
 
+        <!-- Kling v2.6 图生视频：首帧 + 尾帧（与上方首尾帧模式同款文案与布局） -->
+        <section v-if="isKlingV26Image2VideoModel && inputMode === 'ref'" class="fg">
+          <label class="fl">首帧图片 <span class="fl-hint">必选</span></label>
+          <div v-if="refImages.length > 0" class="frame-preview">
+            <img :src="refImages[0]!.url" />
+            <button class="frame-clear" aria-label="清除首帧" @click="removeRef(refImages[0]!.id)">
+              <IconClose :size="10" />
+            </button>
+          </div>
+          <div v-else class="dropzone" @dragover.prevent @drop="handleKlingV26FirstDrop" @click="refInputRefKlingV26?.click()">
+            <IconPlus :size="44" class="upload-plus" />
+            <span class="dz-text">点击或拖拽上传首帧</span>
+            <span class="dz-hint">视频起始画面，必填</span>
+          </div>
+          <input ref="refInputRefKlingV26" type="file" accept="image/*" class="hidden-input"
+            @change="handleRefSelect" />
+
+          <label class="fl mt-12">尾帧图 <span class="fl-hint">可选，需搭配首帧</span></label>
+          <div v-if="klingV26TailFrameFile" class="frame-preview">
+            <img :src="klingV26TailFrameFile.url" />
+            <button class="frame-clear" aria-label="清除尾帧" @click="clearKlingV26TailFrame">
+              <IconClose :size="10" />
+            </button>
+          </div>
+          <div v-else class="dropzone" @dragover.prevent @drop="handleKlingV26TailDrop" @click="klingV26TailFrameInputRef?.click()">
+            <IconPlus :size="44" class="upload-plus" />
+            <span class="dz-text">点击或拖拽上传尾帧</span>
+            <span class="dz-hint">可选，视频结束画面</span>
+          </div>
+          <input ref="klingV26TailFrameInputRef" type="file" accept="image/*" class="hidden-input"
+            @change="pickKlingV26TailFrame" />
+        </section>
+
         <!-- 动作控制：角色图 + 动作视频 -->
         <section v-if="inputMode === 'motion'" class="fg">
           <label class="fl">角色图 <span class="fl-hint">必选</span></label>
@@ -802,8 +1063,10 @@ function handleDeleteTask(task: VideoTask) {
               <IconClose :size="10" />
             </button>
           </div>
-          <div v-else class="dropzone-sm" @click="motionRoleInputRef?.click()">
-            <IconImage :size="18" class="upload-icon" /><span>点击上传角色图</span>
+          <div v-else class="dropzone" @dragover.prevent @drop="handleMotionRoleDrop" @click="motionRoleInputRef?.click()">
+            <IconPlus :size="44" class="upload-plus" />
+            <span class="dz-text">点击或拖拽上传角色图</span>
+            <span class="dz-hint">必选</span>
           </div>
           <input ref="motionRoleInputRef" type="file" accept="image/*" class="hidden-input"
             @change="pickMotionImage($event)" />
@@ -815,8 +1078,10 @@ function handleDeleteTask(task: VideoTask) {
               <IconClose :size="10" />
             </button>
           </div>
-          <div v-else class="dropzone-sm" @click="motionVideoInputRef?.click()">
-            <IconVideoCamera :size="18" class="upload-icon" /><span>点击上传动作视频</span>
+          <div v-else class="dropzone" @dragover.prevent @drop="handleMotionVideoDrop" @click="motionVideoInputRef?.click()">
+            <IconPlus :size="44" class="upload-plus" />
+            <span class="dz-text">点击或拖拽上传动作视频</span>
+            <span class="dz-hint">必选</span>
           </div>
           <input ref="motionVideoInputRef" type="file" accept="video/*" class="hidden-input"
             @change="pickMotionVideo($event)" />
@@ -852,7 +1117,7 @@ function handleDeleteTask(task: VideoTask) {
 
         <section v-if="showDuration" class="fg">
           <label class="fl">视频时长</label>
-          <div class="dur-row">
+          <div class="dur-row dur-row-grid">
             <button v-for="d in durationOptions" :key="d" class="dur-btn" :class="{ active: form.duration === d }"
               @click="form.duration = d">
               {{ d }} 秒
@@ -912,6 +1177,88 @@ function handleDeleteTask(task: VideoTask) {
           <label class="fl">音效</label>
           <a-switch v-model="klingSound" />
           <span class="fl-hint state-hint">{{ klingSound ? '开启' : '关闭' }}</span>
+        </section>
+
+        <!-- Vidu Q2 CTV 专属 -->
+        <section v-if="isViduq2CtvModel" class="fg">
+          <label class="fl">分辨率</label>
+          <div class="dur-row">
+            <button v-for="r in ['540p', '720p', '1080p']" :key="r" class="dur-btn"
+              :class="{ active: viduq2Resolution === r }" @click="viduq2Resolution = r as '540p' | '720p' | '1080p'">
+              {{ r }}
+            </button>
+          </div>
+        </section>
+        <section v-if="isViduq2CtvModel" class="fg">
+          <label class="fl">生成音频</label>
+          <a-switch v-model="viduq2Audio" />
+          <span class="fl-hint state-hint">{{ viduq2Audio ? '开启' : '关闭' }}</span>
+        </section>
+        <section v-if="isViduq2CtvModel" class="fg">
+          <label class="fl">添加水印</label>
+          <a-switch v-model="viduq2Watermark" />
+          <span class="fl-hint state-hint">{{ viduq2Watermark ? '开启' : '关闭' }}</span>
+        </section>
+        <section v-if="isViduq2CtvModel" class="fg">
+          <label class="fl">随机种子</label>
+          <a-input-number v-model="viduq2Seed" :min="0" placeholder="0 表示随机" class="w-full" />
+        </section>
+
+        <!-- Vidu Q2 Pro 专属：首尾帧 -->
+        <section v-if="isViduq2ProModel" class="fg">
+          <label class="fl">分辨率</label>
+          <div class="dur-row">
+            <button v-for="r in ['540p', '720p', '1080p']" :key="r" class="dur-btn"
+              :class="{ active: viduq2Resolution === r }" @click="viduq2Resolution = r as '540p' | '720p' | '1080p'">
+              {{ r }}
+            </button>
+          </div>
+        </section>
+        <section v-if="isViduq2ProModel" class="fg">
+          <label class="fl">运动幅度</label>
+          <a-select v-model="viduq2ProMovementAmplitude" class="w-full">
+            <a-option value="auto">auto</a-option>
+            <a-option value="small">small</a-option>
+            <a-option value="medium">medium</a-option>
+            <a-option value="large">large</a-option>
+          </a-select>
+        </section>
+        <section v-if="isViduq2ProModel" class="fg">
+          <label class="fl">BGM</label>
+          <a-switch v-model="viduq2ProBgm" />
+          <span class="fl-hint state-hint">{{ viduq2ProBgm ? '开启' : '关闭' }}</span>
+        </section>
+        <section v-if="isViduq2ProModel" class="fg">
+          <label class="fl">添加水印</label>
+          <a-switch v-model="viduq2Watermark" />
+          <span class="fl-hint state-hint">{{ viduq2Watermark ? '开启' : '关闭' }}</span>
+        </section>
+        <section v-if="isViduq2ProModel" class="fg">
+          <label class="fl">水印位置</label>
+          <a-select v-model="viduq2ProWmPosition" class="w-full">
+            <a-option :value="1">左上</a-option>
+            <a-option :value="2">右上</a-option>
+            <a-option :value="3">左下</a-option>
+            <a-option :value="4">右下</a-option>
+          </a-select>
+        </section>
+        <section v-if="isViduq2ProModel" class="fg">
+          <label class="fl">随机种子</label>
+          <a-input-number v-model="viduq2Seed" :min="0" placeholder="0 表示随机" class="w-full" />
+        </section>
+
+        <!-- Kling v2.6 文生/图生视频（DMX，与 Kling 2 无关） -->
+        <section v-if="isKlingV26Text2VideoModel || isKlingV26Image2VideoModel" class="fg">
+          <label class="fl">音效</label>
+          <a-select v-model="klingV26Sound" class="w-full">
+            <a-option value="off">关闭</a-option>
+            <a-option value="on">开启</a-option>
+          </a-select>
+        </section>
+        <section v-if="isKlingV26Text2VideoModel || isKlingV26Image2VideoModel" class="fg">
+          <label class="fl">负向提示词</label>
+          <a-textarea v-model="klingV26NegativePrompt" placeholder="可选，不希望出现的内容" :max-length="2500" show-word-limit
+            class="w-full" />
         </section>
 
         <section v-if="modelConfig.supportsPreview" class="fg">
@@ -1046,38 +1393,42 @@ function handleDeleteTask(task: VideoTask) {
 
     <!-- 预览弹窗 -->
     <a-modal v-model:visible="previewOpen" title="视频预览" :width="800" :footer="false" unmount-on-close
-      modal-class="dark-modal">
-      <video v-if="previewUrl" ref="previewVideoRef" :src="previewUrl" controls class="preview-video" />
-      <div v-if="previewTask" class="detail-panel">
-        <div class="detail-title">任务详情参数</div>
-        <div class="detail-grid">
-          <div class="detail-item"><span class="k">任务 ID</span><span class="v mono">{{ previewTask.id }}</span></div>
-          <div class="detail-item"><span class="k">服务商</span><span class="v">{{ previewTask.provider || '-' }}</span>
+      modal-class="dark-modal video-preview-modal">
+      <div class="preview-modal-body">
+        <video v-if="previewUrl" ref="previewVideoRef" :src="previewUrl" controls class="preview-video" />
+        <div v-if="previewTask" class="detail-panel">
+          <div class="detail-title">任务详情参数</div>
+          <div class="detail-grid">
+            <div class="detail-item"><span class="k">任务 ID</span><span class="v mono">{{ previewTask.id }}</span></div>
+            <div class="detail-item"><span class="k">服务商</span><span class="v">{{ previewTask.provider || '-' }}</span>
+            </div>
+            <div class="detail-item"><span class="k">任务类型</span><span class="v">{{ previewTask.taskType || '-' }}</span>
+            </div>
+            <div class="detail-item"><span class="k">状态</span><span class="v">{{ previewTask.status || '-' }}</span>
+            </div>
+            <div class="detail-item"><span class="k">进度</span><span class="v">{{ previewTask.progress ?? 0 }}%</span>
+            </div>
+            <div class="detail-item"><span class="k">时长</span><span class="v">{{ previewTask.duration ?? '-' }}</span>
+            </div>
+            <div class="detail-item"><span class="k">创建时间</span><span class="v">{{ previewTask.createdAt || '-'
+                }}</span>
+            </div>
+            <div class="detail-item"><span class="k">失败原因</span><span class="v">{{ previewTask.errorMessage || '-'
+                }}</span></div>
           </div>
-          <div class="detail-item"><span class="k">任务类型</span><span class="v">{{ previewTask.taskType || '-' }}</span>
+          <div class="detail-block">
+            <div class="kb">提示词</div>
+            <pre class="json-view">{{ previewTask.prompt || '-' }}</pre>
           </div>
-          <div class="detail-item"><span class="k">状态</span><span class="v">{{ previewTask.status || '-' }}</span></div>
-          <div class="detail-item"><span class="k">进度</span><span class="v">{{ previewTask.progress ?? 0 }}%</span>
+          <div class="detail-block">
+            <div class="kb">扩展参数（params）</div>
+            <pre class="json-view">{{ formatTaskParams(previewTask) }}</pre>
           </div>
-          <div class="detail-item"><span class="k">时长</span><span class="v">{{ previewTask.duration ?? '-' }}</span>
+          <div v-if="previewTask.status === 'failed'" class="detail-actions">
+            <button class="retry-btn" :disabled="retryingId === previewTask.id" @click="handleRetry(previewTask)">
+              {{ retryingId === previewTask.id ? '重试中...' : '重新生成' }}
+            </button>
           </div>
-          <div class="detail-item"><span class="k">创建时间</span><span class="v">{{ previewTask.createdAt || '-' }}</span>
-          </div>
-          <div class="detail-item"><span class="k">失败原因</span><span class="v">{{ previewTask.errorMessage || '-'
-          }}</span></div>
-        </div>
-        <div class="detail-block">
-          <div class="kb">提示词</div>
-          <pre class="json-view">{{ previewTask.prompt || '-' }}</pre>
-        </div>
-        <div class="detail-block">
-          <div class="kb">扩展参数（params）</div>
-          <pre class="json-view">{{ formatTaskParams(previewTask) }}</pre>
-        </div>
-        <div v-if="previewTask.status === 'failed'" class="detail-actions">
-          <button class="retry-btn" :disabled="retryingId === previewTask.id" @click="handleRetry(previewTask)">
-            {{ retryingId === previewTask.id ? '重试中...' : '重新生成' }}
-          </button>
         </div>
       </div>
     </a-modal>
@@ -1410,23 +1761,24 @@ function handleDeleteTask(task: VideoTask) {
 
 .frame-preview {
   position: relative;
-  width: 120px;
-  height: 80px;
-  border-radius: var(--radius-sm);
+  width: 100%;
+  height: 270px;
+  border-radius: var(--radius-md);
   overflow: hidden;
-  border: 1px solid var(--border-2);
+  border: 1px dashed var(--border-3);
+  background: var(--bg-surface-2);
 }
 
 .frame-preview img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .frame-preview video {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .frame-clear {
@@ -1509,6 +1861,16 @@ function handleDeleteTask(task: VideoTask) {
 .dur-row {
   display: flex;
   gap: var(--sp-2);
+}
+
+.dur-row-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--sp-2);
+}
+
+.dur-row-grid .dur-btn {
+  flex: none;
 }
 
 .dur-btn {
@@ -2101,7 +2463,21 @@ function handleDeleteTask(task: VideoTask) {
 
 .preview-video {
   width: 100%;
+  max-height: min(60vh, 480px);
+  object-fit: contain;
   border-radius: 12px;
+  display: block;
+}
+
+/* 预览弹窗：一屏内显示，内容区可滚动 */
+.preview-modal-body {
+  max-height: min(85vh, 720px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.preview-modal-body .detail-panel {
+  margin-top: var(--sp-4);
 }
 
 .placeholder-icon {

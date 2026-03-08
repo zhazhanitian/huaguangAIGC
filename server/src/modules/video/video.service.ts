@@ -14,7 +14,7 @@ import { ProxyAgent } from 'undici';
 import { VideoTask, VideoTaskStatus, VideoTaskType } from './video.entity';
 import { CreateVideoTaskDto } from './dto/create-video-task.dto';
 import { UserService } from '../user/user.service';
-import { AiModel } from '../model/model.entity';
+import { AiModel, ModelKey } from '../model/model.entity';
 import { RealtimeService } from '../realtime/realtime.service';
 import type {
   TaskEventPayload,
@@ -41,6 +41,8 @@ export class VideoService {
     private readonly videoRepository: Repository<VideoTask>,
     @InjectRepository(AiModel)
     private readonly modelRepository: Repository<AiModel>,
+    @InjectRepository(ModelKey)
+    private readonly keyRepository: Repository<ModelKey>,
     @InjectQueue('video-queue')
     private readonly videoQueue: Queue,
     private readonly userService: UserService,
@@ -75,6 +77,49 @@ export class VideoService {
       if (m && m.deductPoints > 0) return m.deductPoints;
     }
     return POINTS_PER_VIDEO_FALLBACK;
+  }
+
+  /**
+   * 从模型管理/密钥池解析 API Key 和 baseUrl（优先 ModelKey，其次 AiModel.apiKey，最后环境变量）
+   */
+  private async resolveModelAuth(
+    modelName: string,
+    envKey: string,
+    envUrl: string,
+    defaultBaseUrl: string,
+  ): Promise<{ apiKey: string; baseUrl: string }> {
+    const model = await this.modelRepository.findOne({
+      where: { modelName, isActive: true },
+    });
+    if (model) {
+      const keys = await this.keyRepository.find({
+        where: { modelId: model.id, isActive: true },
+        order: { usageCount: 'ASC', lastUsedAt: 'ASC' },
+      });
+      if (keys.length > 0) {
+        const key = keys[0]!;
+        const baseUrl =
+          (key.baseUrl && key.baseUrl.replace(/\/+$/, '')) ||
+          (model.baseUrl && model.baseUrl.replace(/\/+$/, '')) ||
+          (process.env[envUrl] || defaultBaseUrl).replace(/\/+$/, '');
+        return {
+          apiKey: String(key.apiKey || '').trim(),
+          baseUrl: baseUrl || defaultBaseUrl.replace(/\/+$/, ''),
+        };
+      }
+      if (model.apiKey) {
+        const baseUrl =
+          (model.baseUrl && model.baseUrl.replace(/\/+$/, '')) ||
+          (process.env[envUrl] || defaultBaseUrl).replace(/\/+$/, '');
+        return {
+          apiKey: String(model.apiKey).trim(),
+          baseUrl: baseUrl || defaultBaseUrl.replace(/\/+$/, ''),
+        };
+      }
+    }
+    const apiKey = (process.env[envKey] || '').trim();
+    const baseUrl = (process.env[envUrl] || defaultBaseUrl).replace(/\/+$/, '');
+    return { apiKey, baseUrl };
   }
 
   /**
@@ -200,6 +245,16 @@ export class VideoService {
    * Bull 队列处理器：调用视频 API，轮询结果
    */
   async processVideoTask(task: VideoTask): Promise<void> {
+    if (
+      task.status === VideoTaskStatus.COMPLETED ||
+      task.status === VideoTaskStatus.FAILED
+    ) {
+      this.logger.log(
+        `视频任务已为终态，跳过处理: ${task.id} status=${task.status}`,
+      );
+      return;
+    }
+
     try {
       task.status = VideoTaskStatus.PROCESSING;
       task.progress = 10;
@@ -273,6 +328,22 @@ export class VideoService {
 
     if (model === 'kling-3.0') {
       return this.callKieKlingApi(task, params);
+    }
+
+    if (model === 'viduq2-ctv') {
+      return this.callViduq2CtvApi(task, params);
+    }
+
+    if (model === 'viduq2-pro') {
+      return this.callViduq2ProApi(task, params);
+    }
+
+    if (model === 'kling-v2-6-text2video') {
+      return this.callDmxKlingV26Text2VideoApi(task, params);
+    }
+
+    if (model === 'kling-v2-6-image2video') {
+      return this.callDmxKlingV26Image2VideoApi(task, params);
     }
 
     throw new Error(`不支持的视频模型: ${model}`);
@@ -1043,6 +1114,971 @@ export class VideoService {
     throw new Error('Kling 3.0 视频任务超时');
   }
 
+  /**
+   * Vidu Q2 CTV 多图参考生视频（DMX API）
+   * 文档：docs/viduq2-ctv.md，接口 https://www.dmxapi.cn/v1/responses
+   * API Key 优先从模型管理/密钥池读取，其次环境变量 DMX_API_KEY
+   */
+  private async callViduq2CtvApi(
+    task: VideoTask,
+    params: Record<string, unknown>,
+  ): Promise<string> {
+    const { apiKey, baseUrl } = await this.resolveModelAuth(
+      'viduq2-ctv',
+      'DMX_API_KEY',
+      'DMX_API_URL',
+      'https://www.dmxapi.cn',
+    );
+    const endpoint = baseUrl.replace(/\/+$/, '');
+    if (!apiKey)
+      throw new Error(
+        '未配置 DMX_API_KEY：请在模型管理中为 viduq2-ctv 配置 API Key，或设置环境变量 DMX_API_KEY',
+      );
+
+    const sourceUrls: string[] = [];
+    if (task.taskType === VideoTaskType.IMG2VIDEO && task.imageUrl) {
+      sourceUrls.push(task.imageUrl);
+    }
+    const extraUrls = Array.isArray(params.urls)
+      ? (params.urls as unknown[]).filter(
+          (u): u is string => typeof u === 'string',
+        )
+      : [];
+    sourceUrls.push(...extraUrls);
+    const imageUrls = (
+      await Promise.all(
+        sourceUrls.slice(0, 10).map((u) => this.normalizeMediaUrl(u)),
+      )
+    ).filter(Boolean) as string[];
+    if (imageUrls.length === 0) {
+      throw new Error(
+        'Vidu Q2 CTV 需要至少一张参考图，请使用参考图模式并上传图片',
+      );
+    }
+
+    const durationRaw = Number(params.duration ?? 5);
+    const duration = Math.max(1, Math.min(10, Math.round(durationRaw)));
+    const resolution = ['540p', '720p', '1080p'].includes(
+      String(params.resolution),
+    )
+      ? String(params.resolution)
+      : '720p';
+    const aspectRatio =
+      String(params.aspectRatio || '16:9') === '9:16' ? '9:16' : '16:9';
+    const seed = Number(params.seed);
+    const audio = Boolean(params.audio ?? false);
+    const watermark = Boolean(params.watermark ?? false);
+    const wmPosition = Number(params.wm_position);
+    const wmPositionValid = [1, 2, 3, 4].includes(wmPosition) ? wmPosition : 3;
+    const wmUrl =
+      typeof params.wm_url === 'string' && params.wm_url.trim()
+        ? params.wm_url.trim()
+        : undefined;
+    const movementAmplitude =
+      typeof params.movement_amplitude === 'string'
+        ? params.movement_amplitude
+        : 'auto';
+
+    const subjects = [
+      {
+        id: '1',
+        images: imageUrls,
+        voice_id: '',
+      },
+    ];
+
+    const body: Record<string, unknown> = {
+      model: 'viduq2-ctv',
+      subjects,
+      input: task.prompt.slice(0, 2000),
+      duration,
+      audio,
+      seed: seed || 0,
+      aspect_ratio: aspectRatio,
+      resolution,
+      movement_amplitude: movementAmplitude,
+      watermark,
+      wm_position: wmPositionValid,
+    };
+    if (wmUrl) body.wm_url = wmUrl;
+
+    this.logger.log(
+      `[Vidu Q2 CTV] 创建任务: POST ${endpoint}/v1/responses duration=${duration} resolution=${resolution} images=${imageUrls.length}`,
+    );
+    this.logger.log(
+      `[Vidu Q2 CTV] ========== Postman 复现：创建任务 ==========`,
+    );
+    this.logger.log(`  METHOD: POST`);
+    this.logger.log(`  URL: ${endpoint}/v1/responses`);
+    this.logger.log(
+      `  Headers: { "Content-Type": "application/json", "Authorization": "${this.maskApiKey(apiKey)}" }`,
+    );
+    this.logger.log(`  Body: ${JSON.stringify(body, null, 2)}`);
+
+    const createRes = await this.httpRequest<{
+      task_id?: string;
+      state?: string;
+      error?: string;
+      message?: string;
+    }>({
+      url: `${endpoint}/v1/responses`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: apiKey,
+      },
+      body,
+    });
+
+    this.logger.log(`[Vidu Q2 CTV] ========== 创建任务接口返回结果 ==========`);
+    this.logger.log(JSON.stringify(createRes, null, 2));
+
+    const taskId = createRes?.task_id;
+    if (!taskId) {
+      this.logger.error(`[Vidu Q2 CTV] 创建失败: ${JSON.stringify(createRes)}`);
+      throw new Error(
+        createRes?.message ||
+          createRes?.error ||
+          'Vidu Q2 CTV 创建任务失败，缺少 task_id',
+      );
+    }
+
+    const maxAttempts = 400;
+    const pollInterval = 3000;
+
+    this.logger.log(
+      `[Vidu Q2 CTV] ========== Postman 复现：查询结果（轮询） ==========`,
+    );
+    this.logger.log(`  METHOD: POST（与创建任务同一 URL，通过 body 区分）`);
+    this.logger.log(`  URL: ${endpoint}/v1/responses`);
+    this.logger.log(
+      `  Headers: { "Content-Type": "application/json", "Authorization": "${this.maskApiKey(apiKey)}" }`,
+    );
+    this.logger.log(
+      `  Body: { "model": "vidu-get", "input": "${taskId}", "stream": true } （查询仅支持流式，model/stream 固定）`,
+    );
+
+    for (let i = 0; i < maxAttempts; i++) {
+      await this.sleep(pollInterval);
+
+      const videoUrl = await this.viduq2PollStream(
+        endpoint,
+        apiKey,
+        taskId,
+        task,
+        i,
+      );
+      if (videoUrl) return videoUrl;
+    }
+
+    throw new Error('Vidu Q2 CTV 视频任务超时');
+  }
+
+  /**
+   * Vidu Q2 Pro 首尾帧生成视频（DMX API）
+   * 文档：docs/viduq2-pro.md，创建与查询均为 https://www.dmxapi.cn/v1/responses
+   * 创建请求为流式返回，需从流中解析 task_id；查询使用 vidu-get + stream true，复用 viduq2PollStream
+   */
+  private async callViduq2ProApi(
+    task: VideoTask,
+    params: Record<string, unknown>,
+  ): Promise<string> {
+    const { apiKey, baseUrl } = await this.resolveModelAuth(
+      'viduq2-pro',
+      'DMX_API_KEY',
+      'DMX_API_URL',
+      'https://www.dmxapi.cn',
+    );
+    const endpoint = baseUrl.replace(/\/+$/, '');
+    if (!apiKey)
+      throw new Error(
+        '未配置 DMX_API_KEY：请在模型管理中为 viduq2-pro 配置 API Key，或设置环境变量 DMX_API_KEY',
+      );
+
+    // 首尾帧：首帧 = imageUrl，尾帧 = lastFrameUrl（frame 模式由前端传入）
+    const firstUrl = task.imageUrl
+      ? await this.normalizeMediaUrl(task.imageUrl)
+      : '';
+    const lastUrl =
+      typeof params.lastFrameUrl === 'string' && params.lastFrameUrl.trim()
+        ? await this.normalizeMediaUrl(params.lastFrameUrl.trim())
+        : '';
+    if (!firstUrl || !lastUrl) {
+      throw new Error(
+        'Vidu Q2 Pro 需要首帧与尾帧两张图片，请使用首尾帧模式并上传首帧、尾帧',
+      );
+    }
+    const images = [firstUrl, lastUrl];
+
+    const durationRaw = Number(params.duration ?? 5);
+    const duration = Math.max(1, Math.min(8, Math.round(durationRaw)));
+    const resolution = ['540p', '720p', '1080p'].includes(
+      String(params.resolution),
+    )
+      ? String(params.resolution)
+      : '720p';
+    const movementAmplitude = ['auto', 'small', 'medium', 'large'].includes(
+      String(params.movement_amplitude ?? 'auto'),
+    )
+      ? String(params.movement_amplitude)
+      : 'auto';
+    const seed = Number(params.seed) || 0;
+    const bgm = Boolean(params.bgm ?? false);
+    const watermark = Boolean(params.watermark ?? false);
+    const wmPosition = Number(params.wm_position);
+    const wmPositionValid = [1, 2, 3, 4].includes(wmPosition) ? wmPosition : 3;
+    const wmUrl =
+      typeof params.wm_url === 'string' && params.wm_url.trim()
+        ? params.wm_url.trim()
+        : undefined;
+
+    const body: Record<string, unknown> = {
+      model: 'viduq2-pro',
+      input: task.prompt.slice(0, 2000),
+      duration,
+      seed,
+      resolution,
+      movement_amplitude: movementAmplitude,
+      images,
+      bgm,
+      watermark,
+      wm_position: wmPositionValid,
+    };
+    if (wmUrl) body.wm_url = wmUrl;
+
+    this.logger.log(
+      `[Vidu Q2 Pro] 创建任务: POST ${endpoint}/v1/responses duration=${duration} resolution=${resolution} 首尾帧 2 张`,
+    );
+
+    const taskId = await this.viduq2ProCreateStream(endpoint, apiKey, body);
+    if (!taskId) {
+      throw new Error('Vidu Q2 Pro 创建任务失败，未从流式响应中解析到 task_id');
+    }
+
+    const maxAttempts = 400;
+    const pollInterval = 3000;
+    for (let i = 0; i < maxAttempts; i++) {
+      await this.sleep(pollInterval);
+      const videoUrl = await this.viduq2PollStream(
+        endpoint,
+        apiKey,
+        taskId,
+        task,
+        i,
+      );
+      if (videoUrl) return videoUrl;
+    }
+    throw new Error('Vidu Q2 Pro 视频任务超时');
+  }
+
+  /**
+   * DMX 可灵 v2.6 文生视频（与 KIE kling-2.6/text-to-video 无关）
+   * 文档：docs/kling-v2-6-text2video.md
+   * 创建：POST 非流式，返回 data.task_id；查询：model=kling-text2video-get，stream=true，解析 SSE
+   */
+  private async callDmxKlingV26Text2VideoApi(
+    task: VideoTask,
+    params: Record<string, unknown>,
+  ): Promise<string> {
+    const { apiKey, baseUrl } = await this.resolveModelAuth(
+      'kling-v2-6-text2video',
+      'DMX_API_KEY',
+      'DMX_API_URL',
+      'https://www.dmxapi.cn',
+    );
+    const endpoint = baseUrl.replace(/\/+$/, '');
+    if (!apiKey)
+      throw new Error(
+        '未配置 DMX_API_KEY：请在模型管理中为 kling-v2-6-text2video 配置 API Key，或设置环境变量 DMX_API_KEY',
+      );
+
+    const mode = 'pro';
+    const sound = ['on', 'off'].includes(String(params.sound ?? 'off'))
+      ? String(params.sound)
+      : 'off';
+    const aspectRatio = ['16:9', '9:16', '1:1'].includes(
+      String(params.aspectRatio ?? '16:9'),
+    )
+      ? String(params.aspectRatio)
+      : '16:9';
+    const durationRaw = Number(params.duration ?? 5);
+    const duration = durationRaw === 10 ? 10 : 5;
+    const negativePrompt =
+      typeof params.negative_prompt === 'string'
+        ? params.negative_prompt.slice(0, 2500)
+        : '';
+
+    const createBody: Record<string, unknown> = {
+      model: 'kling-v2-6-text2video',
+      input: task.prompt.slice(0, 2500),
+      mode,
+      sound,
+      aspect_ratio: aspectRatio,
+      duration,
+    };
+    if (negativePrompt) createBody.negative_prompt = negativePrompt;
+
+    this.logger.log(
+      `[Kling v2.6 text2video] ========== 创建任务请求 ==========`,
+    );
+    this.logger.log(`  METHOD: POST`);
+    this.logger.log(`  URL: ${endpoint}/v1/responses`);
+    this.logger.log(
+      `  Headers: { "Content-Type": "application/json", "Authorization": "${this.maskApiKey(apiKey)}" }`,
+    );
+    this.logger.log(`  Body: ${JSON.stringify(createBody, null, 2)}`);
+
+    const createRes = await this.httpRequest<{
+      code?: number;
+      data?: { task_id?: string };
+      message?: string;
+      error?: { message?: string; code?: string };
+    }>({
+      url: `${endpoint}/v1/responses`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: apiKey,
+      },
+      body: createBody,
+    });
+
+    this.logger.log(
+      `[Kling v2.6 text2video] ========== 创建任务接口返回结果 ==========`,
+    );
+    this.logger.log(JSON.stringify(createRes, null, 2));
+
+    const taskId = createRes?.data?.task_id;
+    if (!taskId) {
+      this.logger.error(
+        `[Kling v2.6 text2video] 创建失败: ${JSON.stringify(createRes)}`,
+      );
+      throw new Error(
+        createRes?.message || 'Kling v2.6 文生视频创建任务失败，缺少 task_id',
+      );
+    }
+
+    const maxAttempts = 400;
+    const pollInterval = 3000;
+    for (let i = 0; i < maxAttempts; i++) {
+      await this.sleep(pollInterval);
+      const videoUrl = await this.klingText2VideoGetPollStream(
+        endpoint,
+        apiKey,
+        taskId,
+        task,
+        i,
+      );
+      if (videoUrl) return videoUrl;
+    }
+    throw new Error('Kling v2.6 文生视频任务超时');
+  }
+
+  /**
+   * DMX 可灵 v2.6 图生视频（与 KIE kling-2.6/image-to-video 无关）
+   * 文档：docs/kling-v2-6-image2video.md
+   * 创建：POST 非流式，body 含 image(首帧)、image_tail(可选)；查询：model=kling-image2video-get，stream=true
+   */
+  private async callDmxKlingV26Image2VideoApi(
+    task: VideoTask,
+    params: Record<string, unknown>,
+  ): Promise<string> {
+    const { apiKey, baseUrl } = await this.resolveModelAuth(
+      'kling-v2-6-image2video',
+      'DMX_API_KEY',
+      'DMX_API_URL',
+      'https://www.dmxapi.cn',
+    );
+    const endpoint = baseUrl.replace(/\/+$/, '');
+    if (!apiKey)
+      throw new Error(
+        '未配置 DMX_API_KEY：请在模型管理中为 kling-v2-6-image2video 配置 API Key，或设置环境变量 DMX_API_KEY',
+      );
+
+    const imageUrl =
+      task.taskType === VideoTaskType.IMG2VIDEO && task.imageUrl
+        ? this.getPublicUploadUrl(task.imageUrl)
+        : '';
+    if (!imageUrl)
+      throw new Error(
+        'Kling v2.6 图生视频需要至少一张参考图，请使用参考图模式并上传图片',
+      );
+
+    let imageTail = '';
+    if (typeof params.image_tail === 'string' && params.image_tail.trim()) {
+      imageTail = this.getPublicUploadUrl(params.image_tail.trim());
+    } else if (
+      Array.isArray(params.urls) &&
+      params.urls.length > 1 &&
+      typeof params.urls[1] === 'string'
+    ) {
+      imageTail = this.getPublicUploadUrl(params.urls[1]);
+    }
+
+    const sound = ['on', 'off'].includes(String(params.sound ?? 'off'))
+      ? String(params.sound)
+      : 'off';
+    const aspectRatio = ['16:9', '9:16', '1:1'].includes(
+      String(params.aspectRatio ?? '16:9'),
+    )
+      ? String(params.aspectRatio)
+      : '16:9';
+    const durationRaw = Number(params.duration ?? 5);
+    const duration = durationRaw === 10 ? 10 : 5;
+    const negativePrompt =
+      typeof params.negative_prompt === 'string'
+        ? params.negative_prompt.slice(0, 2500)
+        : '';
+
+    const createBody: Record<string, unknown> = {
+      model: 'kling-v2-6-image2video',
+      input: task.prompt.slice(0, 2500),
+      image:
+        'https://h2.inkwai.com/bs2/upload-ylab-stunt/se/ai_portal_queue_mmu_image_upscale_aiweb/3214b798-e1b4-4b00-b7af-72b5b0417420_raw_image_0.jpg',
+      image_tail: imageTail || '',
+      negative_prompt: negativePrompt || '',
+      mode: 'pro',
+      sound,
+      aspect_ratio: aspectRatio,
+      duration,
+    };
+
+    this.logger.log(
+      `[Kling v2.6 image2video] ========== 创建任务请求 ==========`,
+    );
+    this.logger.log(`  METHOD: POST`);
+    this.logger.log(`  URL: ${endpoint}/v1/responses`);
+    this.logger.log(
+      `  Headers: { "Content-Type": "application/json", "Authorization": "${this.maskApiKey(apiKey)}" }`,
+    );
+    this.logger.log(`  Body: ${JSON.stringify(createBody, null, 2)}`);
+
+    const createRes = await this.httpRequest<{
+      code?: number;
+      data?: { task_id?: string };
+      message?: string;
+      error?: { message?: string; code?: string };
+    }>({
+      url: `${endpoint}/v1/responses`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: apiKey,
+      },
+      body: createBody,
+    });
+
+    this.logger.log(
+      `[Kling v2.6 image2video] ========== 创建任务接口返回结果 ==========`,
+    );
+    this.logger.log(JSON.stringify(createRes, null, 2));
+
+    const taskId = createRes?.data?.task_id;
+    if (!taskId) {
+      this.logger.error(
+        `[Kling v2.6 image2video] 创建失败: ${JSON.stringify(createRes)}`,
+      );
+      throw new Error(
+        createRes?.message || 'Kling v2.6 图生视频创建任务失败，缺少 task_id',
+      );
+    }
+
+    const maxAttempts = 400;
+    const pollInterval = 3000;
+    for (let i = 0; i < maxAttempts; i++) {
+      await this.sleep(pollInterval);
+      const videoUrl = await this.klingImage2VideoGetPollStream(
+        endpoint,
+        apiKey,
+        taskId,
+        task,
+        i,
+      );
+      if (videoUrl) return videoUrl;
+    }
+    throw new Error('Kling v2.6 图生视频任务超时');
+  }
+
+  /**
+   * 查询 Kling 图生视频结果：model=kling-image2video-get, stream=true，解析 SSE 得到视频 URL
+   */
+  private async klingImage2VideoGetPollStream(
+    endpoint: string,
+    apiKey: string,
+    taskId: string,
+    task: VideoTask,
+    pollIndex: number,
+  ): Promise<string | null> {
+    const url = `${endpoint}/v1/responses`;
+    const queryBody = {
+      model: 'kling-image2video-get',
+      input: taskId,
+      stream: true,
+    };
+    if (pollIndex === 0) {
+      this.logger.log(
+        `[Kling v2.6 image2video] ========== 查询结果请求（轮询） ==========`,
+      );
+      this.logger.log(`  METHOD: POST`);
+      this.logger.log(`  URL: ${url}`);
+      this.logger.log(
+        `  Headers: { "Content-Type": "application/json", "Authorization": "${this.maskApiKey(apiKey)}" }`,
+      );
+      this.logger.log(`  Body: ${JSON.stringify(queryBody)}`);
+    }
+
+    const dispatcher = await this.getDispatcherForUrl(url);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90_000);
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: apiKey,
+        },
+        body: JSON.stringify(queryBody),
+        dispatcher: dispatcher as any,
+        signal: controller.signal,
+      } as any);
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (!res.ok) {
+      const text = await res.text();
+      let errMsg: string;
+      try {
+        const parsed = JSON.parse(text);
+        errMsg =
+          (parsed?.error?.message ?? parsed?.message ?? text) ||
+          `HTTP ${res.status}`;
+      } catch {
+        errMsg = text || `HTTP ${res.status}`;
+      }
+      throw new Error(errMsg);
+    }
+
+    if (!res.body) return null;
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let lastResult: {
+      response?: {
+        status?: string;
+        output?: Array<{ content?: Array<{ text?: string }> }>;
+      };
+    } | null = null;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data: ')) continue;
+          const jsonStr = trimmed.slice(6).trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
+          try {
+            const data = JSON.parse(jsonStr);
+            lastResult = data;
+          } catch {
+            // ignore
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    if (!lastResult?.response) return null;
+
+    const status = lastResult.response.status;
+    if (
+      pollIndex <= 1 ||
+      status === 'completed' ||
+      status === 'failed' ||
+      status === 'error'
+    ) {
+      this.logger.log(
+        `[Kling v2.6 image2video] ========== 查询结果接口返回（轮询 #${pollIndex} status=${status}） ==========`,
+      );
+      this.logger.log(JSON.stringify(lastResult, null, 2));
+    }
+    if (status === 'failed' || status === 'error') {
+      const msg =
+        (lastResult as any).response?.message ||
+        (lastResult as any).message ||
+        '任务失败';
+      throw new Error(`Kling v2.6 图生视频: ${msg}`);
+    }
+    if (status !== 'completed') return null;
+
+    const output = lastResult.response.output;
+    const text = output?.[0]?.content?.[0]?.text ?? '';
+    // 上游可能返回 status=completed 但 output 里是错误信息，需识别并直接失败，避免一直轮询
+    if (/\[错误\]|Kling API 错误|错误:/.test(text)) {
+      const errMsg = text.trim() || 'Kling API 返回错误';
+      throw new Error(`Kling v2.6 图生视频: ${errMsg}`);
+    }
+    const urlMatch = text.match(/https?:\/\/[^\s]+\.mp4[^\s]*/);
+    if (urlMatch?.[0]) {
+      return urlMatch[0].replace(/[\n\r].*$/, '').trim();
+    }
+    if (pollIndex % 10 === 0) {
+      this.logger.log(
+        `[Kling v2.6 image2video] 轮询 #${pollIndex} task_id=${taskId} 未解析到视频 URL`,
+      );
+    }
+    return null;
+  }
+
+  /**
+   * 查询 Kling 文生视频结果：model=kling-text2video-get, stream=true，解析 SSE 中 response.output[].content[].text 的视频 URL
+   */
+  private async klingText2VideoGetPollStream(
+    endpoint: string,
+    apiKey: string,
+    taskId: string,
+    task: VideoTask,
+    pollIndex: number,
+  ): Promise<string | null> {
+    const url = `${endpoint}/v1/responses`;
+    const queryBody = {
+      model: 'kling-text2video-get',
+      input: taskId,
+      stream: true,
+    };
+    if (pollIndex === 0) {
+      this.logger.log(
+        `[Kling v2.6 text2video] ========== 查询结果请求（轮询） ==========`,
+      );
+      this.logger.log(`  METHOD: POST`);
+      this.logger.log(`  URL: ${url}`);
+      this.logger.log(
+        `  Headers: { "Content-Type": "application/json", "Authorization": "${this.maskApiKey(apiKey)}" }`,
+      );
+      this.logger.log(`  Body: ${JSON.stringify(queryBody)}`);
+    }
+
+    const dispatcher = await this.getDispatcherForUrl(url);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90_000);
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: apiKey,
+        },
+        body: JSON.stringify(queryBody),
+        dispatcher: dispatcher as any,
+        signal: controller.signal,
+      } as any);
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (!res.ok) {
+      const text = await res.text();
+      let errMsg: string;
+      try {
+        const parsed = JSON.parse(text);
+        errMsg =
+          (parsed?.error?.message ?? parsed?.message ?? text) ||
+          `HTTP ${res.status}`;
+      } catch {
+        errMsg = text || `HTTP ${res.status}`;
+      }
+      throw new Error(errMsg);
+    }
+
+    if (!res.body) return null;
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let lastResult: {
+      response?: {
+        status?: string;
+        output?: Array<{ content?: Array<{ text?: string }> }>;
+      };
+    } | null = null;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data: ')) continue;
+          const jsonStr = trimmed.slice(6).trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
+          try {
+            const data = JSON.parse(jsonStr);
+            lastResult = data;
+          } catch {
+            // ignore
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    if (!lastResult?.response) return null;
+
+    const status = lastResult.response.status;
+    if (
+      pollIndex <= 1 ||
+      status === 'completed' ||
+      status === 'failed' ||
+      status === 'error'
+    ) {
+      this.logger.log(
+        `[Kling v2.6 text2video] ========== 查询结果接口返回（轮询 #${pollIndex} status=${status}） ==========`,
+      );
+      this.logger.log(JSON.stringify(lastResult, null, 2));
+    }
+    if (status === 'failed' || status === 'error') {
+      const msg =
+        (lastResult as any).response?.message ||
+        (lastResult as any).message ||
+        '任务失败';
+      throw new Error(`Kling v2.6 文生视频: ${msg}`);
+    }
+    if (status !== 'completed') return null;
+
+    const output = lastResult.response.output;
+    const text = output?.[0]?.content?.[0]?.text ?? '';
+    // 上游可能返回 status=completed 但 output 里是错误信息，需识别并直接失败，避免一直轮询
+    if (/\[错误\]|Kling API 错误|错误:/.test(text)) {
+      const errMsg = text.trim() || 'Kling API 返回错误';
+      throw new Error(`Kling v2.6 文生视频: ${errMsg}`);
+    }
+    const urlMatch = text.match(/https?:\/\/[^\s]+\.mp4[^\s]*/);
+    if (urlMatch?.[0]) {
+      return urlMatch[0].replace(/[\n\r].*$/, '').trim();
+    }
+    if (pollIndex % 10 === 0) {
+      this.logger.log(
+        `[Kling v2.6 text2video] 轮询 #${pollIndex} task_id=${taskId} 未解析到视频 URL`,
+      );
+    }
+    return null;
+  }
+
+  /**
+   * Vidu Q2 Pro 创建任务为流式响应，从流中解析 task_id（首行 JSON 或 data: {...}）
+   */
+  private async viduq2ProCreateStream(
+    endpoint: string,
+    apiKey: string,
+    body: Record<string, unknown>,
+  ): Promise<string | null> {
+    const url = `${endpoint}/v1/responses`;
+    const dispatcher = await this.getDispatcherForUrl(url);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60_000);
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: apiKey,
+        },
+        body: JSON.stringify(body),
+        dispatcher: dispatcher as any,
+        signal: controller.signal,
+      } as any);
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (!res.ok) {
+      const text = await res.text();
+      let errMsg: string;
+      try {
+        const parsed = JSON.parse(text);
+        errMsg =
+          (parsed?.error?.message ?? parsed?.message ?? text) ||
+          `HTTP ${res.status}`;
+      } catch {
+        errMsg = text || `HTTP ${res.status}`;
+      }
+      throw new Error(errMsg);
+    }
+
+    if (!res.body) return null;
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          let jsonStr = '';
+          if (trimmed.startsWith('data: ')) {
+            jsonStr = trimmed.slice(6).trim();
+          } else if (trimmed.startsWith('{')) {
+            jsonStr = trimmed;
+          }
+          if (!jsonStr) continue;
+          try {
+            const data = JSON.parse(jsonStr);
+            const id = data?.task_id ?? data?.id;
+            if (id && typeof id === 'string') {
+              this.logger.log(`[Vidu Q2 Pro] 创建任务返回 task_id=${id}`);
+              return id;
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    return null;
+  }
+
+  /**
+   * 查询结果接口仅支持流式：POST model=vidu-get, stream=true，解析 SSE 得到视频 URL
+   */
+  private async viduq2PollStream(
+    endpoint: string,
+    apiKey: string,
+    taskId: string,
+    task: VideoTask,
+    pollIndex: number,
+  ): Promise<string | null> {
+    const url = `${endpoint}/v1/responses`;
+    const dispatcher = await this.getDispatcherForUrl(url);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90_000);
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: apiKey,
+        },
+        body: JSON.stringify({
+          model: 'vidu-get',
+          input: taskId,
+          stream: true,
+        }),
+        dispatcher: dispatcher as any,
+        signal: controller.signal,
+      } as any);
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (!res.ok) {
+      const text = await res.text();
+      let errMsg: string;
+      try {
+        const parsed = JSON.parse(text);
+        errMsg =
+          (parsed?.error?.message ?? parsed?.message ?? text) ||
+          `HTTP ${res.status}`;
+      } catch {
+        errMsg = text || `HTTP ${res.status}`;
+      }
+      throw new Error(errMsg);
+    }
+
+    if (!res.body) return null;
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+    let videoUrl: string | null = null;
+    let hasError = false;
+    let errorMsg = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('data: ')) {
+            const jsonStr = trimmed.slice(6).trim();
+            if (!jsonStr) continue;
+            try {
+              const data = JSON.parse(jsonStr);
+              fullText += data?.delta ?? data?.content ?? '';
+              const delta = typeof data?.delta === 'string' ? data.delta : '';
+              const type = data?.type ?? '';
+              if (type === 'response.completed' || /视频生成完成/.test(delta)) {
+                const m = (delta || fullText).match(
+                  /视频URL:\s*(https?:\/\/[^\s\n"]+)/,
+                );
+                if (m?.[1]) videoUrl = m[1].trim();
+                if (!videoUrl) {
+                  const m2 = (delta || fullText).match(
+                    /(https?:\/\/prod-ss-vidu[^\s\n"]+)/,
+                  );
+                  if (m2?.[1]) videoUrl = m2[1].trim();
+                }
+              }
+              if (type === 'error' || data?.error) {
+                hasError = true;
+                errorMsg =
+                  data?.error?.message ??
+                  data?.message ??
+                  String(data?.error ?? '');
+              }
+            } catch {
+              // ignore malformed JSON
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    if (hasError && errorMsg) {
+      throw new Error(`Vidu Q2 CTV 任务失败: ${errorMsg}`);
+    }
+    if (videoUrl) return videoUrl;
+
+    if (pollIndex % 10 === 0) {
+      this.logger.log(
+        `[Vidu Q2 CTV] 轮询 #${pollIndex} task_id=${taskId} 流式响应无完成 URL，继续等待`,
+      );
+    }
+    return null;
+  }
+
   private extractKling26VideoUrl(detail?: any): string | null {
     if (!detail) return null;
     const url =
@@ -1161,6 +2197,22 @@ export class VideoService {
     }
   }
 
+  /**
+   * 返回可供上游拉取的图片 URL（DMX 等只支持 http(s) URL，不支持 base64）
+   * 若已是 http(s) 则原样返回，否则拼上 APP_URL 作为本地上传的公网地址
+   */
+  private getPublicUploadUrl(url: string): string {
+    const raw = (url || '').trim();
+    if (!raw) return '';
+    if (/^https?:\/\//i.test(raw)) return raw;
+    const base =
+      (process.env.APP_URL || process.env.WEB_BASE_URL || '').replace(
+        /\/+$/,
+        '',
+      ) || 'http://127.0.0.1:3000';
+    return raw.startsWith('/') ? `${base}${raw}` : `${base}/${raw}`;
+  }
+
   private guessMimeTypeFromPath(pathname: string): string {
     const ext = extname(pathname).toLowerCase();
     const map: Record<string, string> = {
@@ -1221,10 +2273,32 @@ export class VideoService {
       }
 
       if (res.ok) {
+        const trimmed = (text || '').trim();
+        if (!trimmed) {
+          const reqHeaders = options.headers || {};
+          const authMasked =
+            reqHeaders.Authorization != null
+              ? this.maskApiKey(String(reqHeaders.Authorization))
+              : '(无)';
+          this.logger.error(
+            `[Vidu Q2 CTV 上游空响应] 请求: ${options.method} ${options.url}`,
+          );
+          this.logger.error(
+            `  响应: HTTP ${res.status} 响应体长度=0 响应头: ${JSON.stringify(
+              Object.fromEntries(res.headers.entries()),
+            )}`,
+          );
+          this.logger.error(
+            `  Postman 复现: METHOD=${options.method} URL=${options.url} Header Authorization=${authMasked}`,
+          );
+          throw new Error(
+            `上游返回空响应体 (HTTP ${res.status})，请检查 API 地址与鉴权方式`,
+          );
+        }
         try {
-          return JSON.parse(text) as T;
+          return JSON.parse(trimmed) as T;
         } catch {
-          throw new Error(`无效的 JSON 响应: ${text.slice(0, 200)}`);
+          throw new Error(`无效的 JSON 响应: ${trimmed.slice(0, 200)}`);
         }
       }
 
@@ -1285,6 +2359,11 @@ export class VideoService {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private maskApiKey(key: string): string {
+    if (!key || key.length <= 12) return '***';
+    return `${key.slice(0, 6)}****${key.slice(-4)}`;
   }
 
   private parseNoProxyList(noProxy: string): string[] {

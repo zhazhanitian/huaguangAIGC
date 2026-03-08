@@ -6,12 +6,12 @@ import { VideoService } from './video.service';
 import { VideoController } from './video.controller';
 import { VideoProcessor } from './video.processor';
 import { UserModule } from '../user/user.module';
-import { AiModel } from '../model/model.entity';
+import { AiModel, ModelKey } from '../model/model.entity';
 import { BadWordsModule } from '../badwords/badwords.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([VideoTask, AiModel]),
+    TypeOrmModule.forFeature([VideoTask, AiModel, ModelKey]),
     // 视频任务队列
     BullModule.registerQueue({ name: 'video-queue' }),
     UserModule,

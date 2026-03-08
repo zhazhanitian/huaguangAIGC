@@ -1105,6 +1105,38 @@ export class ModelService {
       deductPoints: 60,
       apiProvider: 'kie',
     });
+    presets.push({
+      modelName: 'viduq2-ctv',
+      provider: ModelProvider.CUSTOM,
+      type: ModelType.VIDEO,
+      isActive: true,
+      deductPoints: 75,
+      apiProvider: 'dmx',
+    });
+    presets.push({
+      modelName: 'viduq2-pro',
+      provider: ModelProvider.CUSTOM,
+      type: ModelType.VIDEO,
+      isActive: true,
+      deductPoints: 70,
+      apiProvider: 'dmx',
+    });
+    presets.push({
+      modelName: 'kling-v2-6-text2video',
+      provider: ModelProvider.CUSTOM,
+      type: ModelType.VIDEO,
+      isActive: true,
+      deductPoints: 60,
+      apiProvider: 'dmx',
+    });
+    presets.push({
+      modelName: 'kling-v2-6-image2video',
+      provider: ModelProvider.CUSTOM,
+      type: ModelType.VIDEO,
+      isActive: true,
+      deductPoints: 60,
+      apiProvider: 'dmx',
+    });
 
     // ========== 音乐模型 (KIE - Suno) ==========
     const musicModels = [

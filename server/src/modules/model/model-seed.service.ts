@@ -261,6 +261,30 @@ export class ModelSeedService implements OnModuleInit {
       isActive: true,
       deductPoints: 60,
     });
+    presets.push({
+      modelName: 'viduq2-ctv',
+      provider: ModelProvider.CUSTOM,
+      isActive: true,
+      deductPoints: 75,
+    });
+    presets.push({
+      modelName: 'viduq2-pro',
+      provider: ModelProvider.CUSTOM,
+      isActive: true,
+      deductPoints: 70,
+    });
+    presets.push({
+      modelName: 'kling-v2-6-text2video',
+      provider: ModelProvider.CUSTOM,
+      isActive: true,
+      deductPoints: 60,
+    });
+    presets.push({
+      modelName: 'kling-v2-6-image2video',
+      provider: ModelProvider.CUSTOM,
+      isActive: true,
+      deductPoints: 60,
+    });
 
     // ========== 音乐模型 (KIE - Suno) ==========
     const musicModels = [

@@ -3,7 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { VideoTask } from './video.entity';
+import { VideoTask, VideoTaskStatus } from './video.entity';
 import { VideoService } from './video.service';
 
 /**
@@ -28,6 +28,15 @@ export class VideoProcessor {
     const task = await this.videoRepository.findOne({ where: { id: taskId } });
     if (!task) {
       this.logger.error(`视频任务不存在: ${taskId}`);
+      return;
+    }
+    if (
+      task.status === VideoTaskStatus.COMPLETED ||
+      task.status === VideoTaskStatus.FAILED
+    ) {
+      this.logger.log(
+        `视频任务已结束，跳过入队执行: ${taskId} status=${task.status}`,
+      );
       return;
     }
 

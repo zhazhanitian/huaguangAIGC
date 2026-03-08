@@ -28,6 +28,12 @@ export enum VideoProvider {
   KLING_26_MOTION = 'kling-2.6/motion-control',
   KLING_30 = 'kling-3.0',
   SEEDANCE_15_PRO = 'bytedance/seedance-1.5-pro',
+  VIDUQ2_CTV = 'viduq2-ctv',
+  VIDUQ2_PRO = 'viduq2-pro',
+  /** DMX 可灵 v2.6 文生视频（与 kling-2.6/* KIE 无关） */
+  KLING_V26_TEXT2VIDEO = 'kling-v2-6-text2video',
+  /** DMX 可灵 v2.6 图生视频（与 kling-2.6/* KIE 无关） */
+  KLING_V26_IMAGE2VIDEO = 'kling-v2-6-image2video',
 }
 
 /** 任务状态枚举 */
