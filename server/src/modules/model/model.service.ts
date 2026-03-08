@@ -45,7 +45,11 @@ interface RuntimeModelConfig {
   apiKey: string;
   baseUrl?: string;
   keyId?: string;
-  transport: 'openai-chat' | 'claude-messages' | 'openai-responses';
+  transport:
+    | 'openai-chat'
+    | 'claude-messages'
+    | 'openai-responses'
+    | 'dmx-responses';
 }
 
 type OpenAIInputMessage = {
@@ -79,6 +83,16 @@ const APIMART_MODEL_MAP: Record<string, string> = {
   'gpt-5': 'gpt-5',
   'claude-opus-4-5-20251101': 'claude-sonnet-4-5-20250929',
 };
+
+/** 使用 DMX OpenAI 兼容接口 /v1/chat/completions 的模型（流式 SSE，choices[0].delta.content） */
+const DMX_CHAT_MODEL_NAMES = [
+  'DeepSeek-V3.2',
+  'qwen3.5-27b',
+  'doubao-seed-2-0-pro-260215',
+  'MiniMax-M2.5',
+  'glm-5',
+];
+const DMX_CHAT_DEFAULT_BASE = 'https://www.dmxapi.cn/v1';
 
 @Injectable()
 export class ModelService {
@@ -454,15 +468,32 @@ export class ModelService {
 
     const model = await this.getModelByName(modelName);
     const config = await this.pickKeyForModel(model.id);
+    const resolvedBase = config.baseUrl ?? model.baseUrl ?? undefined;
+    // 仅当 baseUrl 明确为 /responses 时走 dmx-responses（GPT 专用）；其余走 openai-chat
+    const useDmxResponses =
+      !!resolvedBase &&
+      (resolvedBase.endsWith('/responses') ||
+        resolvedBase.includes('/v1/responses'));
+    // 使用 DMX chat/completions 的模型（如 DeepSeek-V3.2）：openai-chat + baseUrl 指向 dmxapi.cn/v1
+    const useDmxChat =
+      DMX_CHAT_MODEL_NAMES.includes(modelName) ||
+      (!!resolvedBase &&
+        resolvedBase.includes('dmxapi.cn') &&
+        !resolvedBase.endsWith('/responses'));
+    const baseUrlForRequest = useDmxResponses
+      ? resolvedBase
+      : useDmxChat
+        ? resolvedBase || DMX_CHAT_DEFAULT_BASE
+        : resolvedBase;
     return {
       modelName,
       maxTokens: model.maxTokens,
       temperature: Number(model.temperature),
       topP: model.topP ? Number(model.topP) : undefined,
       apiKey: config.apiKey,
-      baseUrl: config.baseUrl ?? undefined,
+      baseUrl: baseUrlForRequest,
       keyId: config.keyId,
-      transport: 'openai-chat',
+      transport: useDmxResponses ? 'dmx-responses' : 'openai-chat',
     };
   }
 
@@ -494,6 +525,28 @@ export class ModelService {
       system: systemParts.length ? systemParts.join('\n\n') : undefined,
       messages: out.length ? out : [{ role: 'user', content: '你好' }],
     };
+  }
+
+  /** 将多轮消息合并为 DMX /responses API 所需的单条 input 文本（与官方示例一致：纯文本，无角色前缀） */
+  private toDmxResponsesInput(messages: ChatMessage[]): string {
+    // 官方示例 input 为纯内容 "你好"，无 "User:" 前缀；多轮用换行分隔即可，避免 convert_request_failed
+    const parts: string[] = [];
+    for (const m of messages) {
+      if (m.role === 'system' && m.content?.trim()) {
+        parts.push(m.content.trim());
+        continue;
+      }
+      if (m.role === 'user' || m.role === 'assistant') {
+        const text = (m.content || '').trim();
+        if (text) parts.push(text);
+      }
+    }
+    return parts.length ? parts.join('\n\n') : '你好';
+  }
+
+  private getDmxResponsesEndpoint(baseUrl: string): string {
+    if (baseUrl.endsWith('/responses')) return baseUrl;
+    return baseUrl.replace(/\/+$/, '') + '/responses';
   }
 
   private async chatWithClaudeMessages(
@@ -616,6 +669,131 @@ export class ModelService {
     return iterate(res.body);
   }
 
+  /** DMX /v1/responses 风格 API：非流式对话 */
+  private async chatWithDmxResponses(
+    runtime: RuntimeModelConfig,
+    messages: ChatMessage[],
+  ): Promise<string> {
+    const endpoint = this.getDmxResponsesEndpoint(runtime.baseUrl!);
+    const body: Record<string, unknown> = {
+      model: runtime.modelName,
+      input: this.toDmxResponsesInput(messages),
+      stream: false,
+      max_output_tokens: runtime.maxTokens ?? 128000,
+      temperature: runtime.temperature ?? 1,
+      top_p: runtime.topP ?? 1,
+    };
+    // reasoning 仅适用于 o 系列，DeepSeek 等可能不支持，传了会导致 convert_request_failed
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: runtime.apiKey,
+      },
+      body: JSON.stringify(body),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      throw new BadRequestException(
+        `DMX Responses API 错误(${res.status}): ${text}`,
+      );
+    }
+    let parsed: any;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new BadRequestException(
+        `DMX API 返回非 JSON: ${text.slice(0, 200)}`,
+      );
+    }
+    const content =
+      parsed?.output_text ??
+      parsed?.output?.[0]?.text ??
+      parsed?.choices?.[0]?.message?.content ??
+      parsed?.text;
+    if (content == null || content === '') {
+      throw new BadRequestException('DMX API 返回内容为空');
+    }
+    return String(content);
+  }
+
+  /** DMX /v1/responses 风格 API：流式对话（SSE event: response.output_text.delta） */
+  private async chatStreamWithDmxResponses(
+    runtime: RuntimeModelConfig,
+    messages: ChatMessage[],
+  ): Promise<AsyncIterable<string>> {
+    const endpoint = this.getDmxResponsesEndpoint(runtime.baseUrl!);
+    const body: Record<string, unknown> = {
+      model: runtime.modelName,
+      input: this.toDmxResponsesInput(messages),
+      stream: true,
+      max_output_tokens: runtime.maxTokens ?? 128000,
+      temperature: runtime.temperature ?? 1,
+      top_p: runtime.topP ?? 1,
+    };
+    // reasoning 仅适用于 o 系列，DeepSeek 等可能不支持，传了会导致 convert_request_failed
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: runtime.apiKey,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok || !res.body) {
+      const errText = await res.text();
+      throw new BadRequestException(
+        `DMX 流式请求失败(${res.status}): ${errText}`,
+      );
+    }
+
+    const keyId = runtime.keyId;
+    const incrementUsage = () =>
+      keyId ? this.incrementKeyUsage(keyId) : Promise.resolve();
+
+    async function* iterate(
+      bodyStream: ReadableStream<Uint8Array>,
+    ): AsyncGenerator<string> {
+      const reader = bodyStream.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let currentEvent: string | null = null;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('event: ')) {
+              currentEvent = trimmed.slice(7).trim();
+            } else if (
+              trimmed.startsWith('data: ') &&
+              currentEvent === 'response.output_text.delta'
+            ) {
+              const dataStr = trimmed.slice(6).trim();
+              if (!dataStr) continue;
+              try {
+                const parsed = JSON.parse(dataStr);
+                const delta = parsed?.delta;
+                if (typeof delta === 'string' && delta) yield delta;
+              } catch {
+                // ignore malformed
+              }
+            } else if (trimmed === '') {
+              currentEvent = null;
+            }
+          }
+        }
+      } finally {
+        await incrementUsage();
+      }
+    }
+    return iterate(res.body);
+  }
+
   /**
    * 调用 AI 进行对话（非流式）
    */
@@ -624,6 +802,14 @@ export class ModelService {
 
     if (runtime.transport === 'claude-messages') {
       const content = await this.chatWithClaudeMessages(runtime, messages);
+      if (runtime.keyId) {
+        await this.incrementKeyUsage(runtime.keyId);
+      }
+      return content;
+    }
+
+    if (runtime.transport === 'dmx-responses') {
+      const content = await this.chatWithDmxResponses(runtime, messages);
       if (runtime.keyId) {
         await this.incrementKeyUsage(runtime.keyId);
       }
@@ -673,6 +859,10 @@ export class ModelService {
       return stream;
     }
 
+    if (runtime.transport === 'dmx-responses') {
+      return this.chatStreamWithDmxResponses(runtime, messages);
+    }
+
     const client = new OpenAI({
       apiKey: runtime.apiKey,
       baseURL: runtime.baseUrl || undefined,
@@ -688,7 +878,9 @@ export class ModelService {
       stream: true,
     });
 
-    const self = this;
+    const keyId = runtime.keyId;
+    const incrementUsage = () =>
+      keyId ? this.incrementKeyUsage(keyId) : Promise.resolve();
     async function* iterate(): AsyncGenerator<string> {
       try {
         for await (const chunk of stream) {
@@ -698,9 +890,7 @@ export class ModelService {
           }
         }
       } finally {
-        if (runtime.keyId) {
-          await self.incrementKeyUsage(runtime.keyId);
-        }
+        await incrementUsage();
       }
     }
 
