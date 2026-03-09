@@ -61,12 +61,6 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
         <h1 class="hero-title">泉州华光职业学院</h1>
         <div class="school-badge">人工智能应用平台</div>
         <p class="hero-subtitle">汇聚前沿 人工智能 技术，打造校级一站式创意设计中枢</p>
-        <div class="hero-actions">
-          <button class="primary-btn" @click="navigateTo('/chat')">
-            开始创作
-            <IconArrowRight />
-          </button>
-        </div>
       </div>
     </header>
 
@@ -95,7 +89,7 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
     </section>
 
     <!-- Footer 5% 极简 -->
-    <footer class="footer">© 2026 泉州华光职业学院 · 人工智能创意设计平台</footer>
+    <!-- <footer class="footer">© 2026 泉州华光职业学院 · 人工智能创意设计平台</footer> -->
   </div>
 </template>
 
@@ -111,9 +105,9 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
   background-color: var(--bg-body);
 }
 
-/* ---------- Hero 30% ---------- */
+/* ---------- Hero：占据剩余高度，自由伸缩 ---------- */
 .hero-section {
-  flex: 0 0 30vh;
+  flex: 1 1 0;
   min-height: 0;
   position: relative;
   display: flex;
@@ -238,7 +232,6 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
   font-weight: 900;
   margin: 0;
   line-height: 1.2;
-  font-family: 'Space Grotesk', 'Outfit', -apple-system, 'PingFang SC', sans-serif;
   letter-spacing: -0.02em;
   color: #fff;
 }
@@ -288,9 +281,9 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
   box-shadow: 0 8px 28px rgba(22, 93, 255, 0.4);
 }
 
-/* ---------- Modules 65% - Bento 3×3 ---------- */
+/* ---------- Modules：固定高度，至少 600px 且不低于 65vh ---------- */
 .modules-section {
-  flex: 1 1 65vh;
+  flex: 0 0 max(600px, 68vh);
   min-height: 0;
   display: flex;
   align-items: center;
@@ -488,12 +481,8 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
 }
 
 @media (max-width: 600px) {
-  .hero-section {
-    flex: 0 0 28vh;
-  }
-
   .modules-section {
-    flex: 1 1 67vh;
+    flex: 0 0 max(480px, 60vh);
   }
 
   .bento-grid {
