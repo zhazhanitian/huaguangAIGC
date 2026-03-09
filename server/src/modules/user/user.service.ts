@@ -202,7 +202,7 @@ export class UserService {
     if ((updates as any).balance !== undefined) {
       user.balance = Number((updates as any).balance);
     }
-    const { balance, email, ...rest } = updates as any;
+    const { ...rest } = updates as any;
     Object.assign(user, rest);
     return this.userRepository.save(user);
   }
@@ -271,5 +271,19 @@ export class UserService {
   async delete(id: string, caller: User): Promise<void> {
     const user = await this.findById(id, caller);
     await this.userRepository.remove(user);
+  }
+
+  /**
+   * 管理端重置用户密码（普通管理员不能操作超级管理员）
+   */
+  async resetPassword(
+    id: string,
+    newPassword: string,
+    caller: User,
+  ): Promise<void> {
+    const user = await this.findById(id, caller);
+    const hashed = await bcrypt.hash(newPassword, 10);
+    user.password = hashed;
+    await this.userRepository.save(user);
   }
 }

@@ -20,6 +20,7 @@ import { UserListDto } from './dto/user-list.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { GetUser } from '../../common/decorators/user.decorator';
 import { User } from './user.entity';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @ApiTags('用户管理')
 @Controller('user')
@@ -109,5 +110,16 @@ export class UserController {
   ) {
     await this.userService.delete(id, caller);
     return { message: '删除成功' };
+  }
+
+  @Put(':id/password')
+  @ApiOperation({ summary: '重置用户密码（管理端）' })
+  async resetPassword(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ResetPasswordDto,
+    @GetUser() caller: User,
+  ) {
+    await this.userService.resetPassword(id, dto.password, caller);
+    return { message: '密码重置成功' };
   }
 }

@@ -5,6 +5,7 @@ import type { FormInstance } from '@arco-design/web-vue'
 import {
   IconSearch,
   IconEdit,
+  IconLock,
   IconMessageBanned,
   IconDelete,
   IconPlus,
@@ -17,10 +18,12 @@ import {
   updateUser,
   setUserStatus,
   deleteUser,
+  resetUserPassword,
   type User,
   type UserListParams,
   type UpdateUserData,
   type CreateUserData,
+  type ResetUserPasswordData,
 } from '../api/user'
 import { useUserStore } from '../stores/user'
 
@@ -40,6 +43,7 @@ const formRef = ref<FormInstance>()
 const addFormRef = ref<FormInstance>()
 const editDialogVisible = ref(false)
 const addDialogVisible = ref(false)
+const resetDialogVisible = ref(false)
 
 interface EditFormState {
   id?: string
@@ -73,6 +77,20 @@ const addForm = reactive<AddFormState>({
 })
 const addLoading = ref(false)
 
+interface ResetPasswordFormState {
+  id?: string
+  password: string
+  confirmPassword: string
+}
+
+const resetFormRef = ref<FormInstance>()
+const resetForm = ref<ResetPasswordFormState>({
+  id: undefined,
+  password: '',
+  confirmPassword: '',
+})
+const resetLoading = ref(false)
+
 const columns = [
   {
     title: '用户',
@@ -100,7 +118,7 @@ const columns = [
   {
     title: '操作',
     slotName: 'action',
-    width: 140,
+    width: 200,
     fixed: 'right' as const,
   },
 ]
@@ -196,6 +214,30 @@ const addRules = {
   status: [{ required: true, message: '请选择状态', trigger: 'change' }],
 }
 
+const resetRules = {
+  password: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '密码至少 6 位', trigger: 'blur' },
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    {
+      validator: (value: string, cb: (error?: string) => void) => {
+        if (!value) {
+          cb()
+          return
+        }
+        if (value !== resetForm.value.password) {
+          cb('两次输入的密码不一致')
+        } else {
+          cb()
+        }
+      },
+      trigger: 'blur',
+    },
+  ],
+}
+
 function openAdd() {
   addForm.phone = ''
   addForm.email = ''
@@ -205,6 +247,16 @@ function openAdd() {
   addForm.status = 'active'
   addForm.balance = 0
   addDialogVisible.value = true
+}
+
+function openReset(row: User) {
+  resetForm.value = {
+    id: row.id,
+    password: '',
+    confirmPassword: '',
+  }
+  resetDialogVisible.value = true
+  resetFormRef.value?.clearValidate()
 }
 
 async function submitAdd() {
@@ -252,6 +304,26 @@ async function submitEdit() {
     fetchList()
   } finally {
     editLoading.value = false
+  }
+}
+
+async function submitResetPassword() {
+  const errors = await resetFormRef.value?.validate()
+  if (errors) return
+  const id = resetForm.value.id
+  if (!id) return
+  resetLoading.value = true
+  try {
+    const payload: ResetUserPasswordData = {
+      password: resetForm.value.password,
+    }
+    await resetUserPassword(id, payload)
+    Message.success('密码重置成功')
+    resetDialogVisible.value = false
+  } catch (e: any) {
+    Message.error(e?.response?.data?.message || e?.message || '密码重置失败')
+  } finally {
+    resetLoading.value = false
   }
 }
 
@@ -443,6 +515,11 @@ function onPageSizeChange(size: number) {
                 <template #icon><IconEdit /></template>
               </a-button>
             </a-tooltip>
+            <a-tooltip content="重置密码">
+              <a-button type="text" size="small" class="action-btn" @click="openReset(record)">
+                <template #icon><IconLock /></template>
+              </a-button>
+            </a-tooltip>
             <a-tooltip :content="isActive(record) ? '封禁' : '启用'">
               <a-button
                 type="text"
@@ -580,6 +657,38 @@ function onPageSizeChange(size: number) {
       <template #footer>
         <a-button @click="addDialogVisible = false">取消</a-button>
         <a-button type="primary" :loading="addLoading" @click="submitAdd">创建</a-button>
+      </template>
+    </a-modal>
+    <!-- Reset Password Modal -->
+    <a-modal
+      v-model:visible="resetDialogVisible"
+      title="重置密码"
+      width="420px"
+      unmount-on-close
+      class="edit-modal"
+      :mask-style="{ background: 'var(--bg-overlay)' }"
+      @close="resetFormRef?.clearValidate()"
+    >
+      <a-form
+        ref="resetFormRef"
+        :model="resetForm"
+        :rules="resetRules"
+        layout="horizontal"
+        :label-col-props="{ span: 6 }"
+        :wrapper-col-props="{ span: 18 }"
+      >
+        <a-form-item label="新密码" field="password">
+          <a-input-password v-model="resetForm.password" placeholder="请输入新密码（至少 6 位）" />
+        </a-form-item>
+        <a-form-item label="确认密码" field="confirmPassword">
+          <a-input-password v-model="resetForm.confirmPassword" placeholder="请再次输入新密码" />
+        </a-form-item>
+      </a-form>
+      <template #footer>
+        <a-button @click="resetDialogVisible = false">取消</a-button>
+        <a-button type="primary" :loading="resetLoading" @click="submitResetPassword">
+          确认重置
+        </a-button>
       </template>
     </a-modal>
   </div>

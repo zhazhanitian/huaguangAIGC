@@ -44,6 +44,10 @@ export interface CreateUserData {
   balance?: number
 }
 
+export interface ResetUserPasswordData {
+  password: string
+}
+
 /** 后端路由: GET /api/user */
 export function getUsers(params?: UserListParams) {
   return request.get<UserListResult>('/user', { params })
@@ -72,4 +76,9 @@ export function setUserStatus(id: string, status: 'active' | 'banned') {
 /** 后端路由: DELETE /api/user/:id */
 export function deleteUser(id: string) {
   return request.delete(`/user/${id}`)
+}
+
+/** 后端路由: PUT /api/user/:id/password */
+export function resetUserPassword(id: string, data: ResetUserPasswordData) {
+  return request.put(`/user/${id}/password`, data)
 }
