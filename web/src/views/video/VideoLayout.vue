@@ -232,13 +232,20 @@ const providersDef = [
   { value: 'viduq2-pro', label: 'Vidu Q2 Pro', desc: '首尾帧生成视频，1-8秒，动态幅度大', color: '#6366f1' },
   { value: 'kling-v2-6-text2video', label: 'Kling v2.6 文生视频', desc: 'DMX 可灵文生视频，5/10秒，16:9/9:16/1:1', color: '#f59e0b' },
   { value: 'kling-v2-6-image2video', label: 'Kling v2.6 图生视频', desc: 'DMX 可灵图生视频，1-2张图，5/10秒', color: '#d97706' },
+  { value: 'hailuo-2.3', label: 'MiniMax Hailuo 2.3', desc: 'DMX MiniMax Hailuo 文/图生视频，6/10秒', color: '#22d3ee' },
+  { value: 'doubao-seedance-text', label: 'Doubao Seedance 文生视频', desc: '豆包文生视频，4-12秒，支持音频', color: '#0ea5e9' },
+  { value: 'doubao-seedance-image', label: 'Doubao Seedance 图生视频', desc: '豆包图生视频，首帧参考图 + 文本', color: '#38bdf8' },
 ]
 /** 前端 provider value -> 后端 modelName（或多个），用于按后台启用列表过滤 */
 const providerToBackendNames: Record<string, string | string[]> = {
   'kling-2': ['kling-2.6/text-to-video', 'kling-2.6/image-to-video', 'kling-2.6/motion-control'],
   'bytedance/seedance-1-pro': 'bytedance/seedance-1.5-pro',
+  'hailuo-2.3': 'MiniMax-Hailuo-2.3',
+  'doubao-seedance-text': 'doubao-seedance-1-5-pro-responses',
+  'doubao-seedance-image': 'doubao-seedance-1-5-pro-responses',
 }
 const activeVideoModelNames = ref<Set<string>>(new Set())
+const videoOrderMap = ref<Record<string, number>>({})
 const kling26SubModels = [
   { value: 'kling-2/text-to-video', label: '文生视频', desc: '5/10 秒，多比例，支持音效' },
   { value: 'kling-2/image-to-video', label: '图生视频', desc: '5/10 秒，参考图驱动' },
@@ -247,22 +254,58 @@ const kling26SubModels = [
 const videoPointsMap = ref<Record<string, number>>({})
 const visibleProviders = computed(() => {
   const set = activeVideoModelNames.value
-  if (set.size === 0) return providersDef
-  return providersDef.filter(p => {
+  const baseList = set.size === 0
+    ? providersDef
+    : providersDef.filter(p => {
+      const backends = providerToBackendNames[p.value]
+      const names = Array.isArray(backends) ? backends : [backends ?? p.value]
+      return names.some(b => set.has(b))
+    })
+
+  // 按后台配置的 order 排序（同 order 时保持原先顺序）
+  const getOrderForProvider = (p: { value: string }) => {
     const backends = providerToBackendNames[p.value]
     const names = Array.isArray(backends) ? backends : [backends ?? p.value]
-    return names.some(b => set.has(b))
-  })
+    let minOrder: number | null = null
+    for (const name of names) {
+      const ord = videoOrderMap.value[name]
+      if (typeof ord === 'number') {
+        if (minOrder === null || ord < minOrder) minOrder = ord
+      }
+    }
+    return minOrder ?? Number.MAX_SAFE_INTEGER
+  }
+
+  return baseList
+    .slice()
+    .sort((a, b) => getOrderForProvider(a) - getOrderForProvider(b))
 })
 const providers = computed(() => visibleProviders.value.map(p => {
-  let modelNameForPoints = p.value === 'kling-2' ? selectedKling26SubModel.value : p.value
-  if (p.value === 'kling-v2-6-text2video') modelNameForPoints = 'kling-v2-6-text2video'
-  if (p.value === 'kling-v2-6-image2video') modelNameForPoints = 'kling-v2-6-image2video'
+  // 1）Kling 2 子模型特殊处理：使用选中的子模型名找积分
+  let modelNameForPoints: string
+  if (p.value === 'kling-2') {
+    modelNameForPoints = selectedKling26SubModel.value
+  } else if (p.value === 'kling-v2-6-text2video') {
+    modelNameForPoints = 'kling-v2-6-text2video'
+  } else if (p.value === 'kling-v2-6-image2video') {
+    modelNameForPoints = 'kling-v2-6-image2video'
+  } else {
+    // 2）其余模型优先使用 providerToBackendNames 中配置的后端真实模型名
+    const backends = providerToBackendNames[p.value]
+    if (Array.isArray(backends)) {
+      modelNameForPoints = backends[0] ?? p.value
+    } else if (typeof backends === 'string' && backends) {
+      modelNameForPoints = backends
+    } else {
+      modelNameForPoints = p.value
+    }
+  }
+
   let points = videoPointsMap.value[modelNameForPoints] ?? 0
 
-  // 如果后端没有数据，使用默认积分
+  // 如果后端没有数据，使用默认积分（仅兼容旧的 Seedance 1 Pro）
   if (points === 0 && p.value === 'bytedance/seedance-1-pro') {
-    points = 60 // 默认积分
+    points = 60
   }
 
   return { ...p, points }
@@ -276,7 +319,15 @@ async function fetchVideoModelPoints() {
       activeVideoModelNames.value = new Set(
         all.map((m: { modelName?: string }) => m.modelName).filter((x): x is string => Boolean(x))
       )
-      for (const m of all) { if (m.deductPoints) videoPointsMap.value[m.modelName] = m.deductPoints }
+      const orderMap: Record<string, number> = {}
+      const pointsMap: Record<string, number> = {}
+      for (const m of all) {
+        if (!m || !m.modelName) continue
+        if (typeof m.order === 'number') orderMap[m.modelName] = m.order
+        if (m.deductPoints) pointsMap[m.modelName] = m.deductPoints
+      }
+      videoOrderMap.value = orderMap
+      videoPointsMap.value = pointsMap
     }
   } catch { /* ignore */ }
 }
@@ -324,6 +375,17 @@ const seedanceResolutionOptions: Array<{ value: '720p' | '1080p'; label: string 
   { value: '1080p', label: '1080p' },
 ]
 
+/* Hailuo 2.3 专属（MiniMax-Hailuo-2.3 只支持 768P/1080P；10s 仅 768P） */
+const hailuoResolution = ref<'768P' | '1080P'>('768P')
+const hailuoResolutionOptions = computed<Array<'768P' | '1080P'>>(() => {
+  if (!isHailuoModel.value) return []
+  // 10 秒只允许 768P；6 秒可选 768P / 1080P
+  return form.value.duration === 10 ? ['768P'] : ['768P', '1080P']
+})
+const hailuoPromptOptimizer = ref(true)
+const hailuoFastPretreatment = ref(false)
+const hailuoAigcWatermark = ref(false)
+
 /* Kling 3.0 专属 */
 const klingMode = ref<'std' | 'pro'>('pro')
 const klingSound = ref(false)
@@ -331,6 +393,18 @@ const isKlingModel = computed(() => actualModel.value === 'kling-3.0')
 const isSeedanceModel = computed(() => actualModel.value === 'bytedance/seedance-1-pro')
 const isViduq2CtvModel = computed(() => actualModel.value === 'viduq2-ctv')
 const isViduq2ProModel = computed(() => actualModel.value === 'viduq2-pro')
+const isHailuoModel = computed(() => actualModel.value === 'hailuo-2.3')
+const isDoubaoSeedanceModel = computed(
+  () =>
+    actualModel.value === 'doubao-seedance-text' ||
+    actualModel.value === 'doubao-seedance-image',
+)
+/* Doubao Seedance 1.5 Pro 专属 */
+const doubaoResolution = ref<'480p' | '720p' | '1080p'>('720p')
+const doubaoGenerateAudio = ref(true)
+const doubaoCameraFixed = ref(false)
+const doubaoWatermark = ref(false)
+const doubaoSeed = ref<number>(-1)
 const showRatio = computed(() => !isKling26Image.value && !isKling26Motion.value)
 const showDuration = computed(() => !isKling26Motion.value)
 const showKling26Sound = computed(() => isKling26Text.value || isKling26Image.value)
@@ -489,6 +563,30 @@ const modelConfigs: Record<string, ModelConfig> = {
     supportsPreviewResolution: false,
     hint: 'DMX 可灵 v2.6 图生视频：上传 1 张首帧图，可选项上传尾帧图，5/10 秒，16:9/9:16/1:1',
   },
+  'hailuo-2.3': {
+    inputModes: ['text', 'ref'],
+    maxRefImages: 1,
+    durations: [6, 10],
+    supportsPreview: false,
+    supportsPreviewResolution: false,
+    hint: 'MiniMax Hailuo 2.3：支持纯文字文生视频与“参考图”图生视频（单张首帧图），6/10 秒，512P/720P/768P/1080P',
+  },
+  'doubao-seedance-text': {
+    inputModes: ['text'],
+    maxRefImages: 0,
+    durations: [4, 5, 6, 7, 8, 9, 10, 11, 12],
+    supportsPreview: false,
+    supportsPreviewResolution: false,
+    hint: 'Doubao Seedance 1.5 Pro 文生视频：4-12 秒，支持生成音频/固定镜头/水印/随机种子',
+  },
+  'doubao-seedance-image': {
+    inputModes: ['ref'],
+    maxRefImages: 1,
+    durations: [4, 5, 6, 7, 8, 9, 10, 11, 12],
+    supportsPreview: false,
+    supportsPreviewResolution: false,
+    hint: 'Doubao Seedance 1.5 Pro 图生视频：参考图 + 文本，4-12 秒，支持音画同步生成',
+  },
 }
 
 const defaultModelConfig: ModelConfig = {
@@ -523,6 +621,8 @@ function providerForApi(): string {
   if (m === 'viduq2-pro') return 'viduq2-pro'
   if (m === 'kling-v2-6-text2video') return 'kling-v2-6-text2video'
   if (m === 'kling-v2-6-image2video') return 'kling-v2-6-image2video'
+  if (m === 'hailuo-2.3') return 'MiniMax-Hailuo-2.3'
+  if (m === 'doubao-seedance-text' || m === 'doubao-seedance-image') return 'doubao-seedance-1-5-pro-responses'
   return m
 }
 
@@ -536,19 +636,18 @@ function modelForApi() {
 
 watch(actualModel, () => {
   const cfg = modelConfig.value
-  if (!cfg.inputModes.includes(inputMode.value)) {
-    inputMode.value = cfg.inputModes[0] ?? 'text'
-  }
+  // 切换模型时重置表单模式和模型专属参数，避免携带上一模型的脏数据
+  inputMode.value = cfg.inputModes[0] ?? 'text'
   if (!cfg.supportsPreview) {
     previewMode.value = false
     selectedResolution.value = 'standard'
   }
   const validRatios = ratioOptions.value.map(r => r.value)
-  if (showRatio.value && validRatios.length && !validRatios.includes(selectedRatio.value)) {
+  if (showRatio.value && validRatios.length) {
     selectedRatio.value = validRatios[0] ?? '16:9'
   }
   const allowedDurations = previewMode.value && cfg.previewDurations?.length ? cfg.previewDurations : cfg.durations
-  if (showDuration.value && !allowedDurations.includes(form.value.duration ?? 0)) {
+  if (showDuration.value && allowedDurations.length) {
     form.value.duration = allowedDurations[0]
   }
   while (refImages.value.length > (cfg.maxRefImages || 0)) {
@@ -556,7 +655,46 @@ watch(actualModel, () => {
     if (target) URL.revokeObjectURL(target.url)
   }
   if (actualModel.value !== 'kling-v2-6-image2video') clearKlingV26TailFrame()
+  // 重置各模型专属选项
+  klingMode.value = 'pro'
+  klingSound.value = false
+  kling26Sound.value = false
+  motionResolution.value = '720p'
+  motionOrientation.value = 'image'
+  seedanceResolution.value = '720p'
+  seedanceFixedLens.value = false
+  seedanceGenerateAudio.value = false
+  viduq2Resolution.value = '720p'
+  viduq2Audio.value = false
+  viduq2Watermark.value = false
+  viduq2Seed.value = 0
+  viduq2ProMovementAmplitude.value = 'auto'
+  viduq2ProBgm.value = false
+  viduq2ProWmPosition.value = 3
+  viduq2ProWmUrl.value = ''
+  klingV26Sound.value = 'off'
+  klingV26NegativePrompt.value = ''
+  hailuoResolution.value = '768P'
+  hailuoPromptOptimizer.value = true
+  hailuoFastPretreatment.value = false
+  hailuoAigcWatermark.value = false
+  doubaoResolution.value = '720p'
+  doubaoGenerateAudio.value = true
+  doubaoCameraFixed.value = false
+  doubaoWatermark.value = false
+  doubaoSeed.value = -1
 }, { immediate: true })
+
+watch(
+  () => form.value.duration,
+  (d) => {
+    if (!isHailuoModel.value) return
+    // 10 秒时只允许 768P，自动矫正分辨率
+    if (d === 10 && hailuoResolution.value === '1080P') {
+      hailuoResolution.value = '768P'
+    }
+  },
+)
 
 watch(selectedKling26SubModel, (next, prev) => {
   if (!next || next === prev) return
@@ -758,6 +896,23 @@ async function handleGenerate() {
       ; (payload.params as Record<string, unknown>).resolution = seedanceResolution.value
         ; (payload.params as Record<string, unknown>).fixed_lens = seedanceFixedLens.value
         ; (payload.params as Record<string, unknown>).generate_audio = seedanceGenerateAudio.value
+    }
+    if (isHailuoModel.value) {
+      const p = payload.params as Record<string, unknown>
+      p.resolution = hailuoResolution.value
+      p.prompt_optimizer = hailuoPromptOptimizer.value
+      p.fast_pretreatment = hailuoFastPretreatment.value
+      p.aigc_watermark = hailuoAigcWatermark.value
+    }
+    if (isDoubaoSeedanceModel.value) {
+      const p = payload.params as Record<string, unknown>
+      p.resolution = doubaoResolution.value
+      p.generate_audio = doubaoGenerateAudio.value
+      p.camera_fixed = doubaoCameraFixed.value
+      p.watermark = doubaoWatermark.value
+      p.seed = doubaoSeed.value
+      // ratio 直接使用当前 selectedRatio，符合文档中 ratio 可选值的一部分
+      p.ratio = selectedRatio.value
     }
     // Vidu Q2 CTV 专属
     if (isViduq2CtvModel.value) {
@@ -995,8 +1150,11 @@ function handleDeleteTask(task: VideoTask) {
             @change="pickFrame('last', $event)" />
         </section>
 
-        <!-- 参考图（非 Kling v2.6 图生时） -->
-        <section v-if="inputMode === 'ref' && canUseRefMode && !isKlingV26Image2VideoModel" class="fg">
+        <!-- 参考图（非 Kling v2.6 图生 / 非 Hailuo / 非 Doubao 时，多图小缩略图模式） -->
+        <section
+          v-if="inputMode === 'ref' && canUseRefMode && !isKlingV26Image2VideoModel && !isHailuoModel && !isDoubaoSeedanceModel"
+          class="fg"
+        >
           <div class="fl-row">
             <label class="fl">参考图</label>
             <span class="fl-count">{{ refImages.length }}/{{ maxRef }}</span>
@@ -1052,6 +1210,43 @@ function handleDeleteTask(task: VideoTask) {
           </div>
           <input ref="klingV26TailFrameInputRef" type="file" accept="image/*" class="hidden-input"
             @change="pickKlingV26TailFrame" />
+        </section>
+
+        <!-- Hailuo 2.3 图生视频：单图大预览（首帧 / 参考图二合一，只允许 1 张） -->
+        <section v-if="isHailuoModel && inputMode === 'ref'" class="fg">
+          <label class="fl">参考图 <span class="fl-hint">必选</span></label>
+          <div v-if="refImages.length > 0" class="frame-preview">
+            <img :src="refImages[0]!.url" />
+            <button class="frame-clear" aria-label="清除参考图" @click="removeRef(refImages[0]!.id)">
+              <IconClose :size="10" />
+            </button>
+          </div>
+          <div v-else class="dropzone" @dragover.prevent @drop="handleRefDrop" @click="refInputRef?.click()">
+            <IconPlus :size="44" class="upload-plus" />
+            <span class="dz-text">点击或拖拽上传参考图</span>
+            <span class="dz-hint">视频起始画面，必填，仅 1 张</span>
+          </div>
+          <input ref="refInputRef" type="file" accept="image/*" class="hidden-input"
+            @change="handleRefSelect" />
+        </section>
+
+        <!-- Doubao Seedance 图生视频：单图大预览（首帧参考图 + 文本，仅 1 张） -->
+        <section v-if="isDoubaoSeedanceModel && actualModel === 'doubao-seedance-image' && inputMode === 'ref'"
+          class="fg">
+          <label class="fl">参考图 <span class="fl-hint">必选</span></label>
+          <div v-if="refImages.length > 0" class="frame-preview">
+            <img :src="refImages[0]!.url" />
+            <button class="frame-clear" aria-label="清除参考图" @click="removeRef(refImages[0]!.id)">
+              <IconClose :size="10" />
+            </button>
+          </div>
+          <div v-else class="dropzone" @dragover.prevent @drop="handleRefDrop" @click="refInputRef?.click()">
+            <IconPlus :size="44" class="upload-plus" />
+            <span class="dz-text">点击或拖拽上传参考图</span>
+            <span class="dz-hint">首帧参考图，必填，仅 1 张</span>
+          </div>
+          <input ref="refInputRef" type="file" accept="image/*" class="hidden-input"
+            @change="handleRefSelect" />
         </section>
 
         <!-- 动作控制：角色图 + 动作视频 -->
@@ -1113,6 +1308,62 @@ function handleDeleteTask(task: VideoTask) {
               {{ r.label }}
             </button>
           </div>
+        </section>
+
+        <section v-if="isHailuoModel" class="fg">
+          <label class="fl">分辨率</label>
+          <div class="dur-row">
+            <button v-for="r in hailuoResolutionOptions" :key="r" class="dur-btn"
+              :class="{ active: hailuoResolution === r }" @click="hailuoResolution = r">
+              {{ r }}
+            </button>
+          </div>
+        </section>
+        <section v-if="isHailuoModel" class="fg">
+          <label class="fl">Prompt 优化</label>
+          <a-switch v-model="hailuoPromptOptimizer" />
+          <span class="fl-hint state-hint">{{ hailuoPromptOptimizer ? '开启（默认）' : '关闭' }}</span>
+        </section>
+        <section v-if="isHailuoModel" class="fg">
+          <label class="fl">快速预处理</label>
+          <a-switch v-model="hailuoFastPretreatment" />
+          <span class="fl-hint state-hint">{{ hailuoFastPretreatment ? '开启' : '关闭（默认）' }}</span>
+        </section>
+        <section v-if="isHailuoModel" class="fg">
+          <label class="fl">AIGC 水印</label>
+          <a-switch v-model="hailuoAigcWatermark" />
+          <span class="fl-hint state-hint">{{ hailuoAigcWatermark ? '添加水印' : '不添加（默认）' }}</span>
+        </section>
+
+        <!-- Doubao Seedance 1.5 Pro 专属 -->
+        <section v-if="isDoubaoSeedanceModel" class="fg">
+          <label class="fl">分辨率</label>
+          <div class="dur-row">
+            <button v-for="r in ['480p', '720p', '1080p']" :key="r" class="dur-btn"
+              :class="{ active: doubaoResolution === r }"
+              @click="doubaoResolution = r as '480p' | '720p' | '1080p'">
+              {{ r }}
+            </button>
+          </div>
+        </section>
+        <section v-if="isDoubaoSeedanceModel" class="fg">
+          <label class="fl">生成音频</label>
+          <a-switch v-model="doubaoGenerateAudio" />
+          <span class="fl-hint state-hint">{{ doubaoGenerateAudio ? '开启（默认）' : '关闭' }}</span>
+        </section>
+        <section v-if="isDoubaoSeedanceModel" class="fg">
+          <label class="fl">固定镜头</label>
+          <a-switch v-model="doubaoCameraFixed" />
+          <span class="fl-hint state-hint">{{ doubaoCameraFixed ? '固定' : '不固定（默认）' }}</span>
+        </section>
+        <section v-if="isDoubaoSeedanceModel" class="fg">
+          <label class="fl">水印</label>
+          <a-switch v-model="doubaoWatermark" />
+          <span class="fl-hint state-hint">{{ doubaoWatermark ? '添加水印' : '不添加（默认）' }}</span>
+        </section>
+        <section v-if="isDoubaoSeedanceModel" class="fg">
+          <label class="fl">随机种子</label>
+          <a-input-number v-model="doubaoSeed" :min="-1" placeholder="-1 表示随机" class="w-full" />
         </section>
 
         <section v-if="showDuration" class="fg">

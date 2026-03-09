@@ -338,6 +338,14 @@ export class VideoService {
       return this.callViduq2ProApi(task, params);
     }
 
+    if (model === 'MiniMax-Hailuo-2.3') {
+      return this.callDmxHailuoApi(task, params);
+    }
+
+    if (model === 'doubao-seedance-1-5-pro-responses') {
+      return this.callDmxDoubaoSeedanceResponsesApi(task, params);
+    }
+
     if (model === 'kling-v2-6-text2video') {
       return this.callDmxKlingV26Text2VideoApi(task, params);
     }
@@ -1115,6 +1123,381 @@ export class VideoService {
   }
 
   /**
+   * DMX MiniMax Hailuo 2.3 文/图生视频
+   * 文档：docs/MiniMax-Hailuo-2.3 文生视频.md 与 docs/MiniMax-Hailuo-2.3 图生视频.md
+   * 创建：POST https://www.dmxapi.cn/v1/video_generation
+   * 查询：GET  https://www.dmxapi.cn/v1/query/video_generation?task_id=
+   * 下载：GET  https://www.dmxapi.cn/v1/files/retrieve?file_id=&task_id=
+   */
+  private async callDmxHailuoApi(
+    task: VideoTask,
+    params: Record<string, unknown>,
+  ): Promise<string> {
+    const { apiKey, baseUrl } = await this.resolveModelAuth(
+      'MiniMax-Hailuo-2.3',
+      'DMX_API_KEY',
+      'DMX_API_URL',
+      'https://www.dmxapi.cn',
+    );
+    const endpoint = baseUrl.replace(/\/+$/, '');
+    if (!apiKey) {
+      throw new Error(
+        '未配置 DMX_API_KEY：请在模型管理中为 MiniMax-Hailuo-2.3 配置 API Key，或设置环境变量 DMX_API_KEY',
+      );
+    }
+
+    // 时长：Hailuo 2.3 支持 6 / 10 秒
+    const durationRaw = Number(params.duration ?? 6);
+    const duration = durationRaw === 10 ? 10 : 6;
+
+    // 分辨率：官方文档表格中 MiniMax-Hailuo-2.3 仅支持：
+    // - 6 秒：768P (默认), 1080P
+    // - 10 秒：768P (默认)
+    const resolutionRaw = String(params.resolution || '768P').toUpperCase();
+    let resolution: string;
+    if (duration === 10) {
+      // 10 秒固定 768P，避免 1080P/其他导致上游 400
+      resolution = '768P';
+    } else {
+      // 6 秒可选 768P / 1080P，其他值回退到 768P
+      resolution =
+        resolutionRaw === '1080P' || resolutionRaw === '768P'
+          ? resolutionRaw
+          : '768P';
+    }
+
+    const prompt = (task.prompt || '').slice(0, 2000);
+
+    // 图生视频：需要首帧图片
+    let firstFrameImage = '';
+    if (task.taskType === VideoTaskType.IMG2VIDEO) {
+      let src = '';
+      if (task.imageUrl) {
+        src = task.imageUrl;
+      } else if (Array.isArray(params.urls)) {
+        const first = (params.urls as unknown[]).find(
+          (u): u is string => typeof u === 'string' && u.trim().length > 0,
+        );
+        if (first) src = first;
+      }
+      if (!src) {
+        throw new Error('MiniMax-Hailuo-2.3 图生视频需要首帧图片');
+      }
+      firstFrameImage = this.getPublicUploadUrl(src);
+    }
+
+    const body: Record<string, unknown> = {
+      model: 'MiniMax-Hailuo-2.3',
+      prompt,
+      duration,
+      resolution,
+    };
+    // 可选参数：与官方示例字段保持一致，仅在显式传入时下发，避免影响默认行为
+    if (typeof params.prompt_optimizer === 'boolean') {
+      body.prompt_optimizer = params.prompt_optimizer;
+    }
+    if (typeof params.fast_pretreatment === 'boolean') {
+      body.fast_pretreatment = params.fast_pretreatment;
+    }
+    if (typeof params.aigc_watermark === 'boolean') {
+      body.aigc_watermark = params.aigc_watermark;
+    }
+    if (firstFrameImage) {
+      body.first_frame_image = firstFrameImage;
+    }
+
+    this.logger.log(
+      `[MiniMax-Hailuo-2.3] 创建任务: POST ${endpoint}/v1/video_generation duration=${duration} resolution=${resolution} hasImage=${!!firstFrameImage}`,
+    );
+    this.logger.log(
+      `[MiniMax-Hailuo-2.3] ========== Postman 复现：创建任务 ==========`,
+    );
+    this.logger.log(`  METHOD: POST`);
+    this.logger.log(`  URL: ${endpoint}/v1/video_generation`);
+    this.logger.log(
+      `  Headers: { "Content-Type": "application/json", "Authorization": "${this.maskApiKey(apiKey)}" }`,
+    );
+    this.logger.log(`  Body: ${JSON.stringify(body, null, 2)}`);
+
+    const createRes = await this.httpRequest<{
+      task_id?: string;
+      base_resp?: { status_code?: number; status_msg?: string };
+    }>({
+      url: `${endpoint}/v1/video_generation`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: apiKey,
+      },
+      body,
+    });
+
+    this.logger.log(
+      `[MiniMax-Hailuo-2.3] ========== 创建任务接口返回结果 ==========`,
+    );
+    this.logger.log(JSON.stringify(createRes, null, 2));
+
+    const taskId = createRes?.task_id;
+    if (!taskId) {
+      const msg =
+        createRes?.base_resp?.status_msg ||
+        'MiniMax-Hailuo-2.3 创建任务失败，缺少 task_id';
+      throw new Error(msg);
+    }
+
+    const maxAttempts = 200; // ~10 分钟
+    const pollInterval = 3000;
+
+    for (let i = 0; i < maxAttempts; i++) {
+      await this.sleep(pollInterval);
+
+      const statusRes = await this.httpRequest<{
+        status?: string;
+        file_id?: string;
+        task_id?: string;
+        base_resp?: { status_code?: number; status_msg?: string };
+      }>({
+        url: `${endpoint}/v1/query/video_generation?task_id=${encodeURIComponent(taskId)}`,
+        method: 'GET',
+        headers: {
+          Authorization: apiKey,
+        },
+      });
+
+      const statusRaw = statusRes?.status;
+      const status = typeof statusRaw === 'string' ? statusRaw : '';
+      const statusLower = status.toLowerCase();
+
+      if (
+        i === 0 ||
+        statusLower === 'success' ||
+        statusLower === 'failed' ||
+        statusLower === 'fail'
+      ) {
+        this.logger.log(
+          `[MiniMax-Hailuo-2.3] 查询任务状态 #${i}: task_id=${taskId} status=${status}`,
+        );
+        this.logger.log(
+          `[MiniMax-Hailuo-2.3] 查询返回: ${JSON.stringify(statusRes, null, 2)}`,
+        );
+      }
+
+      if (statusLower === 'processing') {
+        // 简单线性提升进度（10~95）
+        const progress = 10 + Math.round(((i + 1) / maxAttempts) * 85);
+        task.progress = Math.min(95, Math.max(10, progress));
+        await this.videoRepository.save(task);
+        continue;
+      }
+
+      if (
+        statusLower === 'failed' ||
+        statusLower === 'fail' ||
+        statusLower === 'error'
+      ) {
+        const msg =
+          statusRes?.base_resp?.status_msg || 'MiniMax-Hailuo-2.3 视频生成失败';
+        throw new Error(msg);
+      }
+
+      if (statusLower === 'success' && statusRes?.file_id) {
+        const fileRes = await this.httpRequest<{
+          file?: { download_url?: string };
+          base_resp?: { status_code?: number; status_msg?: string };
+        }>({
+          url: `${endpoint}/v1/files/retrieve?file_id=${encodeURIComponent(
+            statusRes.file_id,
+          )}&task_id=${encodeURIComponent(taskId)}`,
+          method: 'GET',
+          headers: {
+            Authorization: apiKey,
+          },
+        });
+
+        const url = fileRes?.file?.download_url;
+        if (url && typeof url === 'string') {
+          return url;
+        }
+        throw new Error(
+          fileRes?.base_resp?.status_msg ||
+            'MiniMax-Hailuo-2.3 任务完成但未返回下载链接',
+        );
+      }
+    }
+
+    throw new Error('MiniMax-Hailuo-2.3 视频任务超时');
+  }
+
+  /**
+   * DMX 豆包 doubao-seedance-1-5-pro-responses 文/图生视频
+   * 文档：docs/doubao-seedance-1-5-pro-responses 文生视频.md / 图生视频.md
+   * 创建：POST https://www.dmxapi.cn/v1/responses，返回 id
+   * 查询：POST https://www.dmxapi.cn/v1/responses，model=seedance-get, stream=true，解析 SSE 得到视频 URL
+   */
+  private async callDmxDoubaoSeedanceResponsesApi(
+    task: VideoTask,
+    params: Record<string, unknown>,
+  ): Promise<string> {
+    const { apiKey, baseUrl } = await this.resolveModelAuth(
+      'doubao-seedance-1-5-pro-responses',
+      'DMX_API_KEY',
+      'DMX_API_URL',
+      'https://www.dmxapi.cn',
+    );
+    const endpoint = baseUrl.replace(/\/+$/, '');
+    if (!apiKey) {
+      throw new Error(
+        '未配置 DMX_API_KEY：请在模型管理中为 doubao-seedance-1-5-pro-responses 配置 API Key，或设置环境变量 DMX_API_KEY',
+      );
+    }
+
+    const prompt = (task.prompt || '').slice(0, 4000);
+
+    // 时长：文档允许 4-12 秒整数，默认 5
+    const durationRaw = Number(params.duration ?? 5);
+    const duration = Number.isFinite(durationRaw)
+      ? Math.min(12, Math.max(4, Math.round(durationRaw)))
+      : 5;
+
+    // 分辨率：480p / 720p / 1080p，默认 720p
+    const resolutionRaw = String(params.resolution || '720p').toLowerCase();
+    const allowedResolutions = new Set(['480p', '720p', '1080p']);
+    const resolution = allowedResolutions.has(resolutionRaw)
+      ? resolutionRaw
+      : '720p';
+
+    // 宽高比：16:9 / 4:3 / 1:1 / 3:4 / 9:16 / 21:9 / adaptive（我们仅按字符串透传）
+    const ratioRaw = String(params.ratio || '16:9');
+    const ratio =
+      ['16:9', '4:3', '1:1', '3:4', '9:16', '21:9', 'adaptive'].includes(
+        ratioRaw,
+      ) || !ratioRaw
+        ? ratioRaw || '16:9'
+        : '16:9';
+
+    const seed =
+      typeof params.seed === 'number'
+        ? (params.seed as number)
+        : Number.isFinite(Number(params.seed))
+          ? Number(params.seed)
+          : -1;
+    const generateAudio = Boolean(params.generate_audio ?? true);
+    const cameraFixed = Boolean(params.camera_fixed ?? false);
+    const watermark = Boolean(params.watermark ?? false);
+    const callbackUrl =
+      typeof params.callback_url === 'string' ? params.callback_url : '';
+    const returnLastFrame = Boolean(params.return_last_frame ?? false);
+
+    const input: Array<Record<string, unknown>> = [
+      {
+        type: 'text',
+        text: prompt,
+      },
+    ];
+
+    // 图生视频：在 input 中追加首帧 image_url，role=first_frame
+    if (task.taskType === VideoTaskType.IMG2VIDEO) {
+      let src = '';
+      if (task.imageUrl) {
+        src = task.imageUrl;
+      } else if (Array.isArray(params.urls)) {
+        const first = (params.urls as unknown[]).find(
+          (u): u is string => typeof u === 'string' && u.trim().length > 0,
+        );
+        if (first) src = first;
+      }
+      if (!src) {
+        throw new Error(
+          'doubao-seedance-1-5-pro-responses 图生视频需要首帧参考图',
+        );
+      }
+      const imageUrl = this.getPublicUploadUrl(src);
+      input.push({
+        type: 'image_url',
+        image_url: { url: imageUrl },
+        role: 'first_frame',
+      });
+    }
+
+    const body: Record<string, unknown> = {
+      model: 'doubao-seedance-1-5-pro-responses',
+      input,
+      callback_url: callbackUrl,
+      return_last_frame: returnLastFrame,
+      generate_audio: generateAudio,
+      resolution,
+      ratio,
+      duration,
+      seed,
+      camera_fixed: cameraFixed,
+      watermark,
+    };
+
+    this.logger.log(
+      `[Doubao Seedance 1.5 Pro] 创建任务: POST ${endpoint}/v1/responses duration=${duration} resolution=${resolution} hasImage=${task.taskType === VideoTaskType.IMG2VIDEO}`,
+    );
+    this.logger.log(
+      `[Doubao Seedance 1.5 Pro] ========== Postman 复现：创建任务 ==========`,
+    );
+    this.logger.log(`  METHOD: POST`);
+    this.logger.log(`  URL: ${endpoint}/v1/responses`);
+    this.logger.log(
+      `  Headers: { "Content-Type": "application/json", "Authorization": "${this.maskApiKey(apiKey)}" }`,
+    );
+    this.logger.log(`  Body: ${JSON.stringify(body, null, 2)}`);
+
+    const createRes = await this.httpRequest<{
+      id?: string;
+      usage?: unknown;
+      error?: { message?: string };
+      message?: string;
+    }>({
+      url: `${endpoint}/v1/responses`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: apiKey,
+      },
+      body,
+    });
+
+    this.logger.log(
+      `[Doubao Seedance 1.5 Pro] ========== 创建任务接口返回结果 ==========`,
+    );
+    this.logger.log(JSON.stringify(createRes, null, 2));
+
+    const jobId = createRes?.id;
+    if (!jobId) {
+      throw new Error(
+        createRes?.error?.message ||
+          createRes?.message ||
+          'doubao-seedance-1-5-pro-responses 创建任务失败，缺少 id',
+      );
+    }
+
+    const maxAttempts = 400;
+    const pollInterval = 3000;
+    for (let i = 0; i < maxAttempts; i++) {
+      await this.sleep(pollInterval);
+      const videoUrl = await this.viduq2PollStream(
+        endpoint,
+        apiKey,
+        jobId,
+        task,
+        i,
+        {
+          model: 'seedance-get',
+          logPrefix: '[Doubao Seedance 1.5 Pro]',
+          errPrefix: 'Doubao Seedance 1.5 Pro',
+        },
+      );
+      if (videoUrl) return videoUrl;
+    }
+
+    throw new Error('Doubao Seedance 1.5 Pro 视频任务超时');
+  }
+
+  /**
    * Vidu Q2 CTV 多图参考生视频（DMX API）
    * 文档：docs/viduq2-ctv.md，接口 https://www.dmxapi.cn/v1/responses
    * API Key 优先从模型管理/密钥池读取，其次环境变量 DMX_API_KEY
@@ -1267,6 +1650,11 @@ export class VideoService {
         taskId,
         task,
         i,
+        {
+          model: 'vidu-get',
+          logPrefix: '[Vidu Q2 CTV]',
+          errPrefix: 'Vidu Q2 CTV',
+        },
       );
       if (videoUrl) return videoUrl;
     }
@@ -1365,6 +1753,11 @@ export class VideoService {
         taskId,
         task,
         i,
+        {
+          model: 'vidu-get',
+          logPrefix: '[Vidu Q2 Pro]',
+          errPrefix: 'Vidu Q2 Pro',
+        },
       );
       if (videoUrl) return videoUrl;
     }
@@ -1961,7 +2354,7 @@ export class VideoService {
   }
 
   /**
-   * 查询结果接口仅支持流式：POST model=vidu-get, stream=true，解析 SSE 得到视频 URL
+   * 查询结果接口仅支持流式：POST model=vidu-get / seedance-get, stream=true，解析 SSE 得到视频 URL
    */
   private async viduq2PollStream(
     endpoint: string,
@@ -1969,11 +2362,16 @@ export class VideoService {
     taskId: string,
     task: VideoTask,
     pollIndex: number,
+    opts?: { model?: string; logPrefix?: string; errPrefix?: string },
   ): Promise<string | null> {
     const url = `${endpoint}/v1/responses`;
     const dispatcher = await this.getDispatcherForUrl(url);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 90_000);
+
+    const modelName = opts?.model || 'vidu-get';
+    const logPrefix = opts?.logPrefix || '[Vidu Q2 CTV]';
+    const errPrefix = opts?.errPrefix || 'Vidu Q2 CTV';
 
     let res: Response;
     try {
@@ -1984,7 +2382,7 @@ export class VideoService {
           Authorization: apiKey,
         },
         body: JSON.stringify({
-          model: 'vidu-get',
+          model: modelName,
           input: taskId,
           stream: true,
         }),
@@ -2037,15 +2435,14 @@ export class VideoService {
               const delta = typeof data?.delta === 'string' ? data.delta : '';
               const type = data?.type ?? '';
               if (type === 'response.completed' || /视频生成完成/.test(delta)) {
-                const m = (delta || fullText).match(
-                  /视频URL:\s*(https?:\/\/[^\s\n"]+)/,
-                );
-                if (m?.[1]) videoUrl = m[1].trim();
-                if (!videoUrl) {
-                  const m2 = (delta || fullText).match(
-                    /(https?:\/\/prod-ss-vidu[^\s\n"]+)/,
-                  );
-                  if (m2?.[1]) videoUrl = m2[1].trim();
+                const text = (delta || fullText) as string;
+                let m = text.match(/视频URL:\s*(https?:\/\/[^\s\n"]+)/);
+                if (!m) {
+                  m = text.match(/https?:\/\/[^\s\n"]+\.mp4[^\s\n"]*/);
+                }
+                if (m?.[0]) {
+                  const urlText = (m[1] || m[0]).trim();
+                  videoUrl = urlText;
                 }
               }
               if (type === 'error' || data?.error) {
@@ -2066,13 +2463,13 @@ export class VideoService {
     }
 
     if (hasError && errorMsg) {
-      throw new Error(`Vidu Q2 CTV 任务失败: ${errorMsg}`);
+      throw new Error(`${errPrefix} 任务失败: ${errorMsg}`);
     }
     if (videoUrl) return videoUrl;
 
     if (pollIndex % 10 === 0) {
       this.logger.log(
-        `[Vidu Q2 CTV] 轮询 #${pollIndex} task_id=${taskId} 流式响应无完成 URL，继续等待`,
+        `${logPrefix} 轮询 #${pollIndex} task_id=${taskId} 流式响应无完成 URL，继续等待`,
       );
     }
     return null;

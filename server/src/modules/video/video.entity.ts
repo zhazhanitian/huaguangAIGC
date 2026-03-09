@@ -34,6 +34,10 @@ export enum VideoProvider {
   KLING_V26_TEXT2VIDEO = 'kling-v2-6-text2video',
   /** DMX 可灵 v2.6 图生视频（与 kling-2.6/* KIE 无关） */
   KLING_V26_IMAGE2VIDEO = 'kling-v2-6-image2video',
+  /** DMX MiniMax Hailuo 2.3 文/图生视频（共用模型名，通过任务类型区分） */
+  HAILUO_23 = 'MiniMax-Hailuo-2.3',
+  /** DMX 豆包 doubao-seedance-1-5-pro-responses 文/图生视频（共用模型名，通过任务类型区分） */
+  DOUBAO_SEEDANCE_15_PRO_RESPONSES = 'doubao-seedance-1-5-pro-responses',
 }
 
 /** 任务状态枚举 */

@@ -1137,6 +1137,22 @@ export class ModelService {
       deductPoints: 60,
       apiProvider: 'dmx',
     });
+    presets.push({
+      modelName: 'MiniMax-Hailuo-2.3',
+      provider: ModelProvider.CUSTOM,
+      type: ModelType.VIDEO,
+      isActive: true,
+      deductPoints: 60,
+      apiProvider: 'dmx',
+    });
+    presets.push({
+      modelName: 'doubao-seedance-1-5-pro-responses',
+      provider: ModelProvider.CUSTOM,
+      type: ModelType.VIDEO,
+      isActive: true,
+      deductPoints: 60,
+      apiProvider: 'dmx',
+    });
 
     // ========== 音乐模型 (KIE - Suno) ==========
     const musicModels = [
