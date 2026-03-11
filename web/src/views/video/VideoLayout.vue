@@ -1039,8 +1039,14 @@ function handleDeleteTask(task: VideoTask) {
     content: '确定删除这个视频任务吗？',
     onOk: async () => {
       try {
+        const beforeCount = myTasks.value.length
         await deleteVideoTask(task.id)
-        myTasks.value = myTasks.value.filter((t) => t.id !== task.id)
+        // 如果当前页只剩这一条且不是第一页，删完后回退一页再拉取
+        const wasLastOnPage = beforeCount === 1 && myPage.value > 1
+        if (wasLastOnPage) {
+          myPage.value = myPage.value - 1
+        }
+        await fetchMy()
         if (previewTask.value?.id === task.id) {
           previewOpen.value = false
           previewTask.value = null
@@ -1552,13 +1558,26 @@ function handleDeleteTask(task: VideoTask) {
         </div>
         <a-spin :loading="myLoading" class="works-spin">
           <div v-if="myTasks.length > 0" class="works-grid">
-            <div v-for="t in myTasks" :key="t.id" class="vcard"
-              @click="isDone(t.status) && (t.videoUrl || t.resultUrl) ? openPreview((t.videoUrl || t.resultUrl) as string, t) : null">
+            <div
+              v-for="t in myTasks"
+              :key="t.id"
+              class="vcard"
+              @click="isDone(t.status) && (t.videoUrl || t.resultUrl) ? openPreview((t.videoUrl || t.resultUrl) as string, t) : null"
+            >
               <div class="vcard-media">
-                <video v-if="(t.videoUrl || t.resultUrl) && isDone(t.status)"
-                  :src="(t.videoUrl || t.resultUrl) as string" muted loop preload="metadata" class="vcard-video"
+                <button class="vcard-del" title="删除该视频" @click.stop="handleDeleteTask(t)">
+                  <IconDelete :size="14" />
+                </button>
+                <video
+                  v-if="(t.videoUrl || t.resultUrl) && isDone(t.status)"
+                  :src="(t.videoUrl || t.resultUrl) as string"
+                  muted
+                  loop
+                  preload="metadata"
+                  class="vcard-video"
                   @mouseenter="($event.target as HTMLVideoElement)?.play()"
-                  @mouseleave="($event.target as HTMLVideoElement)?.pause()" />
+                  @mouseleave="($event.target as HTMLVideoElement)?.pause()"
+                />
                 <img v-else-if="thumb(t)" :src="thumb(t)" class="vcard-thumb" />
                 <div v-else class="vcard-ph">
                   <IconVideoCamera :size="28" class="placeholder-icon" />
@@ -2442,6 +2461,35 @@ function handleDeleteTask(task: VideoTask) {
 }
 
 .vcard:hover .play-ov {
+  opacity: 1;
+}
+
+.vcard-del {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0;
+  transition: opacity var(--duration-fast), background var(--duration-fast), transform var(--duration-fast);
+  z-index: 2;
+}
+
+.vcard-del:hover {
+  background: rgba(245, 63, 63, 0.9);
+  transform: translateY(-1px);
+}
+
+.vcard:hover .vcard-del {
   opacity: 1;
 }
 

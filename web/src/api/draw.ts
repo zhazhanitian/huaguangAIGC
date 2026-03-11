@@ -60,9 +60,10 @@ export function createDrawTask(data: CreateDrawTaskData) {
   return request.post<DrawTask>('/draw/task', data)
 }
 
-export function getMyTasks(page = 1, pageSize = 20, source: DrawTaskSource = 'draw') {
+// 获取我的绘画任务列表（后端已默认 source='draw'，此处不再额外传 source）
+export function getMyTasks(page = 1, pageSize = 20) {
   return request.get<DrawTaskListResponse>('/draw/tasks', {
-    params: { page, pageSize, source },
+    params: { page, pageSize },
   })
 }
 

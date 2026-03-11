@@ -42,7 +42,6 @@ const SNAP_GRID_SIZE = 24
 
 /* === 敏感词检测结果 === */
 const lastCheckResult = ref<CheckContentResult | null>(null)
-const notifiedFailedNodeKeys = ref<Set<string>>(new Set())
 
 // 转义正则特殊字符
 function escapeRegExp(str: string) {
@@ -367,25 +366,7 @@ onUnmounted(() => {
 
 watch(viewport, () => canvasStore.scheduleSave(1400), { deep: true })
 
-watch(
-  nodes,
-  (list) => {
-    for (const n of list) {
-      if (n.status !== 'failed') continue
-      if (!n.taskId) continue
-      const msg = (n as any).errorMessage
-        || (n.params as Record<string, unknown> | undefined)?.errorMessage
-      const key = `${n.id}:${n.taskId || ''}:${String(msg || '')}`
-      if (notifiedFailedNodeKeys.value.has(key)) continue
-      notifiedFailedNodeKeys.value.add(key)
-      Message.error({
-        content: `${n.title || '任务'}失败：${String(msg || '未知错误')}`,
-        duration: 3500,
-      })
-    }
-  },
-  { deep: true },
-)
+// 不在这里全局弹出节点失败的错误提示，避免任务状态瞬时波动时出现“先报错后成功”的闪烁体验
 
 function handleCreateNode() {
   canvasStore.createNode()

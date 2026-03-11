@@ -433,6 +433,8 @@ const actualProvider = computed(() => {
   const p = String(form.value.provider || '').trim()
   if (p === 'flux') return selectedFluxSubModel.value
   if (p === 'qwen') return selectedQwenSubModel.value
+  // GPT Image 统一走后端 gpt-image-1.5 模型
+  if (p === 'gpt-image-1') return 'gpt-image-1.5'
   return p || 'nano-banana-pro'
 })
 
@@ -696,7 +698,12 @@ const modelConfigs: Record<string, ModelConfig> = {
 }
 
 const defaultModelConfig: ModelConfig = modelConfigs['gpt-image-1']!
-const selectedProvider = computed(() => actualProvider.value || 'gpt-image-1')
+// 用于从 actualProvider 映射到配置 key（例如 gpt-image-1.5 复用 gpt-image-1 的配置）
+const selectedProvider = computed(() => {
+  const p = actualProvider.value || 'gpt-image-1'
+  if (p === 'gpt-image-1.5') return 'gpt-image-1'
+  return p
+})
 const currentConfig = computed<ModelConfig>(() => modelConfigs[selectedProvider.value] || defaultModelConfig)
 const maxRefImages = computed(() => currentConfig.value.maxRefImages ?? FALLBACK_MAX_REF_IMAGES)
 
@@ -717,6 +724,7 @@ const isQwenImageEdit = computed(() => selectedProvider.value === 'qwen/image-ed
 const modelTagInfo: Record<string, { color: string; label: string }> = {
   'nano-banana-pro': { color: 'orangered', label: 'Nano Banana' },
   'gpt-image-1': { color: 'green', label: 'GPT Image' },
+  'gpt-image-1.5': { color: 'green', label: 'GPT Image' },
   'doubao-seedance-4-5': { color: 'arcoblue', label: 'Seedream' },
   'flux-2-pro': { color: 'cyan', label: 'Flux Pro' },
   'flux-kontext-pro': { color: 'cyan', label: 'Flux 编辑' },
@@ -821,7 +829,7 @@ const mjOw = ref<number>(500)
 /* 当模型切换时重置参数 */
 import { watch as vueWatch } from 'vue'
 vueWatch(actualProvider, () => {
-  const cfg = modelConfigs[actualProvider.value || 'nano-banana-pro']
+  const cfg = modelConfigs[selectedProvider.value] || defaultModelConfig
   if (cfg) {
     selectedRatio.value = cfg.ratios[0]?.value ?? 'auto'
     selectedImageSize.value = cfg.sizes?.[0]?.value ?? '1K'
@@ -914,13 +922,33 @@ onMounted(() => {
     const idx = myTasks.value.findIndex((t) => t.id === e.taskId)
     if (idx < 0) return
     const prev = myTasks.value[idx]!
+    const curTerminal = prev.status === 'failed' || prev.status === 'completed' || prev.status === 'done'
+    const incomingTerminal = e.status === 'failed' || e.status === 'completed' || e.status === 'done'
+    // 已是终态时，忽略非终态的 task.updated，避免被旧进度覆盖
+    if (curTerminal && !incomingTerminal && e.type === 'task.updated') {
+      return
+    }
+    const nextStatus = (curTerminal && !incomingTerminal)
+      ? prev.status
+      : ((e.status as DrawTask['status']) || prev.status)
     myTasks.value[idx] = {
       ...prev,
-      status: (e.status as DrawTask['status']) || prev.status,
+      status: nextStatus,
       progress: typeof e.progress === 'number' ? e.progress : prev.progress,
       errorMessage: (e.errorMessage ?? prev.errorMessage ?? undefined) as DrawTask['errorMessage'],
       imageUrl: e.imageUrl ?? prev.imageUrl,
       resultUrl: e.imageUrl ?? prev.resultUrl,
+    }
+    // 终态事件到达后，主动向后端再拉一遍，确保与数据库状态完全一致
+    if (e.type === 'task.failed' || e.type === 'task.completed') {
+      getTasksStatusBatch([e.taskId]).then(({ data }) => {
+        const list = Array.isArray(data) ? data : []
+        const u = list.find((x: DrawTask) => x.id === e.taskId)
+        if (u && (u.status === 'failed' || u.status === 'completed' || u.status === 'done')) {
+          const i = myTasks.value.findIndex((t) => t.id === e.taskId)
+          if (i >= 0) myTasks.value[i] = { ...myTasks.value[i], ...u }
+        }
+      }).catch(() => { })
     }
   })
 })
@@ -977,7 +1005,7 @@ async function fetchMyTasks(reset = false) {
   if (isFirst) myTasksLoading.value = true
   else myTasksLoadingMore.value = true
   try {
-    const { data } = await getMyTasks(myTasksPage.value, MY_PAGE_SIZE, 'draw')
+    const { data } = await getMyTasks(myTasksPage.value, MY_PAGE_SIZE)
     const list = data?.list ?? []
     myTasksTotal.value = data?.total ?? 0
     if (isFirst) myTasks.value = list
@@ -1208,8 +1236,13 @@ async function handleGenerate(forceGenerate = false) {
           imageUrls: uploadedImageUrls.slice(0, 1),
         }
       } else {
+        let modelForApi = selectedSubModel.value || provider
+        // GPT Image 前端有旧值 'gpt-image-1'，但后端 & GrsAI 实际使用 'gpt-image-1.5'
+        if (provider === 'gpt-image-1.5' && modelForApi === 'gpt-image-1') {
+          modelForApi = provider
+        }
         payload.params = {
-          model: selectedSubModel.value || provider,
+          model: modelForApi,
           aspectRatio: selectedRatio.value,
           imageSize: selectedImageSize.value,
           variants: selectedVariants.value,
