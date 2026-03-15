@@ -44,20 +44,19 @@ const batchMode = ref(false)
 
 function toggleBatchMode() {
   batchMode.value = !batchMode.value
-  selectedWorkIds.value.clear()
+  selectedWorkIds.value = new Set()
 }
 
 function toggleWorkSelection(id: string) {
-  if (selectedWorkIds.value.has(id)) {
-    selectedWorkIds.value.delete(id)
-  } else {
-    selectedWorkIds.value.add(id)
-  }
+  const next = new Set(selectedWorkIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedWorkIds.value = next
 }
 
 function toggleSelectAll() {
   if (selectedWorkIds.value.size === myTasks.value.length) {
-    selectedWorkIds.value.clear()
+    selectedWorkIds.value = new Set()
   } else {
     selectedWorkIds.value = new Set(myTasks.value.map(t => t.id))
   }
@@ -76,7 +75,7 @@ async function handleBatchDelete() {
       try {
         await Promise.all(Array.from(selectedWorkIds.value).map(id => deleteTask(id)))
         myTasks.value = myTasks.value.filter(t => !selectedWorkIds.value.has(t.id))
-        selectedWorkIds.value.clear()
+        selectedWorkIds.value = new Set()
         batchMode.value = false
         Message.success({ content: `成功删除 ${count} 幅作品`, duration: 3000 })
       } catch {
@@ -314,7 +313,7 @@ function setupGalleryInfiniteObserver() {
 }
 
 const form = ref<CreateDrawTaskData>({
-  provider: 'nano-banana-pro',
+  provider: '',
   taskType: 'text2img',
   prompt: '',
   negativePrompt: '',
@@ -426,7 +425,7 @@ function clearAllRef() {
 const providersDef = [
   { value: 'nano-banana-pro', label: 'Nano Banana Pro', desc: 'Google 高质量绘画', color: '#FF7D00' },
   { value: 'gpt-image-1', label: 'GPT Image 1', desc: 'OpenAI 图像生成/编辑', color: '#00B42A' },
-  { value: 'doubao-seedance-4-5', label: 'Seedream 4', desc: '豆包高质量生成，支持图生图', color: '#165DFF' },
+  { value: 'doubao-seedance-4-5', label: 'Doubao Seedance 4.5', desc: '豆包高质量生成，支持图生图', color: '#165DFF' },
   { value: 'flux', label: 'Flux', desc: 'Flux 系列（文生图/图片编辑）', color: '#14C9C9' },
   { value: 'z-image', label: 'Z-Image', desc: '极速文生图，画质清晰', color: '#22c55e' },
   { value: 'grok-imagine/text-to-image', label: 'Grok Imagine', desc: 'xAI 文生图，支持多种比例', color: '#f472b6' },
@@ -440,6 +439,7 @@ const imageProviderToBackendNames: Record<string, string | string[]> = {
   'qwen': ['qwen/text-to-image', 'qwen/image-to-image', 'qwen/image-edit'],
 }
 const activeImageModelNames = ref<Set<string>>(new Set())
+const imageOrderMap = ref<Record<string, number>>({})
 const selectedFluxSubModel = ref<'flux-2-pro' | 'flux-kontext-pro' | 'flux-kontext-max'>('flux-2-pro')
 const selectedQwenSubModel = ref<'qwen/text-to-image' | 'qwen/image-to-image' | 'qwen/image-edit'>('qwen/text-to-image')
 
@@ -455,12 +455,31 @@ const actualProvider = computed(() => {
 const modelPointsMap = ref<Record<string, number>>({})
 const visibleProviders = computed(() => {
   const set = activeImageModelNames.value
-  if (set.size === 0) return providersDef
-  return providersDef.filter(p => {
+  const baseList = set.size === 0
+    ? providersDef
+    : providersDef.filter(p => {
+      const backends = imageProviderToBackendNames[p.value]
+      const names = Array.isArray(backends) ? backends : [backends ?? p.value]
+      return names.some(b => set.has(b))
+    })
+
+  // 按后台配置的 order 排序（同 order 时保持原先顺序）
+  const getOrderForProvider = (p: { value: string }) => {
     const backends = imageProviderToBackendNames[p.value]
     const names = Array.isArray(backends) ? backends : [backends ?? p.value]
-    return names.some(b => set.has(b))
-  })
+    let minOrder: number | null = null
+    for (const name of names) {
+      const ord = imageOrderMap.value[name]
+      if (typeof ord === 'number') {
+        if (minOrder === null || ord < minOrder) minOrder = ord
+      }
+    }
+    return minOrder ?? Number.MAX_SAFE_INTEGER
+  }
+
+  return baseList
+    .slice()
+    .sort((a, b) => getOrderForProvider(a) - getOrderForProvider(b))
 })
 const providers = computed(() =>
   visibleProviders.value.map(p => {
@@ -483,17 +502,26 @@ async function fetchDrawModelPoints() {
       activeImageModelNames.value = new Set(
         all.map((m: { modelName?: string }) => m.modelName).filter((x): x is string => Boolean(x))
       )
+      const orderMap: Record<string, number> = {}
+      const pointsMap: Record<string, number> = {}
       for (const m of all) {
-        if (m.deductPoints) modelPointsMap.value[m.modelName] = m.deductPoints
+        if (!m || !m.modelName) continue
+        if (typeof m.order === 'number') orderMap[m.modelName] = m.order
+        if (m.deductPoints) pointsMap[m.modelName] = m.deductPoints
       }
+      imageOrderMap.value = orderMap
+      modelPointsMap.value = pointsMap
     }
   } catch { /* ignore */ }
 }
 
+// 仅在有接口数据时用接口返回的第一个模型作为默认，避免使用前端写死的默认值
 watch(visibleProviders, (list) => {
-  const first = list[0]
-  if (list.length && first && !list.some(p => p.value === form.value.provider)) {
-    form.value.provider = first.value
+  if (list.length && activeImageModelNames.value.size > 0) {
+    const first = list[0]
+    if (first && !list.some(p => p.value === form.value.provider)) {
+      form.value.provider = first.value
+    }
   }
 }, { immediate: true })
 
@@ -1907,13 +1935,13 @@ function handleDownload(url?: string) {
                   any)?.label
                   || previewTask.provider || '-' }}</span></div>
                 <div class="detail-item"><span class="k">任务类型</span><span class="v">{{ previewTask.taskType || '-'
-                }}</span>
+                    }}</span>
                 </div>
                 <div class="detail-item"><span class="k">状态</span><span class="v">{{ statusText(previewTask.status) ||
                   '-'
                     }}</span></div>
                 <div class="detail-item"><span class="k">进度</span><span class="v">{{ previewTask.progress ?? 0
-                }}%</span>
+                    }}%</span>
                 </div>
                 <div class="detail-item"><span class="k">公开状态</span><span class="v">{{ previewTask.isPublic ? '公开' :
                   '私密'
@@ -2219,6 +2247,7 @@ function handleDownload(url?: string) {
   font-size: 0.75rem;
   color: var(--text-4);
 }
+
 .ref-uploading-hint {
   font-size: 0.75rem;
   color: var(--text-3);
@@ -2627,27 +2656,43 @@ function handleDownload(url?: string) {
   font-size: 0.75rem;
 }
 
+/* 未选中：浅色实底+边框，与选中明显区分，不透明避免挡住下方内容 */
 .batch-check :deep(.arco-checkbox-icon) {
   width: 18px;
   height: 18px;
   border-radius: 6px;
-  border-color: var(--border-2);
-  background: var(--bg-surface-2);
-  box-shadow: 0 0 0 2px rgba(35, 35, 36, 0.5);
+  border: 2px solid var(--border-2);
+  background: var(--bg-surface-1);
+  box-shadow: none;
+  transition: border-color 0.2s, background 0.2s;
 }
 
-.batch-check :deep(.arco-checkbox-input:checked + .arco-checkbox-icon) {
-  border-color: var(--primary);
-  background: var(--primary);
+.batch-check :deep(.arco-checkbox-icon::after) {
+  border-color: transparent;
 }
 
-.batch-check :deep(.arco-checkbox-input:indeterminate + .arco-checkbox-icon) {
-  border-color: var(--primary);
-  background: var(--primary);
+/* 选中状态：实心主色 */
+.batch-check :deep(.arco-checkbox-input:checked + .arco-checkbox-icon),
+.batch-check.arco-checkbox-checked :deep(.arco-checkbox-icon) {
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
 }
 
-.batch-check :deep(.arco-checkbox-input:indeterminate + .arco-checkbox-icon::after) {
-  background: #fff;
+.batch-check :deep(.arco-checkbox-input:checked + .arco-checkbox-icon::after),
+.batch-check.arco-checkbox-checked :deep(.arco-checkbox-icon::after) {
+  border-color: #fff !important;
+}
+
+/* 半选状态 */
+.batch-check :deep(.arco-checkbox-input:indeterminate + .arco-checkbox-icon),
+.batch-check.arco-checkbox-indeterminate :deep(.arco-checkbox-icon) {
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
+}
+
+.batch-check :deep(.arco-checkbox-input:indeterminate + .arco-checkbox-icon::after),
+.batch-check.arco-checkbox-indeterminate :deep(.arco-checkbox-icon::after) {
+  background: #fff !important;
 }
 
 .works-title {
@@ -2731,7 +2776,7 @@ function handleDownload(url?: string) {
 .batch-checkbox {
   position: absolute;
   top: 10px;
-  left: 10px;
+  right: 10px;
   z-index: 10;
 }
 
@@ -2743,6 +2788,18 @@ function handleDownload(url?: string) {
 
 .batch-checkbox :deep(.arco-checkbox-label) {
   display: none;
+}
+
+/* 卡片上的复选框：未选中时使用不透明浅色底，不挡住左下角状态标签 */
+.batch-checkbox .batch-check :deep(.arco-checkbox-icon) {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.batch-checkbox .batch-check.arco-checkbox-checked :deep(.arco-checkbox-icon),
+.batch-checkbox .batch-check :deep(.arco-checkbox-input:checked + .arco-checkbox-icon) {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
 }
 
 .work-img-box {

@@ -92,25 +92,57 @@ const videoProviderToBackendNames: Record<string, string | string[]> = {
 }
 const activeImageModelNames = ref<Set<string>>(new Set())
 const activeVideoModelNames = ref<Set<string>>(new Set())
+const imageOrderMap = ref<Record<string, number>>({})
+const videoOrderMap = ref<Record<string, number>>({})
 const modelPointsMap = ref<Record<string, number>>({})
+
+function getOrderForImageProvider(p: { value: string }) {
+  const backends = imageProviderToBackendNames[p.value]
+  const names = Array.isArray(backends) ? backends : [backends ?? p.value]
+  let minOrder: number | null = null
+  for (const name of names) {
+    const ord = imageOrderMap.value[name]
+    if (typeof ord === 'number') {
+      if (minOrder === null || ord < minOrder) minOrder = ord
+    }
+  }
+  return minOrder ?? Number.MAX_SAFE_INTEGER
+}
+
+function getOrderForVideoProvider(p: { value: string }) {
+  const backends = videoProviderToBackendNames[p.value]
+  const names = Array.isArray(backends) ? backends : [backends ?? p.value]
+  let minOrder: number | null = null
+  for (const name of names) {
+    const ord = videoOrderMap.value[name]
+    if (typeof ord === 'number') {
+      if (minOrder === null || ord < minOrder) minOrder = ord
+    }
+  }
+  return minOrder ?? Number.MAX_SAFE_INTEGER
+}
 
 const visibleImageProviders = computed(() => {
   const set = activeImageModelNames.value
-  if (set.size === 0) return imageProvidersDef
-  return imageProvidersDef.filter(p => {
-    const backends = imageProviderToBackendNames[p.value]
-    const names = Array.isArray(backends) ? backends : [backends ?? p.value]
-    return names.some((b: string) => set.has(b))
-  })
+  const baseList = set.size === 0
+    ? imageProvidersDef
+    : imageProvidersDef.filter(p => {
+      const backends = imageProviderToBackendNames[p.value]
+      const names = Array.isArray(backends) ? backends : [backends ?? p.value]
+      return names.some((b: string) => set.has(b))
+    })
+  return baseList.slice().sort((a, b) => getOrderForImageProvider(a) - getOrderForImageProvider(b))
 })
 const visibleVideoProviders = computed(() => {
   const set = activeVideoModelNames.value
-  if (set.size === 0) return videoProvidersDef
-  return videoProvidersDef.filter(p => {
-    const backends = videoProviderToBackendNames[p.value]
-    const names = Array.isArray(backends) ? backends : [backends ?? p.value]
-    return names.some((b: string) => set.has(b))
-  })
+  const baseList = set.size === 0
+    ? videoProvidersDef
+    : videoProvidersDef.filter(p => {
+      const backends = videoProviderToBackendNames[p.value]
+      const names = Array.isArray(backends) ? backends : [backends ?? p.value]
+      return names.some((b: string) => set.has(b))
+    })
+  return baseList.slice().sort((a, b) => getOrderForVideoProvider(a) - getOrderForVideoProvider(b))
 })
 
 // 图像模型参数配置（与 DrawLayout.vue 对齐）
@@ -304,17 +336,29 @@ async function fetchModelPoints() {
       activeImageModelNames.value = new Set(
         imageList.map((m: { modelName?: string }) => m.modelName).filter((x): x is string => Boolean(x))
       )
+      const orderMap: Record<string, number> = {}
+      const pointsMap: Record<string, number> = {}
       for (const m of imageList) {
-        if (m.deductPoints) modelPointsMap.value[m.modelName] = m.deductPoints
+        if (!m || !m.modelName) continue
+        if (typeof m.order === 'number') orderMap[m.modelName] = m.order
+        if (m.deductPoints) pointsMap[m.modelName] = m.deductPoints
       }
+      imageOrderMap.value = orderMap
+      modelPointsMap.value = { ...modelPointsMap.value, ...pointsMap }
     }
     if (Array.isArray(videoList)) {
       activeVideoModelNames.value = new Set(
         videoList.map((m: { modelName?: string }) => m.modelName).filter((x): x is string => Boolean(x))
       )
+      const orderMap: Record<string, number> = {}
+      const pointsMap: Record<string, number> = {}
       for (const m of videoList) {
-        if (m.deductPoints) modelPointsMap.value[m.modelName] = m.deductPoints
+        if (!m || !m.modelName) continue
+        if (typeof m.order === 'number') orderMap[m.modelName] = m.order
+        if (m.deductPoints) pointsMap[m.modelName] = m.deductPoints
       }
+      videoOrderMap.value = orderMap
+      modelPointsMap.value = { ...modelPointsMap.value, ...pointsMap }
     }
   } catch { /* ignore */ }
 }
@@ -323,7 +367,12 @@ function isSelectedModelInVisible(visibleOptions: Array<{ id: string }>) {
   return visibleOptions.some(o => o.id === selectedModel.value)
 }
 
+// 仅在有接口数据时用接口返回的第一个模型作为默认
 watch([visibleImageProviders, visibleVideoProviders, promptMode], () => {
+  const hasImage = activeImageModelNames.value.size > 0
+  const hasVideo = activeVideoModelNames.value.size > 0
+  const hasData = promptMode.value === 'video' ? hasVideo : hasImage
+  if (!hasData) return
   const visible = promptMode.value === 'video' ? visibleVideoProviders.value : visibleImageProviders.value
   const options = promptMode.value === 'video'
     ? visible.map(p => ({ id: p.value }))

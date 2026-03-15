@@ -65,7 +65,7 @@ export const useCanvasStore = defineStore('canvas', () => {
   const promptMode = ref<'image' | 'video'>('image')
   const promptText = ref('')
   const negativePromptText = ref('')
-  const selectedModel = ref('gpt-image-1.5')
+  const selectedModel = ref('')
   const paramSettings = ref<{
     size?: string
     style?: string

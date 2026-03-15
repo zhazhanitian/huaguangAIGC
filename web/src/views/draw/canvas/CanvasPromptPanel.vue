@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { Message, Modal } from '@arco-design/web-vue'
-import { Grid3X3, Image as ImageIcon, Play, Plus, SlidersHorizontal, Video, X } from 'lucide-vue-next'
+import { Grid3X3, Image as ImageIcon, Play, Plus, SlidersHorizontal, X } from 'lucide-vue-next'
 
 // 参数选项类型
 type RatioOption = { value: string; label: string; icon: string }
@@ -41,7 +41,6 @@ const emit = defineEmits<{
 }>()
 
 // 弹出框状态
-const modePopoverVisible = ref(false)
 const modelPopoverVisible = ref(false)
 const paramsPopoverVisible = ref(false)
 
@@ -131,12 +130,6 @@ const paramsDisplayText = computed(() => {
   }
   return ''
 })
-
-// 处理模式切换
-function handleModeSelect(newMode: 'image' | 'video') {
-  emit('update', { mode: newMode })
-  modePopoverVisible.value = false
-}
 
 // 处理模型切换
 function handleModelSelect(modelId: string) {
@@ -321,42 +314,11 @@ function handleGenerate() {
 
     <!-- 底部工具栏 -->
     <div class="toolbar">
-      <!-- 左侧：模式选择 -->
+      <!-- 左侧：仅图片模式标识（已移除视频切换） -->
       <div class="toolbar-left">
-        <a-popover
-          v-model:popup-visible="modePopoverVisible"
-          trigger="click"
-          position="top"
-          popup-container="body"
-          :unmount-on-close="true"
-          content-class="canvas-elegant-popover"
-          :content-style="{ padding: '6px' }"
-        >
-          <button class="tool-btn mode-btn" :class="{ active: true }">
-            <ImageIcon v-if="mode === 'image'" :size="16" />
-            <Video v-else :size="16" />
-          </button>
-          <template #content>
-            <div class="popover-menu">
-              <div
-                class="arco-dropdown-option ui-option mode-option-entry"
-                :class="{ 'arco-dropdown-option-active': mode === 'image' }"
-                @click="handleModeSelect('image')"
-              >
-                <ImageIcon :size="16" />
-                <span class="ui-option-title">图像生成</span>
-              </div>
-              <div
-                class="arco-dropdown-option ui-option mode-option-entry"
-                :class="{ 'arco-dropdown-option-active': mode === 'video' }"
-                @click="handleModeSelect('video')"
-              >
-                <Video :size="16" />
-                <span class="ui-option-title">视频生成</span>
-              </div>
-            </div>
-          </template>
-        </a-popover>
+        <span class="tool-btn mode-btn mode-btn-static" title="图像生成">
+          <ImageIcon :size="16" />
+        </span>
       </div>
 
       <!-- 右侧：模型、参数、生成 -->
@@ -774,6 +736,11 @@ function handleGenerate() {
 }
 
 /* 模型按钮颜色点 */
+.mode-btn-static {
+  cursor: default;
+  opacity: 0.85;
+}
+
 .model-btn.has-model {
   background: var(--color-fill-1, rgba(255,255,255,0.04));
 }
