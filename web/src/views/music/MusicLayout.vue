@@ -9,6 +9,7 @@ import {
   runKieOperation, queryKieOperation, retryMusicTask, deleteMusicTask,
   type MusicTask, type MusicGalleryItem, type CreateMusicTaskData, type KieMusicOperation,
 } from '../../api/music'
+import { checkText } from '../../api/content-moderation'
 import { getModels } from '../../api/model'
 import EmptyState from '../../components/EmptyState.vue'
 import WorkCardActionButton from '../../components/WorkCardActionButton.vue'
@@ -91,6 +92,27 @@ async function fetchMusicModelPoints() {
   } catch { /* ignore */ }
 }
 
+const customMode = ref(true)
+const isInstrumental = ref(false)
+const showAdvanced = ref(false)
+
+const form = ref<CreateMusicTaskData>({
+  provider: 'suno',
+  model: 'V4_5PLUS',
+  customMode: true,
+  instrumental: false,
+  title: '',
+  prompt: '',
+  style: '',
+  negativeTags: '',
+  vocalGender: undefined,
+  styleWeight: 0.5,
+  weirdnessConstraint: 0.5,
+  audioWeight: 0.5,
+  personaId: '',
+  personaModel: 'style_persona',
+})
+
 watch(modelOptions, (opts) => {
   const first = opts[0]
   if (opts.length && first && !opts.some(o => o.value === form.value.model)) {
@@ -133,27 +155,6 @@ const operationTemplates: Record<KieMusicOperation, Record<string, unknown>> = {
   addInstrumental: { uploadUrl: 'https://example.com/input.mp3', model: 'V4_5PLUS', title: '伴奏版音轨', tags: 'cinematic, piano', negativeTags: 'metal', callBackUrl: 'https://example.com/kie-callback' },
   generatePersona: { taskId: '', audioId: '', name: '未来之声', description: '未来感电音流行人设，节奏鲜明', vocalStart: 0, vocalEnd: 20, style: 'electro pop' },
 }
-
-const customMode = ref(true)
-const isInstrumental = ref(false)
-const showAdvanced = ref(false)
-
-const form = ref<CreateMusicTaskData>({
-  provider: 'suno',
-  model: 'V4_5PLUS',
-  customMode: true,
-  instrumental: false,
-  title: '',
-  prompt: '',
-  style: '',
-  negativeTags: '',
-  vocalGender: undefined,
-  styleWeight: 0.5,
-  weirdnessConstraint: 0.5,
-  audioWeight: 0.5,
-  personaId: '',
-  personaModel: 'style_persona',
-})
 
 const styles = [
   { value: 'pop', label: '流行', emoji: '🎵', color: '#165DFF' },
@@ -325,6 +326,23 @@ async function handleGenerate() {
     if (!form.value.style?.trim()) { Message.warning('自定义模式下 style 必填'); return }
     if (!form.value.title?.trim()) { Message.warning('自定义模式下 title 必填'); return }
     if ((form.value.title?.trim().length || 0) > 80) { Message.warning('title 最长 80 字符'); return }
+  }
+
+  const textToCheck = [prompt, form.value.style, form.value.title].filter(Boolean).join(' ')
+  if (textToCheck.trim()) {
+    try {
+      const { data: checkResult } = await checkText(textToCheck)
+      if (!checkResult.passed) {
+        Modal.error({
+          title: '⚠️ 内容安全提示',
+          content: checkResult.descriptions || checkResult.reason || '您的描述存在违规风险，请修改后重试。',
+          okText: '我知道了',
+        })
+        return
+      }
+    } catch {
+      // 预检接口失败不阻断
+    }
   }
 
   generating.value = true
@@ -682,7 +700,9 @@ async function handleKieQuery() {
         </template>
 
         <!-- 生成 -->
-        <GenerateButton :loading="generating" loading-text="创作中..." text="开始创作" @click="handleGenerate" />
+        <div class="form-actions">
+          <GenerateButton :loading="generating" loading-text="创作中..." text="开始创作" @click="handleGenerate" />
+        </div>
 
         <!-- 二次创作工具（融入创作流程） -->
         <section class="creator-tools">
@@ -723,11 +743,13 @@ async function handleKieQuery() {
           <label class="fl" style="margin-top:10px">负向风格（可选）</label>
           <input v-model="remixNegativeTags" class="text-input" placeholder="如：metal, noisy" />
 
-          <button class="gen-btn" :disabled="creatorToolLoading || !completedTasks.length"
-            @click="handleCreatorToolRun">
-            <IconLoading v-if="creatorToolLoading" class="spin" />
-            <span>{{ creatorToolLoading ? '提交中...' : '执行二次创作' }}</span>
-          </button>
+          <div class="ct-actions">
+            <a-button type="primary" long size="large" class="gen-btn"
+              :loading="creatorToolLoading" :disabled="!completedTasks.length"
+              @click="handleCreatorToolRun">
+              {{ creatorToolLoading ? '提交中...' : '执行二次创作' }}
+            </a-button>
+          </div>
 
           <div v-if="!completedTasks.length" class="ct-tip">请先完成至少一首作品，再使用二次创作工具。</div>
           <pre v-if="creatorToolResult" class="ct-result">{{ creatorToolResult }}</pre>
@@ -901,10 +923,10 @@ async function handleKieQuery() {
 
           <div class="toolkit-actions">
             <button class="mode-btn" @click="loadOperationTemplate()">重置模板</button>
-            <button class="gen-btn" :disabled="toolkitLoading" @click="handleKieRun">
-              <IconLoading v-if="toolkitLoading" class="spin" />
-              <span>{{ toolkitLoading ? '执行中...' : '提交执行' }}</span>
-            </button>
+            <a-button type="primary" long size="large" class="gen-btn"
+              :loading="toolkitLoading" @click="handleKieRun">
+              {{ toolkitLoading ? '执行中...' : '提交执行' }}
+            </a-button>
           </div>
         </section>
 
@@ -1244,8 +1266,28 @@ async function handleKieQuery() {
   font-weight: 500;
 }
 
-/* 生成按钮 */
-/* 生成按钮 → 使用 GenerateButton 组件 */
+/* 生成按钮：与视频页统一，圆润、有高度、有上下间距 */
+.form-actions {
+  margin-top: var(--sp-2);
+  padding-bottom: 12px;
+}
+
+.form-actions :deep(.gen-btn),
+.ct-actions :deep(.gen-btn),
+.toolkit-actions :deep(.gen-btn) {
+  border-radius: var(--radius-md);
+  min-height: 44px;
+}
+
+.form-actions :deep(.gen-btn:hover),
+.ct-actions :deep(.gen-btn:hover),
+.toolkit-actions :deep(.gen-btn:hover) {
+  transform: translateY(-1px);
+}
+
+.ct-actions {
+  margin-top: var(--sp-3);
+}
 
 /* 融入创作流程的二次创作工具 */
 .creator-tools {

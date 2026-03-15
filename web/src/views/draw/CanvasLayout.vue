@@ -9,7 +9,7 @@ import CanvasToolbar from './canvas/CanvasToolbar.vue'
 import CanvasStage from './canvas/CanvasStage.vue'
 import CanvasSidebar from './canvas/CanvasSidebar.vue'
 import { getModels } from '../../api/model'
-import { checkContent, type CheckContentResult } from '../../api/badwords'
+import { checkText, type TextCheckResult } from '../../api/content-moderation'
 import { uploadFile } from '../../api/upload'
 
 const canvasStore = useCanvasStore()
@@ -40,8 +40,8 @@ const SNAP_ENABLED = true
 const SNAP_THRESHOLD = 12
 const SNAP_GRID_SIZE = 24
 
-/* === 敏感词检测结果 === */
-const lastCheckResult = ref<CheckContentResult | null>(null)
+/* === 内容安全预检结果 === */
+const lastCheckResult = ref<TextCheckResult | null>(null)
 
 // 转义正则特殊字符
 function escapeRegExp(str: string) {
@@ -521,69 +521,23 @@ async function handleGenerateNode(id: string, forceGenerate = false) {
   const node = nodes.value.find(n => n.id === id)
   if (!node) return
 
-  // === 敏感词预检 ===
+  // === 内容安全预检（阿里云 AI 护栏）===
   if (!forceGenerate) {
     const textToCheck = [node.prompt, node.negativePrompt].filter(Boolean).join(' ')
     if (textToCheck.trim()) {
       try {
-        const { data: checkResult } = await checkContent(textToCheck)
+        const { data: checkResult } = await checkText(textToCheck)
         lastCheckResult.value = checkResult
-
-        // HIGH级别：直接拒绝
-        if (checkResult.highWords && checkResult.highWords.length > 0) {
-          const words = checkResult.highWords.filter(Boolean)
-          const maxTags = 8
-          const shown = words.slice(0, maxTags)
-          const extra = words.length - shown.length
-          const Tag = resolveComponent('a-tag')
-          Modal.confirm({
-            title: '⚠️ 严重违规警告',
-            content: () => h('div', { class: 'badword-modal' }, [
-              h('div', { class: 'badword-desc' }, '您的描述包含严重违规词汇，禁止生成！以下为触发词：'),
-              h('div', { class: 'badword-tags' }, [
-                ...shown.map((w) => h(Tag as any, { color: 'red' }, { default: () => w })),
-                extra > 0 ? h('span', { class: 'badword-more' }, `+${extra}`) : null,
-              ].filter(Boolean)),
-              h('div', { class: 'badword-desc' }, '请立即停止此行为，违规记录已提交后台管理系统。'),
-            ]),
+        if (!checkResult.passed) {
+          Modal.error({
+            title: '⚠️ 内容安全提示',
+            content: checkResult.descriptions || checkResult.reason || '您的描述存在违规风险，请修改后重试。',
             okText: '我知道了',
-            cancelText: '删除违禁词',
-            okButtonProps: { type: 'primary' },
-            cancelButtonProps: { type: 'primary' },
-            modalClass: 'badword-modal-wrap',
-            onCancel: () => handleRemoveBadWordsFromNode(id, words),
-          })
-          return
-        }
-
-        // MEDIUM级别：弹窗确认
-        if (checkResult.needConfirm && checkResult.mediumWords && checkResult.mediumWords.length > 0) {
-          const words = checkResult.mediumWords.filter(Boolean)
-          const maxTags = 8
-          const shown = words.slice(0, maxTags)
-          const extra = words.length - shown.length
-          const Tag = resolveComponent('a-tag')
-          Modal.confirm({
-            title: '⚠️ 敏感内容提示',
-            content: () => h('div', { class: 'badword-modal' }, [
-              h('div', { class: 'badword-desc' }, '您的描述包含以下中级敏感词，请确认是否继续：'),
-              h('div', { class: 'badword-tags' }, [
-                ...shown.map((w) => h(Tag as any, { color: 'red' }, { default: () => w })),
-                extra > 0 ? h('span', { class: 'badword-more' }, `+${extra}`) : null,
-              ].filter(Boolean)),
-            ]),
-            okText: '确认生成',
-            cancelText: '删除违禁词',
-            okButtonProps: { type: 'primary' },
-            cancelButtonProps: { type: 'primary' },
-            modalClass: 'badword-modal-wrap',
-            onOk: () => handleGenerateNode(id, true), // 强制生成
-            onCancel: () => handleRemoveBadWordsFromNode(id, words),
           })
           return
         }
       } catch {
-        // 检测接口失败不影响流程
+        // 预检接口失败不阻断流程
       }
     }
   }
@@ -591,24 +545,14 @@ async function handleGenerateNode(id: string, forceGenerate = false) {
   // 执行生成
   try {
     await canvasStore.createTaskForNode(id)
-
-    // 如果有 LOW 级别敏感词，显示提示
-    if (lastCheckResult.value?.hasWarning && lastCheckResult.value?.lowWords?.length > 0) {
-      Message.info({
-        content: `📝 提示：您的描述包含轻微敏感词「${lastCheckResult.value.lowWords.slice(0, 3).join('、')}」，已标记`,
-        duration: 5000,
-      })
-    }
   } catch (err: any) {
     const msg = err?.response?.data?.message || err?.message || ''
-    if (msg.includes('严重违规') || msg.includes('禁止生成')) {
+    if (msg.includes('违规') || msg.includes('禁止生成') || msg.includes('敏感')) {
       Modal.error({
-        title: '⚠️ 严重违规警告',
+        title: '⚠️ 内容安全提示',
         content: msg,
         okText: '我知道了',
       })
-    } else if (msg.includes('敏感词') || msg.includes('sensitive')) {
-      Message.error({ content: '❗ 您的描述包含敏感内容，请修改后重试', duration: 6000 })
     } else if (msg.includes('余额不足') || msg.includes('balance')) {
       Message.error({ content: '积分不足，请充值后再试', duration: 5000 })
     } else {
@@ -633,83 +577,25 @@ function handleUpdateParams(params: { size?: string; style?: string }) {
   canvasStore.updatePromptState({ params })
 }
 
-// 从提示词面板生成（带敏感词检测）
+// 从提示词面板生成（带内容安全预检）
 async function handleGenerateFromPrompt(forceGenerate = false) {
-  // === 敏感词预检 ===
+  // === 内容安全预检（阿里云 AI 护栏）===
   if (!forceGenerate) {
     const textToCheck = [promptText.value, negativePromptText.value].filter(Boolean).join(' ')
     if (textToCheck.trim()) {
       try {
-        const { data: checkResult } = await checkContent(textToCheck)
+        const { data: checkResult } = await checkText(textToCheck)
         lastCheckResult.value = checkResult
-
-        // HIGH级别：直接拒绝
-        if (checkResult.highWords && checkResult.highWords.length > 0) {
-          const words = checkResult.highWords.filter(Boolean)
-          const maxTags = 8
-          const shown = words.slice(0, maxTags)
-          const extra = words.length - shown.length
-          const Tag = resolveComponent('a-tag')
-          Modal.confirm({
-            title: '⚠️ 严重违规警告',
-            content: () => h('div', { class: 'badword-modal' }, [
-              h('div', { class: 'badword-desc' }, '您的描述包含严重违规词汇，禁止生成！以下为触发词：'),
-              h('div', { class: 'badword-tags' }, [
-                ...shown.map((w) => h(Tag as any, { color: 'red' }, { default: () => w })),
-                extra > 0 ? h('span', { class: 'badword-more' }, `+${extra}`) : null,
-              ].filter(Boolean)),
-              h('div', { class: 'badword-desc' }, '请立即停止此行为，违规记录已提交后台管理系统。'),
-            ]),
+        if (!checkResult.passed) {
+          Modal.error({
+            title: '⚠️ 内容安全提示',
+            content: checkResult.descriptions || checkResult.reason || '您的描述存在违规风险，请修改后重试。',
             okText: '我知道了',
-            cancelText: '删除违禁词',
-            okButtonProps: { type: 'primary' },
-            cancelButtonProps: { type: 'primary' },
-            modalClass: 'badword-modal-wrap',
-            onCancel: () => {
-              // 从提示词中删除敏感词
-              const newPrompt = removeBadWordsFromText(promptText.value || '', words)
-              const newNegativePrompt = removeBadWordsFromText(negativePromptText.value || '', words)
-              canvasStore.updatePromptState({ promptText: newPrompt, negativePromptText: newNegativePrompt })
-              Message.success({ content: '已删除违禁词', duration: 3000 })
-            },
-          })
-          return
-        }
-
-        // MEDIUM级别：弹窗确认
-        if (checkResult.needConfirm && checkResult.mediumWords && checkResult.mediumWords.length > 0) {
-          const words = checkResult.mediumWords.filter(Boolean)
-          const maxTags = 8
-          const shown = words.slice(0, maxTags)
-          const extra = words.length - shown.length
-          const Tag = resolveComponent('a-tag')
-          Modal.confirm({
-            title: '⚠️ 敏感内容提示',
-            content: () => h('div', { class: 'badword-modal' }, [
-              h('div', { class: 'badword-desc' }, '您的描述包含以下中级敏感词，请确认是否继续：'),
-              h('div', { class: 'badword-tags' }, [
-                ...shown.map((w) => h(Tag as any, { color: 'red' }, { default: () => w })),
-                extra > 0 ? h('span', { class: 'badword-more' }, `+${extra}`) : null,
-              ].filter(Boolean)),
-            ]),
-            okText: '确认生成',
-            cancelText: '删除违禁词',
-            okButtonProps: { type: 'primary' },
-            cancelButtonProps: { type: 'primary' },
-            modalClass: 'badword-modal-wrap',
-            onOk: () => handleGenerateFromPrompt(true), // 强制生成
-            onCancel: () => {
-              // 从提示词中删除敏感词
-              const newPrompt = removeBadWordsFromText(promptText.value || '', words)
-              const newNegativePrompt = removeBadWordsFromText(negativePromptText.value || '', words)
-              canvasStore.updatePromptState({ promptText: newPrompt, negativePromptText: newNegativePrompt })
-              Message.success({ content: '已删除违禁词', duration: 3000 })
-            },
           })
           return
         }
       } catch {
-        // 检测接口失败不影响流程
+        // 预检接口失败不阻断流程
       }
     }
   }
@@ -717,24 +603,14 @@ async function handleGenerateFromPrompt(forceGenerate = false) {
   // 执行生成
   try {
     await canvasStore.generateFromPrompt()
-
-    // 如果有 LOW 级别敏感词，显示提示
-    if (lastCheckResult.value?.hasWarning && lastCheckResult.value?.lowWords?.length > 0) {
-      Message.info({
-        content: `📝 提示：您的描述包含轻微敏感词「${lastCheckResult.value.lowWords.slice(0, 3).join('、')}」，已标记`,
-        duration: 5000,
-      })
-    }
   } catch (err: any) {
     const msg = err?.response?.data?.message || err?.message || ''
-    if (msg.includes('严重违规') || msg.includes('禁止生成')) {
+    if (msg.includes('违规') || msg.includes('禁止生成') || msg.includes('敏感')) {
       Modal.error({
-        title: '⚠️ 严重违规警告',
+        title: '⚠️ 内容安全提示',
         content: msg,
         okText: '我知道了',
       })
-    } else if (msg.includes('敏感词') || msg.includes('sensitive')) {
-      Message.error({ content: '❗ 您的描述包含敏感内容，请修改后重试', duration: 6000 })
     } else if (msg.includes('余额不足') || msg.includes('balance')) {
       Message.error({ content: '积分不足，请充值后再试', duration: 5000 })
     } else {
@@ -762,6 +638,13 @@ const refImages = ref<{ id: string; file: File; url: string }[]>([])
 
 function handleUpdateRefImages(images: { id: string; file: File; url: string }[]) {
   refImages.value = images
+}
+
+async function uploadRefFile(file: File): Promise<string> {
+  const { data } = await uploadFile(file)
+  const url = data?.url || ''
+  if (url.startsWith('http')) return url
+  return `${window.location.origin}${url.startsWith('/') ? url : `/${url}`}`
 }
 
 function handleDeleteNode(id: string) {
@@ -895,13 +778,19 @@ async function handleUploadChange(event: Event) {
     Message.success({ content: '图片已上传并插入画布', duration: 1600 })
   } catch (err: any) {
     const status = err?.response?.status
+    const msg = err?.response?.data?.message || err?.message || ''
     if (status === 401) {
       Message.error({ content: '上传失败：请先登录后再上传图片', duration: 3000 })
     } else if (status === 413) {
       Message.error({ content: '上传失败：图片超过 10MB 限制', duration: 3000 })
+    } else if (status === 400) {
+      Modal.error({
+        title: '⚠️ 图片不合规',
+        content: msg || '请更换图片后重试',
+        okText: '我知道了',
+      })
     } else {
-      const msg = err?.response?.data?.message || err?.message || '上传失败，请稍后重试'
-      Message.error({ content: `上传失败：${msg}`, duration: 3200 })
+      Message.error({ content: msg ? `上传失败：${msg}` : '上传失败，请稍后重试', duration: 3200 })
     }
   } finally {
     if (target) target.value = ''
@@ -969,10 +858,10 @@ async function handleUploadChange(event: Event) {
 
     <CanvasSidebar :nodes="historyNodes" :selected-id="selectedNodeId || ''" :prompt-mode="promptMode"
       :prompt-text="promptText" :selected-model="selectedModel" :param-settings="paramSettings" :models="modelOptions"
-      :model-configs="modelConfigs" @select="handleSelectNode" @generate-node="handleGenerateNode"
-      @delete-node="handleDeleteNode" @download-node="handleDownloadNode" @update-prompt="handleUpdatePrompt"
-      @update-params="handleUpdateParams" @generate-from-prompt="handleGenerateFromPrompt"
-      @update-ref-images="handleUpdateRefImages" />
+      :model-configs="modelConfigs" :upload-ref-file="uploadRefFile" @select="handleSelectNode"
+      @generate-node="handleGenerateNode" @delete-node="handleDeleteNode" @download-node="handleDownloadNode"
+      @update-prompt="handleUpdatePrompt" @update-params="handleUpdateParams"
+      @generate-from-prompt="handleGenerateFromPrompt" @update-ref-images="handleUpdateRefImages" />
   </div>
 </template>
 

@@ -8,6 +8,12 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 3003,
     strictPort: true,
+    // 明确指定 HMR WebSocket 的地址，避免通过代理或不同 host 访问时连不上
+    hmr: {
+      protocol: 'ws',
+      host: '127.0.0.1',
+      port: 3003,
+    },
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:3001',

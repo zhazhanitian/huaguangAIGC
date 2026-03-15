@@ -39,6 +39,7 @@ import {
   type Model3dTask,
 } from '../../api/model3d'
 import { uploadFile } from '../../api/upload'
+import { checkText } from '../../api/content-moderation'
 import { getModels } from '../../api/model'
 import EmptyState from '../../components/EmptyState.vue'
 import WorkCardActionButton from '../../components/WorkCardActionButton.vue'
@@ -99,8 +100,17 @@ const form = ref({
   exportFormat: '',
 })
 
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024 // 10MB，与后端一致
+
+function normalizeUploadUrl(rawUrl: string) {
+  if (!rawUrl) return rawUrl
+  if (rawUrl.startsWith('http')) return rawUrl
+  return `${window.location.origin}${rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`}`
+}
+
 const sourceImage = ref<{ file: File; url: string } | null>(null)
 const sourceInputRef = ref<HTMLInputElement>()
+const sourceUploading = ref(false)
 
 const providersDef = [
   { value: 'tencent-hunyuan-3d-pro', label: '腾讯混元3D-专业版', desc: '高质量，支持更多细节参数' },
@@ -343,26 +353,37 @@ function openPrintOrders() {
   fetchPrintOrders()
 }
 
-function pickSourceImage(e: Event) {
+async function pickSourceImage(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file || !file.type.startsWith('image/')) return
-  if (sourceImage.value) URL.revokeObjectURL(sourceImage.value.url)
-  sourceImage.value = { file, url: URL.createObjectURL(file) }
-    ; (e.target as HTMLInputElement).value = ''
+  ;(e.target as HTMLInputElement).value = ''
+  if (file.size > MAX_UPLOAD_SIZE) {
+    Message.error({ content: '图片超过 10MB 限制', duration: 4000 })
+    return
+  }
+  sourceUploading.value = true
+  try {
+    const { data } = await uploadFile(file)
+    const url = data?.url || ''
+    if (!url) throw new Error('未返回地址')
+    const serverUrl = normalizeUploadUrl(url)
+    if (sourceImage.value?.url.startsWith('blob:')) URL.revokeObjectURL(sourceImage.value.url)
+    sourceImage.value = { file, url: serverUrl }
+  } catch (err: any) {
+    const msg = err?.response?.data?.message || err?.message || ''
+    const status = err?.response?.status
+    if (status === 400) Modal.error({ title: '⚠️ 图片不合规', content: msg || '请更换图片后重试', okText: '我知道了' })
+    else Message.error({ content: msg || '上传失败', duration: 4000 })
+  } finally {
+    sourceUploading.value = false
+  }
 }
 
 function clearSourceImage() {
   if (sourceImage.value) {
-    URL.revokeObjectURL(sourceImage.value.url)
+    if (sourceImage.value.url.startsWith('blob:')) URL.revokeObjectURL(sourceImage.value.url)
     sourceImage.value = null
   }
-}
-
-async function uploadImageAndGetUrl(file: File) {
-  const { data } = await uploadFile(file)
-  return data.url.startsWith('http')
-    ? data.url
-    : `${window.location.origin}${data.url.startsWith('/') ? data.url : `/${data.url}`}`
 }
 
 async function handleGenerate() {
@@ -380,13 +401,24 @@ async function handleGenerate() {
     return
   }
 
+  try {
+    const { data: checkResult } = await checkText(prompt)
+    if (!checkResult.passed) {
+      Modal.error({
+        title: '⚠️ 内容安全提示',
+        content: checkResult.descriptions || checkResult.reason || '您的描述存在违规风险，请修改后重试。',
+        okText: '我知道了',
+      })
+      return
+    }
+  } catch {
+    // 预检接口失败不阻断
+  }
+
   generating.value = true
   try {
-    let inputImageUrl: string | undefined
-    if (form.value.taskType === 'img2model' && sourceImage.value) {
-      uploading.value = true
-      inputImageUrl = await uploadImageAndGetUrl(sourceImage.value.file)
-    }
+    const inputImageUrl =
+      form.value.taskType === 'img2model' && sourceImage.value ? sourceImage.value.url : undefined
 
     const payload: CreateModel3dTaskData = {
       taskType: form.value.taskType as 'text2model' | 'img2model',
@@ -1073,7 +1105,8 @@ onUnmounted(() => {
           </div>
           <div v-else class="dropzone" @click="sourceInputRef?.click()">
             <IconPlus :size="28" class="dz-plus" />
-            <span>点击上传参考图</span>
+            <span>{{ sourceUploading ? '上传与安全检测中…' : '点击上传参考图' }}</span>
+            <span class="dz-hint">单张 ≤10MB</span>
           </div>
           <input ref="sourceInputRef" type="file" accept="image/*" style="display:none" @change="pickSourceImage" />
         </section>
@@ -1144,8 +1177,10 @@ onUnmounted(() => {
           </a-select>
         </section>
 
-        <GenerateButton :loading="generating || uploading" :disabled="!form.prompt.trim()"
-          :loading-text="uploading ? '上传中...' : '生成中...'" text="立即生成" @click="handleGenerate" />
+        <div class="form-actions">
+          <GenerateButton :loading="generating || uploading" :disabled="!form.prompt.trim()"
+            :loading-text="uploading ? '上传中...' : '生成中...'" text="立即生成" @click="handleGenerate" />
+        </div>
       </aside>
 
       <section class="works">
@@ -1578,7 +1613,20 @@ onUnmounted(() => {
   width: 100%;
 }
 
-/* 生成按钮 → 使用 GenerateButton 组件 */
+/* 生成按钮：与视频页统一，圆润、有高度、有上下间距 */
+.form-actions {
+  margin-top: var(--sp-2);
+  padding-bottom: 12px;
+}
+
+.form-actions :deep(.gen-btn) {
+  border-radius: var(--radius-md);
+  min-height: 44px;
+}
+
+.form-actions :deep(.gen-btn:hover) {
+  transform: translateY(-1px);
+}
 
 .works {
   flex: 1;

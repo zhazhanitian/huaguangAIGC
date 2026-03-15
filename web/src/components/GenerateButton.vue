@@ -27,7 +27,8 @@ const emit = defineEmits<{
 
 <style scoped>
 .gen-btn {
-  /* Remove all custom sizing/radius to match Arco Design standard */
   font-weight: 500;
+  border-radius: var(--radius-md);
+  min-height: 44px;
 }
 </style>

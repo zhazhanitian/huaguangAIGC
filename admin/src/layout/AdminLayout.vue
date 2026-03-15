@@ -15,7 +15,6 @@ import {
   IconMenuUnfold,
   IconCloud,
   IconLock,
-  IconSafe,
 } from '@arco-design/web-vue/es/icon'
 
 const route = useRoute()
@@ -46,7 +45,6 @@ const menuSections = [
     items: [
       { path: '/config', label: '系统配置', icon: IconSettings },
       { path: '/ops', label: '运维监控', icon: IconCloud },
-      { path: '/badwords', label: '敏感词管理', icon: IconSafe },
     ],
   },
 ]
@@ -61,7 +59,6 @@ const breadcrumbItems = computed(() => {
     '/config': '系统配置',
     '/ops': '运维监控',
     '/canvas': '画布管理',
-    '/badwords': '敏感词管理',
   }
   return [
     { path: '/dashboard', label: '管理后台' },

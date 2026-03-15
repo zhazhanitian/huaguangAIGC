@@ -9,6 +9,7 @@ import {
   type VideoTask, type VideoGalleryItem, type CreateVideoTaskData,
 } from '../../api/video'
 import { uploadFile } from '../../api/upload'
+import { checkText } from '../../api/content-moderation'
 import { getModels } from '../../api/model'
 import EmptyState from '../../components/EmptyState.vue'
 import WorkCardActionButton from '../../components/WorkCardActionButton.vue'
@@ -74,24 +75,53 @@ const klingV26NegativePrompt = ref('')
 /* Kling v2.6 图生视频：尾帧图（可选，单独上传入口） */
 const klingV26TailFrameFile = ref<{ url: string; file: File } | null>(null)
 const klingV26TailFrameInputRef = ref<HTMLInputElement>()
-function pickKlingV26TailFrame(e: Event) {
+async function pickKlingV26TailFrame(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file || !file.type.startsWith('image/')) return
-  const url = URL.createObjectURL(file)
-  if (klingV26TailFrameFile.value) URL.revokeObjectURL(klingV26TailFrameFile.value.url)
-  klingV26TailFrameFile.value = { url, file }
   ;(e.target as HTMLInputElement).value = ''
+  try {
+    const serverUrl = await uploadImageFile(file)
+    if (klingV26TailFrameFile.value?.url.startsWith('blob:')) URL.revokeObjectURL(klingV26TailFrameFile.value.url)
+    klingV26TailFrameFile.value = { url: serverUrl, file }
+  } catch (err: any) {
+    if ((err as Error).message === 'SIZE') return
+    const msg = err?.response?.data?.message || err?.message || ''
+    const status = err?.response?.status
+    if (status === 400) Modal.error({ title: '⚠️ 图片不合规', content: msg || '请更换图片后重试', okText: '我知道了' })
+    else Message.error({ content: msg || '上传失败', duration: 4000 })
+  }
 }
 function clearKlingV26TailFrame() {
   if (klingV26TailFrameFile.value) {
-    URL.revokeObjectURL(klingV26TailFrameFile.value.url)
+    if (klingV26TailFrameFile.value.url.startsWith('blob:')) URL.revokeObjectURL(klingV26TailFrameFile.value.url)
     klingV26TailFrameFile.value = null
   }
+}
+
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024 // 10MB，与后端一致
+
+function normalizeUploadUrl(rawUrl: string) {
+  if (!rawUrl) return rawUrl
+  if (rawUrl.startsWith('http')) return rawUrl
+  return `${window.location.origin}${rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`}`
+}
+
+/** 上传图片并返回服务器 URL，失败抛错或提示 */
+async function uploadImageFile(file: File): Promise<string> {
+  if (file.size > MAX_UPLOAD_SIZE) {
+    Message.error({ content: '图片超过 10MB 限制', duration: 4000 })
+    throw new Error('SIZE')
+  }
+  const { data } = await uploadFile(file)
+  const url = data?.url || ''
+  if (!url) throw new Error('未返回地址')
+  return normalizeUploadUrl(url)
 }
 
 /* 首帧/尾帧图 */
 const firstFrameFile = ref<{ url: string; file: File } | null>(null)
 const lastFrameFile = ref<{ url: string; file: File } | null>(null)
+const frameUploading = ref(false)
 /* 首帧输入框 */
 const firstFrameInputRef = ref<HTMLInputElement>()
 /* 尾帧输入框 */
@@ -105,30 +135,60 @@ const motionRoleInputRef = ref<HTMLInputElement>()
 /* 动作视频输入框 */
 const motionVideoInputRef = ref<HTMLInputElement>()
 
-function pickFrame(type: 'first' | 'last', e: Event) {
+async function pickFrame(type: 'first' | 'last', e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file || !file.type.startsWith('image/')) return
-  const url = URL.createObjectURL(file)
-  if (type === 'first') { if (firstFrameFile.value) URL.revokeObjectURL(firstFrameFile.value.url); firstFrameFile.value = { url, file } }
-  else { if (lastFrameFile.value) URL.revokeObjectURL(lastFrameFile.value.url); lastFrameFile.value = { url, file } }
-  ; (e.target as HTMLInputElement).value = ''
+  ;(e.target as HTMLInputElement).value = ''
+  frameUploading.value = true
+  try {
+    const serverUrl = await uploadImageFile(file)
+    if (type === 'first') {
+      if (firstFrameFile.value?.url.startsWith('blob:')) URL.revokeObjectURL(firstFrameFile.value.url)
+      firstFrameFile.value = { url: serverUrl, file }
+    } else {
+      if (lastFrameFile.value?.url.startsWith('blob:')) URL.revokeObjectURL(lastFrameFile.value.url)
+      lastFrameFile.value = { url: serverUrl, file }
+    }
+  } catch (err: any) {
+    if ((err as Error).message === 'SIZE') return
+    const msg = err?.response?.data?.message || err?.message || ''
+    const status = err?.response?.status
+    if (status === 400) Modal.error({ title: '⚠️ 图片不合规', content: msg || '请更换图片后重试', okText: '我知道了' })
+    else Message.error({ content: msg || '上传失败', duration: 4000 })
+  } finally {
+    frameUploading.value = false
+  }
 }
 function clearFrame(type: 'first' | 'last') {
-  if (type === 'first' && firstFrameFile.value) { URL.revokeObjectURL(firstFrameFile.value.url); firstFrameFile.value = null }
-  if (type === 'last' && lastFrameFile.value) { URL.revokeObjectURL(lastFrameFile.value.url); lastFrameFile.value = null }
+  if (type === 'first' && firstFrameFile.value) {
+    if (firstFrameFile.value.url.startsWith('blob:')) URL.revokeObjectURL(firstFrameFile.value.url)
+    firstFrameFile.value = null
+  }
+  if (type === 'last' && lastFrameFile.value) {
+    if (lastFrameFile.value.url.startsWith('blob:')) URL.revokeObjectURL(lastFrameFile.value.url)
+    lastFrameFile.value = null
+  }
 }
 
-function pickMotionImage(e: Event) {
+async function pickMotionImage(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file || !file.type.startsWith('image/')) return
-  const url = URL.createObjectURL(file)
-  if (motionRoleImage.value) URL.revokeObjectURL(motionRoleImage.value.url)
-  motionRoleImage.value = { url, file }
-    ; (e.target as HTMLInputElement).value = ''
+  ;(e.target as HTMLInputElement).value = ''
+  try {
+    const serverUrl = await uploadImageFile(file)
+    if (motionRoleImage.value?.url.startsWith('blob:')) URL.revokeObjectURL(motionRoleImage.value.url)
+    motionRoleImage.value = { url: serverUrl, file }
+  } catch (err: any) {
+    if ((err as Error).message === 'SIZE') return
+    const msg = err?.response?.data?.message || err?.message || ''
+    const status = err?.response?.status
+    if (status === 400) Modal.error({ title: '⚠️ 图片不合规', content: msg || '请更换图片后重试', okText: '我知道了' })
+    else Message.error({ content: msg || '上传失败', duration: 4000 })
+  }
 }
 function clearMotionImage() {
   if (motionRoleImage.value) {
-    URL.revokeObjectURL(motionRoleImage.value.url)
+    if (motionRoleImage.value.url.startsWith('blob:')) URL.revokeObjectURL(motionRoleImage.value.url)
     motionRoleImage.value = null
   }
 }
@@ -151,23 +211,38 @@ function clearMotionVideo() {
 const refImages = ref<{ id: string; file: File; url: string }[]>([])
 const refInputRef = ref<HTMLInputElement>()
 const refInputRefKlingV26 = ref<HTMLInputElement>()
+const refUploading = ref(false)
 const FALLBACK_MAX_REF = 3
 
-function addRefImages(files: File[]) {
+async function addRefImages(files: File[]) {
   const maxRef = modelConfig.value.maxRefImages ?? FALLBACK_MAX_REF
   const imgs = files.filter(f => f.type.startsWith('image/'))
   if (!imgs.length) { Message.warning('请选择图片'); return }
   const left = maxRef - refImages.value.length
   if (left <= 0) { Message.warning(`最多 ${maxRef} 张参考图`); return }
+  refUploading.value = true
   for (const f of imgs.slice(0, left)) {
-    refImages.value.push({ id: `r${Date.now()}${Math.random().toString(36).slice(2, 5)}`, file: f, url: URL.createObjectURL(f) })
+    try {
+      const serverUrl = await uploadImageFile(f)
+      refImages.value.push({ id: `r${Date.now()}${Math.random().toString(36).slice(2, 5)}`, file: f, url: serverUrl })
+    } catch (err: any) {
+      if ((err as Error).message !== 'SIZE') {
+        const msg = err?.response?.data?.message || err?.message || ''
+        const status = err?.response?.status
+        if (status === 400) Modal.error({ title: '⚠️ 图片不合规', content: msg || '请更换图片后重试', okText: '我知道了' })
+        else Message.error({ content: msg || '上传失败', duration: 4000 })
+      }
+    }
   }
+  refUploading.value = false
+  ;(refInputRef.value as HTMLInputElement | undefined) && ((refInputRef.value as HTMLInputElement).value = '')
+  ;(refInputRefKlingV26.value as HTMLInputElement | undefined) && ((refInputRefKlingV26.value as HTMLInputElement).value = '')
 }
 function removeRef(id: string) {
   const i = refImages.value.findIndex(r => r.id === id)
   if (i >= 0) {
     const target = refImages.value[i]
-    if (target) URL.revokeObjectURL(target.url)
+    if (target?.url.startsWith('blob:')) URL.revokeObjectURL(target.url)
     refImages.value.splice(i, 1)
   }
 }
@@ -179,17 +254,35 @@ function handleFirstFrameDrop(e: DragEvent) {
   e.preventDefault()
   const file = e.dataTransfer?.files?.[0]
   if (!file?.type.startsWith('image/')) return
-  const url = URL.createObjectURL(file)
-  if (firstFrameFile.value) URL.revokeObjectURL(firstFrameFile.value.url)
-  firstFrameFile.value = { url, file }
+  frameUploading.value = true
+  uploadImageFile(file).then(serverUrl => {
+    if (firstFrameFile.value?.url.startsWith('blob:')) URL.revokeObjectURL(firstFrameFile.value!.url)
+    firstFrameFile.value = { url: serverUrl, file }
+  }).catch(err => {
+    if ((err as Error).message !== 'SIZE') {
+      const msg = err?.response?.data?.message || err?.message || ''
+      const status = err?.response?.status
+      if (status === 400) Modal.error({ title: '⚠️ 图片不合规', content: msg || '请更换图片后重试', okText: '我知道了' })
+      else Message.error({ content: msg || '上传失败', duration: 4000 })
+    }
+  }).finally(() => { frameUploading.value = false })
 }
 function handleLastFrameDrop(e: DragEvent) {
   e.preventDefault()
   const file = e.dataTransfer?.files?.[0]
   if (!file?.type.startsWith('image/')) return
-  const url = URL.createObjectURL(file)
-  if (lastFrameFile.value) URL.revokeObjectURL(lastFrameFile.value.url)
-  lastFrameFile.value = { url, file }
+  frameUploading.value = true
+  uploadImageFile(file).then(serverUrl => {
+    if (lastFrameFile.value?.url.startsWith('blob:')) URL.revokeObjectURL(lastFrameFile.value!.url)
+    lastFrameFile.value = { url: serverUrl, file }
+  }).catch(err => {
+    if ((err as Error).message !== 'SIZE') {
+      const msg = err?.response?.data?.message || err?.message || ''
+      const status = err?.response?.status
+      if (status === 400) Modal.error({ title: '⚠️ 图片不合规', content: msg || '请更换图片后重试', okText: '我知道了' })
+      else Message.error({ content: msg || '上传失败', duration: 4000 })
+    }
+  }).finally(() => { frameUploading.value = false })
 }
 function handleKlingV26FirstDrop(e: DragEvent) {
   e.preventDefault()
@@ -199,17 +292,33 @@ function handleKlingV26TailDrop(e: DragEvent) {
   e.preventDefault()
   const file = e.dataTransfer?.files?.[0]
   if (!file?.type.startsWith('image/')) return
-  const url = URL.createObjectURL(file)
-  if (klingV26TailFrameFile.value) URL.revokeObjectURL(klingV26TailFrameFile.value.url)
-  klingV26TailFrameFile.value = { url, file }
+  uploadImageFile(file).then(serverUrl => {
+    if (klingV26TailFrameFile.value?.url.startsWith('blob:')) URL.revokeObjectURL(klingV26TailFrameFile.value!.url)
+    klingV26TailFrameFile.value = { url: serverUrl, file }
+  }).catch(err => {
+    if ((err as Error).message !== 'SIZE') {
+      const msg = err?.response?.data?.message || err?.message || ''
+      const status = err?.response?.status
+      if (status === 400) Modal.error({ title: '⚠️ 图片不合规', content: msg || '请更换图片后重试', okText: '我知道了' })
+      else Message.error({ content: msg || '上传失败', duration: 4000 })
+    }
+  })
 }
 function handleMotionRoleDrop(e: DragEvent) {
   e.preventDefault()
   const file = e.dataTransfer?.files?.[0]
   if (!file?.type.startsWith('image/')) return
-  const url = URL.createObjectURL(file)
-  if (motionRoleImage.value) URL.revokeObjectURL(motionRoleImage.value.url)
-  motionRoleImage.value = { url, file }
+  uploadImageFile(file).then(serverUrl => {
+    if (motionRoleImage.value?.url.startsWith('blob:')) URL.revokeObjectURL(motionRoleImage.value!.url)
+    motionRoleImage.value = { url: serverUrl, file }
+  }).catch(err => {
+    if ((err as Error).message !== 'SIZE') {
+      const msg = err?.response?.data?.message || err?.message || ''
+      const status = err?.response?.status
+      if (status === 400) Modal.error({ title: '⚠️ 图片不合规', content: msg || '请更换图片后重试', okText: '我知道了' })
+      else Message.error({ content: msg || '上传失败', duration: 4000 })
+    }
+  })
 }
 function handleMotionVideoDrop(e: DragEvent) {
   e.preventDefault()
@@ -825,13 +934,6 @@ watch(realtimeConnected, (connected) => {
 async function fetchMy() { myLoading.value = true; try { const { data } = await getMyTasks(myPage.value, 12); myTasks.value = data?.list ?? []; myTotal.value = data?.total ?? 0 } catch { myTasks.value = [] } finally { myLoading.value = false } }
 async function fetchGal() { galLoading.value = true; try { const { data } = await getGallery(galPage.value, 20); gallery.value = data?.list ?? []; galTotal.value = data?.total ?? 0 } catch { gallery.value = [] } finally { galLoading.value = false } }
 
-async function uploadImageAndGetUrl(file: File) {
-  const { data } = await uploadFile(file)
-  return data.url.startsWith('http')
-    ? data.url
-    : `${window.location.origin}${data.url.startsWith('/') ? data.url : `/${data.url}`}`
-}
-
 async function uploadVideoAndGetUrl(file: File) {
   const { data } = await uploadFile(file)
   return data.url.startsWith('http')
@@ -848,6 +950,22 @@ async function handleGenerate() {
   if (inputMode.value === 'motion') {
     if (!motionRoleImage.value) { Message.warning('请先上传角色图'); return }
     if (!motionVideoFile.value) { Message.warning('请先上传动作视频'); return }
+  }
+  const textToCheck = [form.value.prompt, klingV26NegativePrompt.value].filter(Boolean).join(' ')
+  if (textToCheck.trim()) {
+    try {
+      const { data: checkResult } = await checkText(textToCheck)
+      if (!checkResult.passed) {
+        Modal.error({
+          title: '⚠️ 内容安全提示',
+          content: checkResult.descriptions || checkResult.reason || '您的描述存在违规风险，请修改后重试。',
+          okText: '我知道了',
+        })
+        return
+      }
+    } catch {
+      // 预检接口失败不阻断
+    }
   }
   generating.value = true
   uploading.value = true
@@ -954,20 +1072,20 @@ async function handleGenerate() {
     }
     if (taskMode.value === 'img2video') {
       if (inputMode.value === 'frame') {
-        payload.imageUrl = await uploadImageAndGetUrl(firstFrameFile.value!.file)
+        payload.imageUrl = firstFrameFile.value!.url
         if (lastFrameFile.value) {
-          ; (payload.params as Record<string, unknown>).lastFrameUrl = await uploadImageAndGetUrl(lastFrameFile.value.file)
+          ;(payload.params as Record<string, unknown>).lastFrameUrl = lastFrameFile.value.url
         }
       } else if (inputMode.value === 'ref') {
-        const urls = await Promise.all(refImages.value.map((r) => uploadImageAndGetUrl(r.file)))
+        const urls = refImages.value.map((r) => r.url).slice(0, maxRef.value)
         payload.imageUrl = urls[0]
-        ;(payload.params as Record<string, unknown>).urls = urls.slice(0, maxRef.value)
+        ;(payload.params as Record<string, unknown>).urls = urls
         if (isKlingV26Image2VideoModel.value && klingV26TailFrameFile.value) {
-          ;(payload.params as Record<string, unknown>).image_tail = await uploadImageAndGetUrl(klingV26TailFrameFile.value.file)
+          ;(payload.params as Record<string, unknown>).image_tail = klingV26TailFrameFile.value.url
         }
       } else if (inputMode.value === 'motion') {
-        payload.imageUrl = await uploadImageAndGetUrl(motionRoleImage.value!.file)
-          ; (payload.params as Record<string, unknown>).motionVideoUrl = await uploadVideoAndGetUrl(motionVideoFile.value!.file)
+        payload.imageUrl = motionRoleImage.value!.url
+        ;(payload.params as Record<string, unknown>).motionVideoUrl = await uploadVideoAndGetUrl(motionVideoFile.value!.file)
       }
     }
 
@@ -1134,8 +1252,8 @@ function handleDeleteTask(task: VideoTask) {
           </div>
           <div v-else class="dropzone" @dragover.prevent @drop="handleFirstFrameDrop" @click="firstFrameInputRef?.click()">
             <IconPlus :size="44" class="upload-plus" />
-            <span class="dz-text">点击或拖拽上传首帧</span>
-            <span class="dz-hint">视频起始画面，必填</span>
+            <span class="dz-text">{{ frameUploading ? '上传与安全检测中…' : '点击或拖拽上传首帧' }}</span>
+            <span class="dz-hint">视频起始画面，必填；单张 ≤10MB</span>
           </div>
           <input ref="firstFrameInputRef" type="file" accept="image/*" class="hidden-input"
             @change="pickFrame('first', $event)" />
@@ -1149,8 +1267,8 @@ function handleDeleteTask(task: VideoTask) {
           </div>
           <div v-else class="dropzone" @dragover.prevent @drop="handleLastFrameDrop" @click="lastFrameInputRef?.click()">
             <IconPlus :size="44" class="upload-plus" />
-            <span class="dz-text">点击或拖拽上传尾帧</span>
-            <span class="dz-hint">可选，视频结束画面</span>
+            <span class="dz-text">{{ frameUploading ? '上传与安全检测中…' : '点击或拖拽上传尾帧' }}</span>
+            <span class="dz-hint">可选，视频结束画面；单张 ≤10MB</span>
           </div>
           <input ref="lastFrameInputRef" type="file" accept="image/*" class="hidden-input"
             @change="pickFrame('last', $event)" />
@@ -1178,8 +1296,8 @@ function handleDeleteTask(task: VideoTask) {
           </div>
           <div v-else class="dropzone" @dragover.prevent @drop="handleRefDrop" @click="refInputRef?.click()">
             <IconPlus :size="44" class="upload-plus" />
-            <span class="dz-text">点击或拖拽上传参考图</span>
-            <span class="dz-hint">最多 {{ maxRef }} 张，不可与首尾帧同时使用</span>
+            <span class="dz-text">{{ refUploading ? '上传与安全检测中…' : '点击或拖拽上传参考图' }}</span>
+            <span class="dz-hint">最多 {{ maxRef }} 张，单张 ≤10MB</span>
           </div>
           <input ref="refInputRef" type="file" accept="image/*" multiple class="hidden-input"
             @change="handleRefSelect" />

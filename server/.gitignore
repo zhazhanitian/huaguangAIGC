@@ -24,3 +24,8 @@ uploads
 *.njsproj
 *.sln
 *.sw?
+
+# Environment and secrets (do not commit)
+.env
+.env.*
+!.env.example

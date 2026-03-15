@@ -25,7 +25,8 @@ import type {
   TaskEventPayload,
   TaskEventType,
 } from '../realtime/realtime.types';
-import { BadWordsService } from '../badwords/badwords.service';
+import { ContentModerationService } from '../content-moderation/content-moderation.service';
+import { OssService } from '../oss/oss.service';
 import { CreatePrintOrderDto } from './dto/create-print-order.dto';
 import { PayPrintOrderDto } from './dto/pay-print-order.dto';
 
@@ -69,7 +70,8 @@ export class Model3dService {
     private readonly model3dQueue: Queue,
     private readonly userService: UserService,
     private readonly realtime: RealtimeService,
-    private readonly badWordsService: BadWordsService,
+    private readonly contentModeration: ContentModerationService,
+    private readonly oss: OssService,
   ) {}
 
   private toPayload(
@@ -108,9 +110,13 @@ export class Model3dService {
     userId: string,
     dto: CreateModel3dTaskDto,
   ): Promise<Model3dTask> {
-    // 敏感词检测
+    // 文本安全检测
     if (dto.prompt) {
-      await this.badWordsService.assertNoSensitiveWords(dto.prompt, userId);
+      await this.contentModeration.assertTextSafe(dto.prompt, userId);
+    }
+    // 图生 3D：图片安全检测
+    if (dto.inputImageUrl) {
+      await this.contentModeration.assertImageSafe(dto.inputImageUrl, userId);
     }
 
     const taskType = dto.taskType ?? Model3dTaskType.TEXT2MODEL;
@@ -537,6 +543,45 @@ export class Model3dService {
           task.resultPreviewUrl ||
           null;
         task = await this.ensurePreviewModelUrl(task);
+        if (this.oss.isConfigured()) {
+          if (
+            task.resultModelUrl &&
+            /^https?:\/\//i.test(task.resultModelUrl) &&
+            !this.oss.isOssUrl(task.resultModelUrl)
+          ) {
+            try {
+              const ext = task.resultModelUrl.toLowerCase().includes('.glb')
+                ? '.glb'
+                : task.resultModelUrl.toLowerCase().includes('.gltf')
+                  ? '.gltf'
+                  : undefined;
+              task.resultModelUrl = await this.oss.uploadFromUrl(
+                task.resultModelUrl,
+                'model3d',
+                ext,
+              );
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err);
+              this.logger.warn(`3D 模型转存 OSS 失败(${task.id}): ${msg}`);
+            }
+          }
+          if (
+            task.resultPreviewUrl &&
+            /^https?:\/\//i.test(task.resultPreviewUrl) &&
+            !this.oss.isOssUrl(task.resultPreviewUrl)
+          ) {
+            try {
+              task.resultPreviewUrl = await this.oss.uploadFromUrl(
+                task.resultPreviewUrl,
+                'model3d',
+                '.png',
+              );
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err);
+              this.logger.warn(`3D 预览图转存 OSS 失败(${task.id}): ${msg}`);
+            }
+          }
+        }
         task.status = Model3dTaskStatus.COMPLETED;
         task.progress = 100;
         task.errorMessage = null;

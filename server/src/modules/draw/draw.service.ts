@@ -14,7 +14,7 @@ import { mkdir, writeFile, appendFile } from 'fs/promises';
 import { extname, join } from 'path';
 import { randomUUID } from 'crypto';
 import { ProxyAgent } from 'undici';
-import { DrawTask, DrawTaskStatus, DrawProvider } from './draw.entity';
+import { DrawTask, DrawTaskStatus } from './draw.entity';
 import { CreateDrawTaskDto } from './dto/create-draw-task.dto';
 import { UserService } from '../user/user.service';
 import { AiModel, ModelKey } from '../model/model.entity';
@@ -24,7 +24,8 @@ import type {
   TaskEventPayload,
 } from '../realtime/realtime.types';
 import { GlobalConfigService } from '../global-config/global-config.service';
-import { BadWordsService } from '../badwords/badwords.service';
+import { ContentModerationService } from '../content-moderation/content-moderation.service';
+import { OssService } from '../oss/oss.service';
 
 const POINTS_PER_DRAW_FALLBACK = Number(process.env.POINTS_PER_DRAW) || 10;
 const KIE_API_URL_FALLBACK = (
@@ -56,13 +57,11 @@ export class DrawService {
     private readonly userService: UserService,
     private readonly realtime: RealtimeService,
     private readonly globalConfig: GlobalConfigService,
-    private readonly badWordsService: BadWordsService,
+    private readonly contentModeration: ContentModerationService,
+    private readonly oss: OssService,
   ) {}
 
-  private toPayload(
-    task: DrawTask,
-    type: TaskEventType,
-  ): Omit<TaskEventPayload, 'type'> {
+  private toPayload(task: DrawTask): Omit<TaskEventPayload, 'type'> {
     return {
       module: 'draw',
       taskId: task.id,
@@ -79,7 +78,7 @@ export class DrawService {
   }
 
   private emit(userId: string, type: TaskEventType, task: DrawTask) {
-    this.realtime.emitToUser(userId, type, this.toPayload(task, type));
+    this.realtime.emitToUser(userId, type, this.toPayload(task));
   }
 
   private async resolvePoints(modelName?: string): Promise<number> {
@@ -124,14 +123,16 @@ export class DrawService {
   }
 
   /**
-   * 创建绘画任务：敏感词检测、校验余额、扣积分、入队
+   * 创建绘画任务：内容安全检测、校验余额、扣积分、入队
    */
   async createTask(userId: string, dto: CreateDrawTaskDto): Promise<DrawTask> {
-    // 敏感词检测
+    // 文本安全检测（阿里云 AI 护栏）
     const textToCheck = [dto.prompt, dto.negativePrompt]
       .filter(Boolean)
       .join(' ');
-    await this.badWordsService.assertNoSensitiveWords(textToCheck, userId);
+    if (textToCheck.trim()) {
+      await this.contentModeration.assertTextSafe(textToCheck, userId);
+    }
 
     const providerName = dto.provider ?? '';
     const deductPoints = await this.resolvePoints(providerName);
@@ -147,6 +148,10 @@ export class DrawService {
     normalizedParams[INTERNAL_TASK_SOURCE_KEY] = taskSource;
     const sourceImageUrl =
       typeof dto.sourceImageUrl === 'string' ? dto.sourceImageUrl.trim() : '';
+    // 图生图/参考图：图片安全检测
+    if (sourceImageUrl) {
+      await this.contentModeration.assertImageSafe(sourceImageUrl, userId);
+    }
     if (sourceImageUrl) {
       const hasImageUrl =
         typeof normalizedParams.imageUrl === 'string' &&
@@ -408,7 +413,7 @@ export class DrawService {
       }
 
       if (imageUrl) {
-        let finalImageUrl = imageUrl;
+        let finalImageUrl = this.normalizeImageUrlToString(imageUrl);
         try {
           finalImageUrl = await this.persistImageToLocal(imageUrl, task.id);
         } catch (err) {
@@ -792,7 +797,9 @@ export class DrawService {
           return `data:${mime};base64,${b64}`;
         }
       }
-    } catch (err) {}
+    } catch (err) {
+      this.logger.error(`[getBase64Image] 获取 base64 图片失败: ${err}`);
+    }
     return urlStr;
   }
 
@@ -1598,11 +1605,27 @@ export class DrawService {
     return '.png';
   }
 
+  /**
+   * 将 API 返回的 imageUrl 规范为字符串（可能是 string 或带 url 的对象）
+   */
+  private normalizeImageUrlToString(value: unknown): string {
+    if (value == null) return '';
+    if (typeof value === 'string') return value.trim();
+    if (typeof value === 'object' && value !== null && 'url' in value) {
+      const u = (value as { url?: unknown }).url;
+      if (typeof u === 'string') return u.trim();
+    }
+    return String(value).trim();
+  }
+
+  /**
+   * 将第三方/远程图片持久化：优先转存到 OSS，未配置 OSS 时落盘到本地上传目录
+   */
   private async persistImageToLocal(
-    remoteUrl: string,
+    remoteUrl: unknown,
     taskId: string,
   ): Promise<string> {
-    const url = (remoteUrl || '').trim();
+    const url = this.normalizeImageUrlToString(remoteUrl);
     if (!url) return '';
     if (this.isLocalUploadUrl(url)) {
       if (url.startsWith('/uploads/')) return url;
@@ -1614,9 +1637,32 @@ export class DrawService {
       }
       return url;
     }
-
+    if (this.oss.isOssUrl(url)) return url;
     if (!/^https?:\/\//i.test(url)) return url;
 
+    const ossConfigured = this.oss.isConfigured();
+    this.logger.log(
+      `[转存] taskId=${taskId} OSS已配置=${ossConfigured} url=${url.slice(0, 80)}${url.length > 80 ? '...' : ''}`,
+    );
+
+    if (ossConfigured) {
+      try {
+        const ossUrl = await this.oss.uploadFromUrl(url, 'draw');
+        this.logger.log(
+          `[转存] taskId=${taskId} OSS 转存成功 -> ${ossUrl.slice(0, 80)}...`,
+        );
+        return ossUrl;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const stack = err instanceof Error ? err.stack : '';
+        this.logger.error(
+          `[转存] 图片转存 OSS 失败，保留第三方链接 taskId=${taskId} error=${msg}${stack ? ` stack=${stack}` : ''}`,
+        );
+        return url;
+      }
+    }
+
+    this.logger.log(`[转存] taskId=${taskId} OSS 未配置，使用本地上传`);
     let res: Response | null = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
       const dispatcher = await this.getDispatcherForUrl(url);
@@ -1647,6 +1693,9 @@ export class DrawService {
     const dir = join(process.cwd(), 'uploads');
     await mkdir(dir, { recursive: true });
     await writeFile(join(dir, filename), Buffer.from(arrayBuffer));
+    this.logger.log(
+      `[转存] taskId=${taskId} 本地上传成功 -> /uploads/${filename}`,
+    );
     return `/uploads/${filename}`;
   }
 

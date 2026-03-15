@@ -13,6 +13,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { ModelModule } from './modules/model/model.module';
 import { ApiKeyModule } from './modules/apikey/apikey.module';
 import { GlobalConfigModule } from './modules/global-config/global-config.module';
+import { OssModule } from './modules/oss/oss.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { DrawModule } from './modules/draw/draw.module';
 import { VideoModule } from './modules/video/video.module';
@@ -32,7 +33,7 @@ import { GptsModule } from './modules/gpts/gpts.module';
 import { CozeModule } from './modules/coze/coze.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { DigitalHumanModule } from './modules/digital-human/digital-human.module';
-import { BadWordsModule } from './modules/badwords/badwords.module';
+import { ContentModerationModule } from './modules/content-moderation/content-moderation.module';
 import { ArticleModule } from './modules/article/article.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { MenuModule } from './modules/menu/menu.module';
@@ -81,10 +82,11 @@ const enableDbSchemaLog =
     // 定时任务
     ScheduleModule.forRoot(),
 
-    // 静态资源（可选，用于上传文件访问）
+    // 静态资源（可选，用于本地上传文件访问；不提供 index，避免误请求 /uploads/index.html）
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'uploads'),
       serveRoot: '/uploads',
+      serveStaticOptions: { index: false },
     }),
 
     // 功能模块
@@ -96,6 +98,7 @@ const enableDbSchemaLog =
     ModelModule,
     ApiKeyModule, // API Key 统一管理
     GlobalConfigModule,
+    OssModule,
     UploadModule,
     DrawModule,
     VideoModule,
@@ -115,7 +118,7 @@ const enableDbSchemaLog =
     CozeModule,
     KnowledgeModule,
     DigitalHumanModule,
-    BadWordsModule,
+    ContentModerationModule,
     ArticleModule,
     FeedbackModule,
     MenuModule,

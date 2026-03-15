@@ -16,6 +16,7 @@ import type { ChatGroup, MessageAttachment } from '../../api/chat'
 import MarkdownRender from '../../components/MarkdownRender.vue'
 import { submitFeedback } from '../../api/feedback'
 import { uploadFile } from '../../api/upload'
+import { checkText } from '../../api/content-moderation'
 import huaguangLogo from '../../assets/huaguang-logo.png'
 
 dayjs.extend(relativeTime)
@@ -260,10 +261,29 @@ async function deleteGroup(e: Event, id: string) {
 
 async function send(prompt?: string) {
   const text = (prompt ?? inputText.value).trim()
-  const pendingFiles = attachedFiles.value.slice()
-  const hasAttachments = pendingFiles.length > 0
+  const pendingFiles = attachedFiles.value.filter((f) => f.serverUrl)
+  const hasAttachments = attachedFiles.value.length > 0
   if (!text && !hasAttachments) return
   if (chatStore.streaming || uploadingAttachments.value) return
+  if (hasAttachments && pendingFiles.length < attachedFiles.value.length) {
+    Message.warning('部分文件仍在上传与安全检测中，请稍候')
+    return
+  }
+  if (text.trim()) {
+    try {
+      const { data: checkResult } = await checkText(text)
+      if (!checkResult.passed) {
+        Modal.error({
+          title: '⚠️ 内容安全提示',
+          content: checkResult.descriptions || checkResult.reason || '您的消息存在违规风险，请修改后重试。',
+          okText: '我知道了',
+        })
+        return
+      }
+    } catch {
+      // 预检接口失败不阻断
+    }
+  }
   // 如果没有当前对话，先创建一个
   if (!chatStore.currentGroup) {
     try {
@@ -274,35 +294,14 @@ async function send(prompt?: string) {
     }
   }
 
-  let sentAttachments: MessageAttachment[] = []
-  if (hasAttachments) {
-    uploadingAttachments.value = true
-    try {
-      const uploaded = await Promise.all(
-        pendingFiles.map(async (f) => {
-          const { data } = await uploadFile(f.file)
-          const absUrl = data.url.startsWith('http')
-            ? data.url
-            : `${window.location.origin}${data.url.startsWith('/') ? data.url : `/${data.url}`}`
-          return { file: f, url: absUrl }
-        }),
-      )
-      sentAttachments = uploaded.map((it) => ({
-        id: it.file.id,
-        name: it.file.name,
-        size: it.file.size,
-        type: it.file.type,
-        url: it.url,
-        mimetype: it.file.file.type || undefined,
-      }))
-    } catch {
-      Message.error('附件上传失败，请检查文件类型（图片/PDF/TXT/JSON）和大小（<=10MB）')
-      uploadingAttachments.value = false
-      return
-    } finally {
-      uploadingAttachments.value = false
-    }
-  }
+  const sentAttachments: MessageAttachment[] = pendingFiles.map((f) => ({
+    id: f.id,
+    name: f.name,
+    size: f.file.size,
+    type: f.type,
+    url: f.serverUrl!,
+    mimetype: f.file.type || undefined,
+  }))
 
   const attachmentNames = pendingFiles.map((f) => f.name).slice(0, 3).join('、')
   // 前端只展示用户原始输入，附件通过 attachments 字段传给后端模型
@@ -488,8 +487,17 @@ function parsedContentByMessage(msg: { role: string; content: string }, index: n
 /* 每条消息的折叠状态 */
 const thinkExpanded = ref<Record<string, boolean>>({})
 
-/* === 文件上传 === */
-interface AttachedFile { id: string; file: File; name: string; size: string; type: 'image' | 'document'; previewUrl?: string }
+/* === 文件上传（选择即上传 + 后端安全校验）=== */
+interface AttachedFile {
+  id: string
+  file: File
+  name: string
+  size: string
+  type: 'image' | 'document'
+  previewUrl?: string
+  /** 上传成功后后端返回的 URL，有值才可发送 */
+  serverUrl?: string
+}
 const attachedFiles = ref<AttachedFile[]>([])
 const fileInputRef = ref<HTMLInputElement>()
 const MAX_FILES = 10
@@ -527,11 +535,14 @@ function handleFileDrop(e: DragEvent) {
   addFiles(Array.from(e.dataTransfer.files))
 }
 
-function addFiles(files: File[]) {
+async function addFiles(files: File[]) {
   const remaining = MAX_FILES - attachedFiles.value.length
-  if (remaining <= 0) { Message.warning(`最多添加 ${MAX_FILES} 个文件`); return }
-  const toAdd = files.slice(0, remaining)
-  for (const file of toAdd) {
+  if (remaining <= 0) {
+    Message.warning(`最多添加 ${MAX_FILES} 个文件`)
+    return
+  }
+  const toAdd: File[] = []
+  for (const file of files.slice(0, remaining)) {
     if (file.size > MAX_SIZE_MB * 1024 * 1024) {
       Message.warning(`${file.name} 超过 ${MAX_SIZE_MB}MB 限制`)
       continue
@@ -540,16 +551,51 @@ function addFiles(files: File[]) {
       Message.warning(`${file.name} 文件类型不支持（仅图片/PDF/TXT/JSON）`)
       continue
     }
+    toAdd.push(file)
+  }
+  if (toAdd.length === 0) return
+
+  const added: AttachedFile[] = []
+  for (const file of toAdd) {
     const isImage = file.type.startsWith('image/')
     const item: AttachedFile = {
       id: `f-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      file, name: file.name,
+      file,
+      name: file.name,
       size: formatFileSize(file.size),
       type: isImage ? 'image' : 'document',
       previewUrl: isImage ? URL.createObjectURL(file) : undefined,
     }
     attachedFiles.value.push(item)
+    added.push(item)
   }
+
+  uploadingAttachments.value = true
+  for (const item of added) {
+    try {
+      const { data } = await uploadFile(item.file)
+      const absUrl = data.url.startsWith('http')
+        ? data.url
+        : `${window.location.origin}${data.url.startsWith('/') ? data.url : `/${data.url}`}`
+      item.serverUrl = absUrl
+    } catch (err: any) {
+      const idx = attachedFiles.value.findIndex((f) => f.id === item.id)
+      if (idx >= 0) attachedFiles.value.splice(idx, 1)
+      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
+      const msg = err?.response?.data?.message || err?.message || ''
+      const status = err?.response?.status
+      if (status === 400) {
+        Modal.error({
+          title: '⚠️ 图片不合规',
+          content: msg || '请更换图片后重试',
+          okText: '我知道了',
+        })
+      } else {
+        Message.error(msg || '上传失败，请检查文件类型和大小（≤10MB）')
+      }
+    }
+  }
+  uploadingAttachments.value = false
 }
 
 function removeFile(id: string) {
@@ -820,13 +866,13 @@ onBeforeUnmount(() => {
           <!-- 已附加的文件列表 -->
           <div v-if="attachedFiles.length > 0" class="file-list">
             <div v-for="f in attachedFiles" :key="f.id" class="file-chip">
-              <img v-if="f.type === 'image' && f.previewUrl" :src="f.previewUrl" class="file-thumb" />
+              <img v-if="f.type === 'image' && (f.previewUrl || f.serverUrl)" :src="f.serverUrl || f.previewUrl" class="file-thumb" />
               <div v-else class="file-icon-box">
                 <IconFile :size="16" />
               </div>
               <div class="file-info">
                 <span class="file-name">{{ f.name }}</span>
-                <span class="file-size">{{ f.size }}</span>
+                <span class="file-size">{{ f.serverUrl ? f.size : '上传与安全检测中…' }}</span>
               </div>
               <a-button type="text" size="mini" @click="removeFile(f.id)">
                 <IconClose :size="12" />
@@ -842,7 +888,7 @@ onBeforeUnmount(() => {
               rows="1" :disabled="chatStore.streaming" @keydown="onKeydown"
               @input="(_, e) => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 200) + 'px' }" />
             <a-button class="send"
-              :disabled="(!inputText.trim() && attachedFiles.length === 0) || chatStore.streaming || uploadingAttachments"
+              :disabled="(!inputText.trim() && attachedFiles.length === 0) || chatStore.streaming || uploadingAttachments || (attachedFiles.length > 0 && attachedFiles.some(f => !f.serverUrl))"
               @click="send()">
               <IconSend :size="18" />
             </a-button>

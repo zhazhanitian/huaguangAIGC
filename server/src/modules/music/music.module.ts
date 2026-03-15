@@ -7,7 +7,7 @@ import { MusicController } from './music.controller';
 import { MusicProcessor } from './music.processor';
 import { UserModule } from '../user/user.module';
 import { AiModel } from '../model/model.entity';
-import { BadWordsModule } from '../badwords/badwords.module';
+import { ContentModerationModule } from '../content-moderation/content-moderation.module';
 
 @Module({
   imports: [
@@ -15,7 +15,7 @@ import { BadWordsModule } from '../badwords/badwords.module';
     // 音乐任务队列
     BullModule.registerQueue({ name: 'music-queue' }),
     UserModule,
-    BadWordsModule,
+    ContentModerationModule,
   ],
   providers: [MusicService, MusicProcessor],
   controllers: [MusicController],

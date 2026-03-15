@@ -15,7 +15,7 @@ import {
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UserService } from '../user/user.service';
 import { AiModel } from '../model/model.entity';
-import { BadWordsService } from '../badwords/badwords.service';
+import { ContentModerationService } from '../content-moderation/content-moderation.service';
 
 const HISTORY_LIMIT = 10;
 const DEFAULT_CHAT_MODEL_CANDIDATES = [
@@ -39,7 +39,7 @@ export class ChatService {
     private readonly aiModelRepository: Repository<AiModel>,
     private readonly modelService: ModelService,
     private readonly userService: UserService,
-    private readonly badWordsService: BadWordsService,
+    private readonly contentModeration: ContentModerationService,
   ) {}
 
   private async resolvePoints(modelName: string): Promise<number> {
@@ -179,7 +179,7 @@ export class ChatService {
     attachments?: ChatAttachment[],
   ): Promise<{ content: string; logId: string }> {
     // 敏感词检测
-    await this.badWordsService.assertNoSensitiveWords(content, userId);
+    await this.contentModeration.assertTextSafe(content, userId);
 
     const group = await this.ensureGroupOwnership(userId, groupId);
     const model = await this.resolveChatModel(modelName || group.modelName);
@@ -251,7 +251,7 @@ export class ChatService {
     attachments?: ChatAttachment[],
   ): Promise<AsyncIterable<string>> {
     // 敏感词检测
-    await this.badWordsService.assertNoSensitiveWords(content, userId);
+    await this.contentModeration.assertTextSafe(content, userId);
 
     const group = await this.ensureGroupOwnership(userId, groupId);
     const model = await this.resolveChatModel(modelName || group.modelName);

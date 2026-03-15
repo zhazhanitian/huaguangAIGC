@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Message } from '@arco-design/web-vue'
+import { Message, Modal } from '@arco-design/web-vue'
 import { Grid3X3, Image as ImageIcon, Play, Plus, SlidersHorizontal, Video, X } from 'lucide-vue-next'
 
 // 参数选项类型
@@ -16,6 +16,8 @@ interface ModelConfig {
   maxRefImages?: number
 }
 
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024 // 10MB，与后端一致
+
 const props = defineProps<{
   mode: 'image' | 'video'
   promptText: string
@@ -23,6 +25,8 @@ const props = defineProps<{
   params: { size?: string; style?: string; ratio?: string; duration?: string }
   models: Array<{ id: string; name: string; tag?: string; color?: string }>
   modelConfig?: ModelConfig
+  /** 上传参考图并返回服务器 URL，不传则仅本地预览（提交时再上传） */
+  uploadRefFile?: (file: File) => Promise<string>
 }>()
 
 const emit = defineEmits<{
@@ -50,6 +54,7 @@ const localDuration = ref(props.params.duration || '')
 const refImages = ref<{ id: string; file: File; url: string }[]>([])
 const refInputRef = ref<HTMLInputElement | null>(null)
 const refDragOver = ref(false)
+const refUploading = ref(false)
 
 // 最大参考图数量
 const maxRefImages = computed(() => props.modelConfig?.maxRefImages ?? 0)
@@ -82,7 +87,7 @@ watch(() => props.modelConfig, (config) => {
   // 清理超出限制的参考图
   while (refImages.value.length > (config.maxRefImages || 0)) {
     const target = refImages.value.pop()
-    if (target) URL.revokeObjectURL(target.url)
+    if (target?.url.startsWith('blob:')) URL.revokeObjectURL(target.url)
   }
 }, { immediate: true })
 
@@ -177,7 +182,7 @@ function handleRefDrop(e: DragEvent) {
   addRefFiles(Array.from(files))
 }
 
-function addRefFiles(files: File[]) {
+async function addRefFiles(files: File[]) {
   if (!supportsRefImages.value) {
     Message.warning('当前模型不支持参考图')
     return
@@ -193,21 +198,57 @@ function addRefFiles(files: File[]) {
     return
   }
   const toAdd = imageFiles.slice(0, remaining)
-  for (const file of toAdd) {
-    const url = URL.createObjectURL(file)
-    refImages.value.push({ id: `ref-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, file, url })
+  const uploadFn = props.uploadRefFile
+  if (uploadFn) {
+    refUploading.value = true
+    for (const file of toAdd) {
+      if (file.size > MAX_UPLOAD_SIZE) {
+        Message.error({ content: `「${file.name}」超过 10MB 限制，已跳过`, duration: 4000 })
+        continue
+      }
+      try {
+        const serverUrl = await uploadFn(file)
+        if (!serverUrl) throw new Error('未返回地址')
+        refImages.value.push({
+          id: `ref-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          file,
+          url: serverUrl,
+        })
+      } catch (err: any) {
+        const msg = err?.response?.data?.message || err?.message || ''
+        const status = err?.response?.status
+        if (status === 413) {
+          Message.error({ content: '图片超过 10MB 限制', duration: 4000 })
+        } else if (status === 400) {
+          Modal.error({
+            title: '⚠️ 图片不合规',
+            content: msg || '请更换图片后重试',
+            okText: '我知道了',
+          })
+        } else {
+          Message.error({ content: msg || '上传失败，请稍后重试', duration: 4000 })
+        }
+      }
+    }
+    refUploading.value = false
+  } else {
+    for (const file of toAdd) {
+      const url = URL.createObjectURL(file)
+      refImages.value.push({ id: `ref-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, file, url })
+    }
   }
   if (imageFiles.length > remaining) {
     Message.info(`已达上限，仅添加了 ${remaining} 张`)
   }
   emit('update-ref-images', refImages.value)
+  if (refInputRef.value) refInputRef.value.value = ''
 }
 
 function removeRefImage(id: string) {
   const idx = refImages.value.findIndex(r => r.id === id)
   if (idx >= 0) {
     const target = refImages.value[idx]
-    if (target) URL.revokeObjectURL(target.url)
+    if (target?.url.startsWith('blob:')) URL.revokeObjectURL(target.url)
     refImages.value.splice(idx, 1)
   }
   emit('update-ref-images', refImages.value)
@@ -235,18 +276,21 @@ function handleGenerate() {
         <button
           v-if="refImages.length < maxRefImages"
           class="ref-add-btn"
+          :disabled="refUploading"
           @click="refInputRef?.click()"
         >
           <Plus :size="16" />
         </button>
         <span class="ref-count">{{ refImages.length }}/{{ maxRefImages }}</span>
       </div>
+      <span v-if="refUploading" class="ref-uploading-hint">上传与安全检测中…</span>
       <!-- 添加图片按钮（没有图片时） -->
       <button
         v-else
         class="ref-upload-btn"
         aria-label="添加参考图"
-        title="添加参考图"
+        title="添加参考图（单张 ≤10MB）"
+        :disabled="refUploading"
         @click="refInputRef?.click()"
         @dragover.prevent="refDragOver = true"
         @dragleave="refDragOver = false"

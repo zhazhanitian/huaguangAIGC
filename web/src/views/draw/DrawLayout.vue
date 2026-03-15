@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick, h, resolveComponent } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Message, Modal } from '@arco-design/web-vue'
 import {
   IconCopy,
@@ -27,14 +27,14 @@ import {
 } from '../../api/draw'
 import { uploadFile } from '../../api/upload'
 import { getModels } from '../../api/model'
-import { checkContent, type CheckContentResult } from '../../api/badwords'
+import { checkText, type TextCheckResult } from '../../api/content-moderation'
 import EmptyState from '../../components/EmptyState.vue'
 import WorkCardActionButton from '../../components/WorkCardActionButton.vue'
 import GenerateButton from '../../components/GenerateButton.vue'
 import { onTaskEvent, realtimeConnected } from '../../realtime/socket'
 
-/* === 敏感词检测结果 === */
-const lastCheckResult = ref<CheckContentResult | null>(null)
+/* === 内容安全预检结果 === */
+const lastCheckResult = ref<TextCheckResult | null>(null)
 
 /* === 状态 === */
 const activeTab = ref('create')
@@ -61,29 +61,6 @@ function toggleSelectAll() {
   } else {
     selectedWorkIds.value = new Set(myTasks.value.map(t => t.id))
   }
-}
-
-function escapeRegExp(str: string) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-function removeBadWordsFromText(text: string, words: string[]) {
-  if (!text) return text
-  let result = text
-  for (const w of words) {
-    if (!w) continue
-    const reg = new RegExp(escapeRegExp(w), 'gi')
-    result = result.replace(reg, '')
-  }
-  return result.replace(/\s{2,}/g, ' ').trim()
-}
-
-function handleRemoveBadWords(words: string[]) {
-  const list = words.filter(Boolean)
-  if (!list.length) return
-  form.value.prompt = removeBadWordsFromText(form.value.prompt || '', list)
-  form.value.negativePrompt = removeBadWordsFromText(form.value.negativePrompt || '', list)
-  Message.success({ content: '已删除违禁词', duration: 3000 })
 }
 
 async function handleBatchDelete() {
@@ -349,9 +326,17 @@ const showNegative = ref(false)
 
 /* === 参考图（图生图）=== */
 const FALLBACK_MAX_REF_IMAGES = 20
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024 // 10MB，与后端一致
 const refImages = ref<{ id: string; file: File; url: string }[]>([])
 const refDragOver = ref(false)
 const refInputRef = ref<HTMLInputElement>()
+const refUploading = ref(false)
+
+function normalizeRefUrl(rawUrl: string) {
+  if (!rawUrl) return rawUrl
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) return rawUrl
+  return `${window.location.origin}${rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`}`
+}
 
 function handleRefSelect(e: Event) {
   const files = (e.target as HTMLInputElement).files
@@ -368,7 +353,7 @@ function handleRefDrop(e: DragEvent) {
   addRefFiles(Array.from(files))
 }
 
-function addRefFiles(files: File[]) {
+async function addRefFiles(files: File[]) {
   if (currentConfig.value.maxRefImages === 0) {
     Message.warning('当前模型不支持参考图')
     return
@@ -379,23 +364,52 @@ function addRefFiles(files: File[]) {
   const remaining = maxRef - refImages.value.length
   if (remaining <= 0) { Message.warning(`最多上传 ${maxRef} 张参考图`); return }
   const toAdd = imageFiles.slice(0, remaining)
+  refUploading.value = true
   for (const file of toAdd) {
-    const url = URL.createObjectURL(file)
-    refImages.value.push({ id: `ref-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, file, url })
+    if (file.size > MAX_UPLOAD_SIZE) {
+      Message.error({ content: `「${file.name}」超过 10MB 限制，已跳过`, duration: 4000 })
+      continue
+    }
+    try {
+      const { data } = await uploadFile(file)
+      const serverUrl = data?.url || ''
+      if (!serverUrl) throw new Error('未返回地址')
+      refImages.value.push({
+        id: `ref-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        file,
+        url: serverUrl,
+      })
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || ''
+      const status = err?.response?.status
+      if (status === 413) {
+        Message.error({ content: '图片超过 10MB 限制', duration: 4000 })
+      } else if (status === 400) {
+        Modal.error({
+          title: '⚠️ 图片不合规',
+          content: msg || '请更换图片后重试',
+          okText: '我知道了',
+        })
+      } else {
+        Message.error({ content: msg || '上传失败，请稍后重试', duration: 4000 })
+      }
+    }
   }
+  refUploading.value = false
   if (imageFiles.length > remaining) {
     Message.info(`已达上限，仅添加了 ${remaining} 张`)
   }
   if (refImages.value.length > 0) {
     form.value.taskType = 'img2img'
   }
+  if (refInputRef.value) refInputRef.value.value = ''
 }
 
 function removeRefImage(id: string) {
   const idx = refImages.value.findIndex(r => r.id === id)
   if (idx >= 0) {
     const target = refImages.value[idx]
-    if (target) URL.revokeObjectURL(target.url)
+    if (target?.url.startsWith('blob:')) URL.revokeObjectURL(target.url)
     refImages.value.splice(idx, 1)
   }
   if (refImages.value.length === 0) {
@@ -404,7 +418,7 @@ function removeRefImage(id: string) {
 }
 
 function clearAllRef() {
-  refImages.value.forEach(r => URL.revokeObjectURL(r.url))
+  refImages.value.forEach(r => { if (r.url.startsWith('blob:')) URL.revokeObjectURL(r.url) })
   refImages.value = []
   form.value.taskType = 'text2img'
 }
@@ -872,13 +886,6 @@ vueWatch(actualProvider, () => {
   mjOw.value = 500
 }, { immediate: true })
 
-async function uploadImageAndGetUrl(file: File) {
-  const { data } = await uploadFile(file)
-  return data.url.startsWith('http')
-    ? data.url
-    : `${window.location.origin}${data.url.startsWith('/') ? data.url : `/${data.url}`}`
-}
-
 /* === 轮询 === */
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let unsubRealtime: (() => void) | null = null
@@ -1072,75 +1079,31 @@ async function handleGenerate(forceGenerate = false) {
       return
     }
 
-    // === 敏感词预检 ===
+    // === 内容安全预检（阿里云 AI 护栏）===
     if (!forceGenerate) {
       const textToCheck = [form.value.prompt, form.value.negativePrompt].filter(Boolean).join(' ')
-      try {
-        const { data: checkResult } = await checkContent(textToCheck)
-        lastCheckResult.value = checkResult
-
-        // HIGH级别：直接拒绝
-        if (checkResult.highWords && checkResult.highWords.length > 0) {
-          const words = checkResult.highWords.filter(Boolean)
-          const maxTags = 8
-          const shown = words.slice(0, maxTags)
-          const extra = words.length - shown.length
-          const Tag = resolveComponent('a-tag')
-          Modal.confirm({
-            title: '⚠️ 严重违规警告',
-            content: () => h('div', { class: 'badword-modal' }, [
-              h('div', { class: 'badword-desc' }, '您的描述包含严重违规词汇，禁止生成！以下为触发词：'),
-              h('div', { class: 'badword-tags' }, [
-                ...shown.map((w) => h(Tag as any, { color: 'red' }, { default: () => w })),
-                extra > 0 ? h('span', { class: 'badword-more' }, `+${extra}`) : null,
-              ].filter(Boolean)),
-              h('div', { class: 'badword-desc' }, '请立即停止此行为，违规记录已提交后台管理系统。'),
-            ]),
-            okText: '我知道了',
-            cancelText: '删除违禁词',
-            okButtonProps: { type: 'primary' },
-            cancelButtonProps: { type: 'primary' },
-            modalClass: 'badword-modal-wrap',
-            onCancel: () => handleRemoveBadWords(words),
-          })
-          generating.value = false
-          return
+      if (textToCheck.trim()) {
+        try {
+          const { data: checkResult } = await checkText(textToCheck)
+          lastCheckResult.value = checkResult
+          if (!checkResult.passed) {
+            Modal.error({
+              title: '⚠️ 内容安全提示',
+              content: checkResult.descriptions || checkResult.reason || '您的描述存在违规风险，请修改后重试。',
+              okText: '我知道了',
+            })
+            generating.value = false
+            return
+          }
+        } catch {
+          // 预检接口失败不阻断流程
         }
-
-        // MEDIUM级别：弹窗确认
-        if (checkResult.needConfirm && checkResult.mediumWords && checkResult.mediumWords.length > 0) {
-          generating.value = false
-          const words = checkResult.mediumWords.filter(Boolean)
-          const maxTags = 8
-          const shown = words.slice(0, maxTags)
-          const extra = words.length - shown.length
-          const Tag = resolveComponent('a-tag')
-          Modal.confirm({
-            title: '⚠️ 敏感内容提示',
-            content: () => h('div', { class: 'badword-modal' }, [
-              h('div', { class: 'badword-desc' }, '您的描述包含以下中级敏感词，请确认是否继续：'),
-              h('div', { class: 'badword-tags' }, [
-                ...shown.map((w) => h(Tag as any, { color: 'red' }, { default: () => w })),
-                extra > 0 ? h('span', { class: 'badword-more' }, `+${extra}`) : null,
-              ].filter(Boolean)),
-            ]),
-            okText: '确认生成',
-            cancelText: '删除违禁词',
-            okButtonProps: { type: 'primary' },
-            cancelButtonProps: { type: 'primary' },
-            modalClass: 'badword-modal-wrap',
-            onOk: () => handleGenerate(true), // 强制生成
-            onCancel: () => handleRemoveBadWords(words),
-          })
-          return
-        }
-      } catch {
-        // 检测接口失败不影响流程
       }
     }
 
+    // 参考图已在选择时上传并校验，直接使用返回的 URL
     const uploadedImageUrls = refImages.value.length
-      ? await Promise.all(refImages.value.map((item) => uploadImageAndGetUrl(item.file)))
+      ? refImages.value.map((item) => normalizeRefUrl(item.url)).filter(Boolean)
       : []
 
     const payload: CreateDrawTaskData = {
@@ -1252,27 +1215,18 @@ async function handleGenerate(forceGenerate = false) {
 
     const { data } = await createDrawTask(payload)
     if (data) {
-      // 如果有 LOW 级别敏感词，显示提示
-      if (lastCheckResult.value?.hasWarning && lastCheckResult.value?.lowWords?.length > 0) {
-        Message.info({
-          content: `📝 提示：您的描述包含轻微敏感词「${lastCheckResult.value.lowWords.slice(0, 3).join('、')}」，已标记`,
-          duration: 5000,
-        })
-      }
       myTasks.value.unshift(data)
       Message.success('任务已提交')
       startPolling()
     }
   } catch (err: any) {
     const msg = err?.response?.data?.message || err?.message || ''
-    if (msg.includes('严重违规') || msg.includes('禁止生成')) {
+    if (msg.includes('违规') || msg.includes('禁止生成') || msg.includes('敏感')) {
       Modal.error({
-        title: '⚠️ 严重违规警告',
+        title: '⚠️ 内容安全提示',
         content: msg,
         okText: '我知道了',
       })
-    } else if (msg.includes('敏感词') || msg.includes('sensitive')) {
-      Message.error({ content: '❗ 您的描述包含敏感内容，请修改后重试', duration: 6000 })
     } else if (msg.includes('余额不足') || msg.includes('balance')) {
       Message.error({ content: '积分不足，请充值后再试', duration: 5000 })
     } else {
@@ -1498,18 +1452,20 @@ function handleDownload(url?: string) {
               </button>
             </div>
             <!-- 添加更多按钮 -->
-            <button v-if="refImages.length < maxRefImages" class="ref-add-btn" @click="refInputRef?.click()">
+            <button v-if="refImages.length < maxRefImages" class="ref-add-btn" :disabled="refUploading"
+              @click="refInputRef?.click()">
               <IconPlus :size="20" />
             </button>
           </div>
+          <span v-if="refUploading" class="ref-uploading-hint">上传与安全检测中…</span>
 
           <!-- 拖拽上传区域（没有图片时显示大区域，有图片时隐藏） -->
           <div v-if="refImages.length === 0" class="ref-dropzone" :class="{ dragover: refDragOver }"
             @dragover.prevent="refDragOver = true" @dragleave="refDragOver = false" @drop="handleRefDrop"
-            @click="refInputRef?.click()">
+            @click="!refUploading && refInputRef?.click()">
             <IconPlus :size="44" class="dropzone-plus" />
             <span class="dropzone-text">点击或拖拽上传参考图</span>
-            <span class="dropzone-hint">支持 JPG / PNG / WebP，最多 {{ maxRefImages }} 张</span>
+            <span class="dropzone-hint">支持 JPG / PNG / WebP，单张 ≤10MB，最多 {{ maxRefImages }} 张</span>
           </div>
 
           <input ref="refInputRef" type="file" accept="image/*" multiple style="display:none"
@@ -2262,7 +2218,11 @@ function handleDownload(url?: string) {
 .ref-count {
   font-size: 0.75rem;
   color: var(--text-4);
-  margin-left: auto;
+}
+.ref-uploading-hint {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  margin-left: 0.5rem;
 }
 
 .clear-ref-btn {

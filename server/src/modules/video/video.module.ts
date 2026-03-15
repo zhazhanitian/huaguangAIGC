@@ -7,7 +7,7 @@ import { VideoController } from './video.controller';
 import { VideoProcessor } from './video.processor';
 import { UserModule } from '../user/user.module';
 import { AiModel, ModelKey } from '../model/model.entity';
-import { BadWordsModule } from '../badwords/badwords.module';
+import { ContentModerationModule } from '../content-moderation/content-moderation.module';
 
 @Module({
   imports: [
@@ -15,7 +15,7 @@ import { BadWordsModule } from '../badwords/badwords.module';
     // 视频任务队列
     BullModule.registerQueue({ name: 'video-queue' }),
     UserModule,
-    BadWordsModule,
+    ContentModerationModule,
   ],
   providers: [VideoService, VideoProcessor],
   controllers: [VideoController],

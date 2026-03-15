@@ -7,14 +7,14 @@ import { Model3dController } from './model3d.controller';
 import { Model3dProcessor } from './model3d.processor';
 import { UserModule } from '../user/user.module';
 import { AiModel } from '../model/model.entity';
-import { BadWordsModule } from '../badwords/badwords.module';
+import { ContentModerationModule } from '../content-moderation/content-moderation.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Model3dTask, Model3dPrintOrder, AiModel]),
     BullModule.registerQueue({ name: 'model3d-queue' }),
     UserModule,
-    BadWordsModule,
+    ContentModerationModule,
   ],
   providers: [Model3dService, Model3dProcessor],
   controllers: [Model3dController],

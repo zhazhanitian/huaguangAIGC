@@ -21,7 +21,8 @@ import type {
   TaskEventType,
 } from '../realtime/realtime.types';
 import { GlobalConfigService } from '../global-config/global-config.service';
-import { BadWordsService } from '../badwords/badwords.service';
+import { ContentModerationService } from '../content-moderation/content-moderation.service';
+import { OssService } from '../oss/oss.service';
 
 const POINTS_PER_MUSIC_FALLBACK = Number(process.env.POINTS_PER_MUSIC) || 20;
 const KIE_API_URL = (process.env.KIE_API_URL || 'https://api.kie.ai').replace(
@@ -89,7 +90,8 @@ export class MusicService {
     private readonly userService: UserService,
     private readonly realtime: RealtimeService,
     private readonly globalConfig: GlobalConfigService,
-    private readonly badWordsService: BadWordsService,
+    private readonly contentModeration: ContentModerationService,
+    private readonly oss: OssService,
   ) {}
 
   private toPayload(
@@ -132,16 +134,16 @@ export class MusicService {
   }
 
   /**
-   * 创建音乐任务：敏感词检测、校验余额、扣积分、入队
+   * 创建音乐任务：内容安全检测、校验余额、扣积分、入队
    */
   async createTask(
     userId: string,
     dto: CreateMusicTaskDto,
   ): Promise<MusicTask> {
-    // 敏感词检测
+    // 文本安全检测
     const textToCheck = [dto.prompt, dto.title].filter(Boolean).join(' ');
     if (textToCheck) {
-      await this.badWordsService.assertNoSensitiveWords(textToCheck, userId);
+      await this.contentModeration.assertTextSafe(textToCheck, userId);
     }
 
     const deductPoints = await this.resolvePoints(dto.model);
@@ -315,8 +317,43 @@ export class MusicService {
       }
 
       if (audioUrl) {
-        task.audioUrl = audioUrl;
-        task.coverUrl = coverUrl;
+        let finalAudioUrl = audioUrl;
+        let finalCoverUrl = coverUrl ?? null;
+        if (this.oss.isConfigured()) {
+          if (
+            /^https?:\/\//i.test(audioUrl) &&
+            !this.oss.isOssUrl(audioUrl)
+          ) {
+            try {
+              finalAudioUrl = await this.oss.uploadFromUrl(
+                audioUrl,
+                'music',
+                '.mp3',
+              );
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err);
+              this.logger.warn(`音乐音频转存 OSS 失败(${task.id}): ${msg}`);
+            }
+          }
+          if (
+            finalCoverUrl &&
+            /^https?:\/\//i.test(finalCoverUrl) &&
+            !this.oss.isOssUrl(finalCoverUrl)
+          ) {
+            try {
+              finalCoverUrl = await this.oss.uploadFromUrl(
+                finalCoverUrl,
+                'music',
+                '.png',
+              );
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err);
+              this.logger.warn(`音乐封面转存 OSS 失败(${task.id}): ${msg}`);
+            }
+          }
+        }
+        task.audioUrl = finalAudioUrl;
+        task.coverUrl = finalCoverUrl;
         task.status = MusicTaskStatus.COMPLETED;
         task.progress = 100;
         task.errorMessage = null;

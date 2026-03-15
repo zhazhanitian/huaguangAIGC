@@ -21,7 +21,8 @@ import type {
   TaskEventType,
 } from '../realtime/realtime.types';
 import { GlobalConfigService } from '../global-config/global-config.service';
-import { BadWordsService } from '../badwords/badwords.service';
+import { ContentModerationService } from '../content-moderation/content-moderation.service';
+import { OssService } from '../oss/oss.service';
 
 const POINTS_PER_VIDEO_FALLBACK = Number(process.env.POINTS_PER_VIDEO) || 50;
 
@@ -48,7 +49,8 @@ export class VideoService {
     private readonly userService: UserService,
     private readonly realtime: RealtimeService,
     private readonly globalConfig: GlobalConfigService,
-    private readonly badWordsService: BadWordsService,
+    private readonly contentModeration: ContentModerationService,
+    private readonly oss: OssService,
   ) {}
 
   private toPayload(task: VideoTask): Omit<TaskEventPayload, 'type'> {
@@ -123,15 +125,19 @@ export class VideoService {
   }
 
   /**
-   * 创建视频任务：敏感词检测、校验余额、扣积分、入队
+   * 创建视频任务：内容安全检测、校验余额、扣积分、入队
    */
   async createTask(
     userId: string,
     dto: CreateVideoTaskDto,
   ): Promise<VideoTask> {
-    // 敏感词检测
+    // 文本安全检测
     if (dto.prompt) {
-      await this.badWordsService.assertNoSensitiveWords(dto.prompt, userId);
+      await this.contentModeration.assertTextSafe(dto.prompt, userId);
+    }
+    // 图生视频：图片安全检测
+    if (dto.imageUrl) {
+      await this.contentModeration.assertImageSafe(dto.imageUrl, userId);
     }
 
     const urls = Array.isArray(
@@ -266,7 +272,21 @@ export class VideoService {
         throw new Error('未获取到生成结果');
       }
 
-      task.videoUrl = videoUrl;
+      let finalVideoUrl = videoUrl;
+      if (
+        this.oss.isConfigured() &&
+        !this.oss.isOssUrl(videoUrl) &&
+        /^https?:\/\//i.test(videoUrl)
+      ) {
+        try {
+          finalVideoUrl = await this.oss.uploadFromUrl(videoUrl, 'video', '.mp4');
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          this.logger.warn(`视频转存 OSS 失败，保留第三方链接(${task.id}): ${msg}`);
+        }
+      }
+
+      task.videoUrl = finalVideoUrl;
       task.status = VideoTaskStatus.COMPLETED;
       task.progress = 100;
       task.errorMessage = null;

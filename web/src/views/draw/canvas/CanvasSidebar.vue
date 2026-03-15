@@ -25,6 +25,8 @@ const props = defineProps<{
   paramSettings: { size?: string; style?: string; ratio?: string; duration?: string }
   models: Array<{ id: string; name: string; tag?: string; color?: string }>
   modelConfigs?: Record<string, ModelConfig>
+  /** 上传参考图并返回服务器 URL */
+  uploadRefFile?: (file: File) => Promise<string>
 }>()
 
 const emit = defineEmits<{
@@ -69,6 +71,7 @@ const currentModelConfig = computed(() => {
       :params="paramSettings"
       :models="models"
       :model-config="currentModelConfig"
+      :upload-ref-file="uploadRefFile"
       @update="emit('update-prompt', $event)"
       @update-params="emit('update-params', $event)"
       @generate="emit('generate-from-prompt')"

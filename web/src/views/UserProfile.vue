@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { Message } from '@arco-design/web-vue'
+import { Message, Modal } from '@arco-design/web-vue'
 import type { RequestOption } from '@arco-design/web-vue'
 import { IconEdit, IconPoweroff, IconLock, IconStar, IconDashboard, IconUpload } from '@arco-design/web-vue/es/icon'
 import { useUserStore } from '../stores/user'
@@ -118,14 +118,32 @@ function handleLogout() {
   router.push('/login')
 }
 
-// Upload Avatar Logic
+// Upload Avatar Logic（10MB + 不合规提示）
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024 // 10MB
 const customRequest = (option: RequestOption) => {
   const { onError, onSuccess, fileItem } = option
-  const task = uploadFile(fileItem.file as File)
+  const file = fileItem.file as File
+  if (file.size > MAX_UPLOAD_SIZE) {
+    Message.error({ content: '图片超过 10MB 限制', duration: 4000 })
+    onError(new Error('SIZE'))
+    return { abort() {} }
+  }
+  const task = uploadFile(file)
   task.then(res => {
     form.value.avatar = res.data.url
     onSuccess(res.data)
   }).catch(err => {
+    const msg = err?.response?.data?.message || err?.message || ''
+    const status = err?.response?.status
+    if (status === 400) {
+      Modal.error({
+        title: '⚠️ 图片不合规',
+        content: msg || '请更换图片后重试',
+        okText: '我知道了',
+      })
+    } else if (status !== 413) {
+      Message.error({ content: msg || '上传失败', duration: 4000 })
+    }
     onError(err)
   })
   return {

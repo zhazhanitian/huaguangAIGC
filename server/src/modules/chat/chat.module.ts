@@ -6,14 +6,14 @@ import { ChatController } from './chat.controller';
 import { ModelModule } from '../model/model.module';
 import { UserModule } from '../user/user.module';
 import { AiModel } from '../model/model.entity';
-import { BadWordsModule } from '../badwords/badwords.module';
+import { ContentModerationModule } from '../content-moderation/content-moderation.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([ChatGroup, ChatLog, AiModel]),
     ModelModule,
     UserModule,
-    BadWordsModule,
+    ContentModerationModule,
   ],
   providers: [ChatService],
   controllers: [ChatController],

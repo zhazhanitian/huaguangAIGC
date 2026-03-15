@@ -18,6 +18,7 @@ import {
 } from './digital-human.entity';
 import { CreateHumanDto } from './dto/create-human.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { OssService } from '../oss/oss.service';
 
 @Injectable()
 export class DigitalHumanService {
@@ -30,6 +31,7 @@ export class DigitalHumanService {
     private readonly taskRepository: Repository<DigitalHumanTask>,
     @InjectQueue('digital-human-queue')
     private readonly taskQueue: Queue,
+    private readonly oss: OssService,
   ) {}
 
   /**
@@ -137,11 +139,37 @@ export class DigitalHumanService {
       }
 
       // 调用 TTS API 生成语音（占位实现，需接入实际 TTS 服务）
-      const audioUrl = await this.callTtsApi(task.inputText, human.voiceId);
-      task.audioUrl = audioUrl;
-
+      let audioUrl = await this.callTtsApi(task.inputText, human.voiceId);
       // 如有视频服务，可调用视频 API 生成数字人视频（占位）
-      const videoUrl = await this.callVideoApi(task.inputText, human.avatarUrl);
+      let videoUrl = await this.callVideoApi(task.inputText, human.avatarUrl);
+
+      if (this.oss.isConfigured()) {
+        if (
+          audioUrl &&
+          /^https?:\/\//i.test(audioUrl) &&
+          !this.oss.isOssUrl(audioUrl)
+        ) {
+          try {
+            audioUrl = await this.oss.uploadFromUrl(audioUrl, 'digital-human', '.mp3');
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            this.logger.warn(`数字人音频转存 OSS 失败(${task.id}): ${msg}`);
+          }
+        }
+        if (
+          videoUrl &&
+          /^https?:\/\//i.test(videoUrl) &&
+          !this.oss.isOssUrl(videoUrl)
+        ) {
+          try {
+            videoUrl = await this.oss.uploadFromUrl(videoUrl, 'digital-human', '.mp4');
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            this.logger.warn(`数字人视频转存 OSS 失败(${task.id}): ${msg}`);
+          }
+        }
+      }
+      task.audioUrl = audioUrl;
       task.videoUrl = videoUrl;
 
       task.status = DigitalHumanTaskStatus.COMPLETED;

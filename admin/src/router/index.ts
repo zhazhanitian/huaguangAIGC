@@ -58,11 +58,6 @@ const router = createRouter({
           name: 'CanvasManage',
           component: () => import('../views/CanvasManage.vue'),
         },
-        {
-          path: 'badwords',
-          name: 'BadWords',
-          component: () => import('../views/BadWordsManage.vue'),
-        },
       ],
     },
   ],
