@@ -317,7 +317,6 @@ async function openEdit(row: User) {
 
 const editRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  email: [{ type: 'email', message: '邮箱格式不正确', trigger: 'blur' }],
   role: [{ required: true, message: '请选择角色', trigger: 'change' }],
   balance: [{ type: 'number', min: 0, message: '余额不能小于 0', trigger: 'blur' }],
 }
@@ -326,9 +325,6 @@ const addRules = {
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
     { min: 5, max: 20, message: '手机号格式不正确', trigger: 'blur' },
-  ],
-  email: [
-    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' },
   ],
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码（至少 6 位）', trigger: 'blur' }],
