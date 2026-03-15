@@ -192,6 +192,12 @@ function openUpgrade() {
 }
 
 const initial = computed(() => userStore.userInfo?.username?.charAt(0)?.toUpperCase() || 'U')
+const academicLine = computed(() => ({
+  college: userStore.userInfo?.collegeName ?? '—',
+  grade: userStore.userInfo?.gradeName ?? '—',
+  major: userStore.userInfo?.majorName ?? '—',
+  class: userStore.userInfo?.className ?? '—',
+}))
 const memberSince = computed(() => {
   const c = userStore.userInfo?.createdAt
   if (!c) return ''
@@ -320,6 +326,26 @@ const balance = computed(() => Number(userStore.userInfo?.balance ?? 0))
                   <a-form-item field="signature" label="个性签名">
                     <a-textarea v-model="form.signature" :disabled="!editing" :rows="3" placeholder="写下你的个性签名..."
                       show-word-limit :max-length="100" />
+                  </a-form-item>
+                </a-col>
+                <a-col :span="12">
+                  <a-form-item label="学院">
+                    <a-input :model-value="academicLine.college" disabled placeholder="—" />
+                  </a-form-item>
+                </a-col>
+                <a-col :span="12">
+                  <a-form-item label="学级">
+                    <a-input :model-value="academicLine.grade" disabled placeholder="—" />
+                  </a-form-item>
+                </a-col>
+                <a-col :span="12">
+                  <a-form-item label="专业">
+                    <a-input :model-value="academicLine.major" disabled placeholder="—" />
+                  </a-form-item>
+                </a-col>
+                <a-col :span="12">
+                  <a-form-item label="班级">
+                    <a-input :model-value="academicLine.class" disabled placeholder="—" />
                   </a-form-item>
                 </a-col>
               </a-row>

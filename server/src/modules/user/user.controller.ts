@@ -39,6 +39,14 @@ export class UserController {
       role: u.role,
       status: u.status,
       balance: Number(u.balance ?? 0),
+      collegeId: u.collegeId ?? null,
+      gradeId: u.gradeId ?? null,
+      majorId: u.majorId ?? null,
+      classId: u.classId ?? null,
+      collegeName: u.collegeName ?? null,
+      gradeName: u.gradeName ?? null,
+      majorName: u.majorName ?? null,
+      className: u.className ?? null,
       createdAt: u.createdAt,
       updatedAt: u.updatedAt,
     };
@@ -57,6 +65,10 @@ export class UserController {
       role: created.role,
       status: created.status,
       balance: Number(created.balance),
+      collegeId: created.collegeId ?? null,
+      gradeId: created.gradeId ?? null,
+      majorId: created.majorId ?? null,
+      classId: created.classId ?? null,
       createdAt: created.createdAt,
     };
   }

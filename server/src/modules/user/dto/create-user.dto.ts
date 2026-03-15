@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
@@ -67,4 +68,24 @@ export class CreateUserDto {
   @Min(0, { message: '余额不能小于 0' })
   @Max(99999999, { message: '余额过大' })
   balance?: number;
+
+  @ApiPropertyOptional({ description: '学院 ID，可为空' })
+  @IsOptional()
+  @IsUUID()
+  collegeId?: string;
+
+  @ApiPropertyOptional({ description: '学级 ID，可为空' })
+  @IsOptional()
+  @IsUUID()
+  gradeId?: string;
+
+  @ApiPropertyOptional({ description: '专业 ID，可为空' })
+  @IsOptional()
+  @IsUUID()
+  majorId?: string;
+
+  @ApiPropertyOptional({ description: '班级 ID，可为空' })
+  @IsOptional()
+  @IsUUID()
+  classId?: string;
 }

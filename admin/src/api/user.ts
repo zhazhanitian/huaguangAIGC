@@ -9,6 +9,10 @@ export interface User {
   status: 'active' | 'banned'
   balance?: number
   createdAt?: string
+  collegeId?: string | null
+  gradeId?: string | null
+  majorId?: string | null
+  classId?: string | null
 }
 
 export interface UserListParams {
@@ -19,6 +23,10 @@ export interface UserListParams {
   status?: 'active' | 'banned'
   startDate?: string
   endDate?: string
+  collegeId?: string
+  gradeId?: string
+  majorId?: string
+  classId?: string
 }
 
 export interface UserListResult {
@@ -32,6 +40,10 @@ export interface UpdateUserData {
   role?: 'user' | 'admin' | 'super'
   status?: 'active' | 'banned'
   balance?: number
+  collegeId?: string | null
+  gradeId?: string | null
+  majorId?: string | null
+  classId?: string | null
 }
 
 export interface CreateUserData {
@@ -42,6 +54,10 @@ export interface CreateUserData {
   role?: 'user' | 'admin' | 'super'
   status?: 'active' | 'banned'
   balance?: number
+  collegeId?: string
+  gradeId?: string
+  majorId?: string
+  classId?: string
 }
 
 export interface ResetUserPasswordData {

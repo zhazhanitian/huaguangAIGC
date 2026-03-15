@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import { UserRole, UserStatus } from '../user.entity';
 
@@ -26,4 +26,24 @@ export class UserListDto extends PaginationDto {
   @IsOptional()
   @IsString()
   endDate?: string;
+
+  @ApiPropertyOptional({ description: '学院 ID 筛选' })
+  @IsOptional()
+  @IsUUID()
+  collegeId?: string;
+
+  @ApiPropertyOptional({ description: '学级 ID 筛选' })
+  @IsOptional()
+  @IsUUID()
+  gradeId?: string;
+
+  @ApiPropertyOptional({ description: '专业 ID 筛选' })
+  @IsOptional()
+  @IsUUID()
+  majorId?: string;
+
+  @ApiPropertyOptional({ description: '班级 ID 筛选' })
+  @IsOptional()
+  @IsUUID()
+  classId?: string;
 }

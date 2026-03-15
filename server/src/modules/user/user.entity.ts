@@ -81,6 +81,18 @@ export class User {
   @Column({ type: 'text', nullable: true })
   sign: string | null;
 
+  @Column({ length: 36, nullable: true, comment: '学院 ID' })
+  collegeId: string | null;
+
+  @Column({ length: 36, nullable: true, comment: '学级 ID' })
+  gradeId: string | null;
+
+  @Column({ length: 36, nullable: true, comment: '专业 ID' })
+  majorId: string | null;
+
+  @Column({ length: 36, nullable: true, comment: '班级 ID' })
+  classId: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

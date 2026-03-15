@@ -41,6 +41,7 @@ import { SaasModule } from './modules/saas/saas.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { OpsModule } from './modules/ops/ops.module';
+import { AcademicModule } from './modules/academic/academic.module';
 
 const enableDbSchemaLog =
   String(process.env.DB_SCHEMA_LOG || '').toLowerCase() === 'true';
@@ -123,6 +124,7 @@ const enableDbSchemaLog =
     FeedbackModule,
     MenuModule,
     SaasModule,
+    AcademicModule,
   ],
   providers: [
     {

@@ -35,6 +35,14 @@ export interface ProfileData {
   membership?: string
   membershipExpiredAt?: string | null
   sign?: string
+  collegeId?: string | null
+  gradeId?: string | null
+  majorId?: string | null
+  classId?: string | null
+  collegeName?: string | null
+  gradeName?: string | null
+  majorName?: string | null
+  className?: string | null
   createdAt?: string
 }
 

@@ -25,6 +25,16 @@ import {
   type CreateUserData,
   type ResetUserPasswordData,
 } from '../api/user'
+import {
+  getColleges,
+  getGrades,
+  getMajors,
+  getClasses,
+  type College,
+  type Grade,
+  type Major,
+  type Clazz,
+} from '../api/academic'
 import { useUserStore } from '../stores/user'
 
 const userStore = useUserStore()
@@ -37,7 +47,10 @@ const total = ref(0)
 const searchKeyword = ref('')
 const roleFilter = ref<string | undefined>()
 const statusFilter = ref<string | number | undefined>()
-const dateRange = ref<string[]>([])
+const collegeId = ref<string | undefined>()
+const gradeId = ref<string | undefined>()
+const majorId = ref<string | undefined>()
+const classId = ref<string | undefined>()
 const pagination = reactive({ page: 1, pageSize: 10 })
 const formRef = ref<FormInstance>()
 const addFormRef = ref<FormInstance>()
@@ -53,6 +66,10 @@ interface EditFormState {
   role?: 'user' | 'admin' | 'super'
   status?: 'active' | 'banned'
   balance?: number
+  collegeId?: string | null
+  gradeId?: string | null
+  majorId?: string | null
+  classId?: string | null
 }
 const editForm = ref<EditFormState>({})
 const editLoading = ref(false)
@@ -65,6 +82,10 @@ interface AddFormState {
   role: 'user' | 'admin' | 'super'
   status: 'active' | 'banned'
   balance: number
+  collegeId?: string
+  gradeId?: string
+  majorId?: string
+  classId?: string
 }
 const addForm = reactive<AddFormState>({
   phone: '',
@@ -74,7 +95,20 @@ const addForm = reactive<AddFormState>({
   role: 'user',
   status: 'active',
   balance: 0,
+  collegeId: undefined,
+  gradeId: undefined,
+  majorId: undefined,
+  classId: undefined,
 })
+
+const collegeOptionsForForm = ref<College[]>([])
+const gradeOptionsForForm = ref<Grade[]>([])
+const majorOptionsForForm = ref<Major[]>([])
+const classOptionsForForm = ref<Clazz[]>([])
+const filterCollegeList = ref<College[]>([])
+const filterGradeList = ref<Grade[]>([])
+const filterMajorList = ref<Major[]>([])
+const filterClassList = ref<Clazz[]>([])
 const addLoading = ref(false)
 
 interface ResetPasswordFormState {
@@ -96,6 +130,11 @@ const columns = [
     title: '用户',
     slotName: 'user',
     minWidth: 220,
+  },
+  {
+    title: '学院/学级/专业/班级',
+    slotName: 'academic',
+    minWidth: 260,
   },
   {
     title: '角色',
@@ -138,8 +177,12 @@ const fetchList = async () => {
       keyword: searchKeyword.value || undefined,
       role: (roleFilter.value as any) || undefined,
       status: (statusFilter.value as any) || undefined,
-      startDate: dateRange.value?.[0] || undefined,
-      endDate: dateRange.value?.[1] || undefined,
+      startDate: undefined,
+      endDate: undefined,
+      collegeId: collegeId.value || undefined,
+      gradeId: gradeId.value || undefined,
+      majorId: majorId.value || undefined,
+      classId: classId.value || undefined,
     }
     const res = await getUsers(params)
     tableData.value = res.list ?? (Array.isArray(res) ? res : [])
@@ -157,7 +200,53 @@ const fetchList = async () => {
 }
 
 watch([() => pagination.page, () => pagination.pageSize], fetchList)
-onMounted(fetchList)
+onMounted(async () => {
+  filterCollegeList.value = await getColleges()
+  fetchList()
+})
+
+async function onFilterCollegeChange() {
+  gradeId.value = undefined
+  majorId.value = undefined
+  classId.value = undefined
+  if (!collegeId.value) {
+    filterGradeList.value = []
+    filterMajorList.value = []
+    filterClassList.value = []
+    return
+  }
+  filterGradeList.value = await getGrades({ collegeId: collegeId.value })
+  filterMajorList.value = []
+  filterClassList.value = []
+}
+
+async function onFilterGradeChange() {
+  majorId.value = undefined
+  classId.value = undefined
+  if (!collegeId.value || !gradeId.value) {
+    filterMajorList.value = []
+    filterClassList.value = []
+    return
+  }
+  filterMajorList.value = await getMajors({
+    collegeId: collegeId.value,
+    gradeId: gradeId.value,
+  })
+  filterClassList.value = []
+}
+
+async function onFilterMajorChange() {
+  classId.value = undefined
+  if (!collegeId.value || !gradeId.value || !majorId.value) {
+    filterClassList.value = []
+    return
+  }
+  filterClassList.value = await getClasses({
+    collegeId: collegeId.value,
+    gradeId: gradeId.value,
+    majorId: majorId.value,
+  })
+}
 
 function handleSearch() {
   pagination.page = 1
@@ -169,18 +258,24 @@ function handleResetFilters() {
   searchKeyword.value = ''
   roleFilter.value = undefined
   statusFilter.value = undefined
-  dateRange.value = []
+  collegeId.value = undefined
+  gradeId.value = undefined
+  majorId.value = undefined
+  classId.value = undefined
+  filterGradeList.value = []
+  filterMajorList.value = []
+  filterClassList.value = []
   handleSearch()
 }
 
 // 过滤条件变化时自动刷新
-watch([roleFilter, statusFilter, dateRange], () => {
+watch([roleFilter, statusFilter, collegeId, gradeId, majorId, classId], () => {
   pagination.page = 1
   paginationConfig.current = 1
   fetchList()
 })
 
-function openEdit(row: User) {
+async function openEdit(row: User) {
   editForm.value = {
     id: row.id,
     username: row.username,
@@ -189,8 +284,35 @@ function openEdit(row: User) {
     role: row.role,
     status: row.status === 'active' ? 'active' : 'banned',
     balance: Number((row as any).balance ?? 0),
+    collegeId: row.collegeId ?? undefined,
+    gradeId: row.gradeId ?? undefined,
+    majorId: row.majorId ?? undefined,
+    classId: row.classId ?? undefined,
   }
   editDialogVisible.value = true
+  collegeOptionsForForm.value = await getColleges()
+  if (editForm.value.collegeId) {
+    gradeOptionsForForm.value = await getGrades({ collegeId: editForm.value.collegeId })
+  } else {
+    gradeOptionsForForm.value = []
+  }
+  if (editForm.value.collegeId && editForm.value.gradeId) {
+    majorOptionsForForm.value = await getMajors({
+      collegeId: editForm.value.collegeId,
+      gradeId: editForm.value.gradeId,
+    })
+  } else {
+    majorOptionsForForm.value = []
+  }
+  if (editForm.value.collegeId && editForm.value.gradeId && editForm.value.majorId) {
+    classOptionsForForm.value = await getClasses({
+      collegeId: editForm.value.collegeId,
+      gradeId: editForm.value.gradeId,
+      majorId: editForm.value.majorId,
+    })
+  } else {
+    classOptionsForForm.value = []
+  }
 }
 
 const editRules = {
@@ -238,7 +360,7 @@ const resetRules = {
   ],
 }
 
-function openAdd() {
+async function openAdd() {
   addForm.phone = ''
   addForm.email = ''
   addForm.username = ''
@@ -246,7 +368,104 @@ function openAdd() {
   addForm.role = 'user'
   addForm.status = 'active'
   addForm.balance = 0
+  addForm.collegeId = undefined
+  addForm.gradeId = undefined
+  addForm.majorId = undefined
+  addForm.classId = undefined
+  collegeOptionsForForm.value = await getColleges()
+  gradeOptionsForForm.value = []
+  majorOptionsForForm.value = []
+  classOptionsForForm.value = []
   addDialogVisible.value = true
+}
+
+async function onAddFormCollegeChange() {
+  addForm.gradeId = undefined
+  addForm.majorId = undefined
+  addForm.classId = undefined
+  if (!addForm.collegeId) {
+    gradeOptionsForForm.value = []
+    majorOptionsForForm.value = []
+    classOptionsForForm.value = []
+    return
+  }
+  gradeOptionsForForm.value = await getGrades({ collegeId: addForm.collegeId })
+  majorOptionsForForm.value = []
+  classOptionsForForm.value = []
+}
+
+async function onAddFormGradeChange() {
+  addForm.majorId = undefined
+  addForm.classId = undefined
+  if (!addForm.collegeId || !addForm.gradeId) {
+    majorOptionsForForm.value = []
+    classOptionsForForm.value = []
+    return
+  }
+  majorOptionsForForm.value = await getMajors({
+    collegeId: addForm.collegeId,
+    gradeId: addForm.gradeId,
+  })
+  classOptionsForForm.value = []
+}
+
+async function onAddFormMajorChange() {
+  addForm.classId = undefined
+  if (!addForm.collegeId || !addForm.gradeId || !addForm.majorId) {
+    classOptionsForForm.value = []
+    return
+  }
+  classOptionsForForm.value = await getClasses({
+    collegeId: addForm.collegeId,
+    gradeId: addForm.gradeId,
+    majorId: addForm.majorId,
+  })
+}
+
+async function onEditFormCollegeChange() {
+  const f = editForm.value
+  f.gradeId = undefined
+  f.majorId = undefined
+  f.classId = undefined
+  if (!f.collegeId) {
+    gradeOptionsForForm.value = []
+    majorOptionsForForm.value = []
+    classOptionsForForm.value = []
+    return
+  }
+  gradeOptionsForForm.value = await getGrades({ collegeId: f.collegeId })
+  majorOptionsForForm.value = []
+  classOptionsForForm.value = []
+}
+
+async function onEditFormGradeChange() {
+  const f = editForm.value
+  f.majorId = undefined
+  f.classId = undefined
+  if (!f.collegeId || !f.gradeId) {
+    majorOptionsForForm.value = []
+    classOptionsForForm.value = []
+    return
+  }
+  majorOptionsForForm.value = await getMajors({
+    collegeId: f.collegeId,
+    gradeId: f.gradeId,
+  })
+  classOptionsForForm.value = []
+}
+
+async function onEditFormMajorChange() {
+  const f = editForm.value
+  f.classId = undefined
+  if (!f.collegeId || !f.gradeId || !f.majorId) {
+    classOptionsForForm.value = []
+    return
+  }
+  classOptionsForForm.value = await getClasses({
+    collegeId: f.collegeId,
+    gradeId: f.gradeId,
+    majorId: f.majorId,
+  })
 }
 
 function openReset(row: User) {
@@ -272,6 +491,10 @@ async function submitAdd() {
       role: addForm.role,
       status: addForm.status,
       balance: Number(addForm.balance ?? 0),
+      collegeId: addForm.collegeId || undefined,
+      gradeId: addForm.gradeId || undefined,
+      majorId: addForm.majorId || undefined,
+      classId: addForm.classId || undefined,
     }
     await createUser(payload)
     Message.success('创建成功')
@@ -290,13 +513,17 @@ async function submitEdit() {
   if (!editForm.value.id) return
   editLoading.value = true
   try {
-    const { id, username, email, role, status, balance } = editForm.value
+    const { id, username, email, role, status, balance, collegeId, gradeId, majorId, classId } = editForm.value
     const data: UpdateUserData = {
       username,
       email,
       role,
       status,
       balance: balance == null ? undefined : Number(balance),
+      collegeId: collegeId ?? null,
+      gradeId: gradeId ?? null,
+      majorId: majorId ?? null,
+      classId: classId ?? null,
     }
     await updateUser(id!, data)
     Message.success('更新成功')
@@ -413,7 +640,9 @@ function onPageSizeChange(size: number) {
       </div>
       <div class="header-right">
         <a-button type="primary" class="add-btn" @click="openAdd">
-          <template #icon><IconPlus /></template>
+          <template #icon>
+            <IconPlus />
+          </template>
           添加用户
         </a-button>
       </div>
@@ -422,63 +651,65 @@ function onPageSizeChange(size: number) {
     <!-- Toolbar -->
     <div class="glow-card toolbar-card">
       <div class="toolbar">
-        <a-input
-          v-model="searchKeyword"
-          placeholder="搜索用户名/手机号/邮箱"
-          allow-clear
-          class="search-input"
-          @press-enter="handleSearch"
-        >
-          <template #prefix>
-            <IconSearch />
-          </template>
-        </a-input>
-        <a-select
-          v-model="roleFilter"
-          placeholder="角色筛选"
-          allow-clear
-          style="width: 140px"
-        >
-          <a-option v-if="isSuperAdmin" label="超级管理员" value="super" />
-          <a-option label="管理员" value="admin" />
-          <a-option label="普通用户" value="user" />
-        </a-select>
-        <a-select
-          v-model="statusFilter"
-          placeholder="状态筛选"
-          allow-clear
-          style="width: 120px"
-        >
-          <a-option label="正常" value="active" />
-          <a-option label="已封禁" value="banned" />
-        </a-select>
-        <a-range-picker
-          v-model="dateRange"
-          style="width: 240px"
-          format="YYYY-MM-DD"
-          value-format="YYYY-MM-DD"
-        />
-        <a-button type="primary" @click="handleSearch">
-          <template #icon><IconSearch /></template>
-          搜索
-        </a-button>
-        <a-button @click="handleResetFilters">
-          <template #icon><IconRefresh /></template>
-          重置
-        </a-button>
+        <div class="toolbar-row toolbar-row-filters">
+          <a-input v-model="searchKeyword" placeholder="搜索用户名/手机号/邮箱" allow-clear class="search-input"
+            @press-enter="handleSearch">
+            <template #prefix>
+              <IconSearch />
+            </template>
+          </a-input>
+          <a-select v-model="roleFilter" placeholder="角色筛选" allow-clear class="filter-select role">
+            <a-option v-if="isSuperAdmin" label="超级管理员" value="super" />
+            <a-option label="管理员" value="admin" />
+            <a-option label="普通用户" value="user" />
+          </a-select>
+          <a-select v-model="statusFilter" placeholder="状态筛选" allow-clear class="filter-select status">
+            <a-option label="正常" value="active" />
+            <a-option label="已封禁" value="banned" />
+          </a-select>
+          <a-select v-model="collegeId" placeholder="学院" allow-clear class="filter-select college"
+            @change="onFilterCollegeChange">
+            <a-option v-for="c in filterCollegeList" :key="c.id" :value="c.id" :label="c.name" />
+          </a-select>
+          <a-select v-model="gradeId" placeholder="学级" allow-clear :disabled="!collegeId" class="filter-select grade"
+            @change="onFilterGradeChange">
+            <a-option v-for="g in filterGradeList" :key="g.id" :value="g.id" :label="g.name" />
+          </a-select>
+          <a-select v-model="majorId" placeholder="专业" allow-clear :disabled="!gradeId" class="filter-select major"
+            @change="onFilterMajorChange">
+            <a-option v-for="m in filterMajorList" :key="m.id" :value="m.id" :label="m.name" />
+          </a-select>
+          <a-select v-model="classId" placeholder="班级" allow-clear :disabled="!majorId" class="filter-select class">
+            <a-option v-for="cl in filterClassList" :key="cl.id" :value="cl.id" :label="cl.name" />
+          </a-select>
+          <div class="toolbar-actions">
+            <a-button type="primary" @click="handleSearch">
+              <template #icon>
+                <IconSearch />
+              </template>
+              搜索
+            </a-button>
+            <a-button @click="handleResetFilters">
+              <template #icon>
+                <IconRefresh />
+              </template>
+              重置
+            </a-button>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Table -->
     <div class="glow-card table-card">
-      <a-table
-        :columns="columns"
-        :data="tableData"
-        :loading="loading"
-        :pagination="false"
-        row-key="id"
-        class="data-table"
-      >
+      <a-table :columns="columns" :data="tableData" :loading="loading" :pagination="false" row-key="id"
+        class="data-table">
+        <template #academic="{ record }">
+          <span class="academic-cell">
+            {{ [record.collegeName, record.gradeName, record.majorName, record.className].filter(Boolean).join(' / ') ||
+              '—' }}
+          </span>
+        </template>
         <template #user="{ record }">
           <div class="user-cell">
             <a-avatar :size="40" class="user-avatar">
@@ -512,28 +743,31 @@ function onPageSizeChange(size: number) {
           <template v-if="canManageRow(record)">
             <a-tooltip content="编辑">
               <a-button type="text" size="small" class="action-btn" @click="openEdit(record)">
-                <template #icon><IconEdit /></template>
+                <template #icon>
+                  <IconEdit />
+                </template>
               </a-button>
             </a-tooltip>
             <a-tooltip content="重置密码">
               <a-button type="text" size="small" class="action-btn" @click="openReset(record)">
-                <template #icon><IconLock /></template>
+                <template #icon>
+                  <IconLock />
+                </template>
               </a-button>
             </a-tooltip>
             <a-tooltip :content="isActive(record) ? '封禁' : '启用'">
-              <a-button
-                type="text"
-                size="small"
-                :status="isActive(record) ? 'warning' : 'success'"
-                class="action-btn"
-                @click="handleStatusChange(record)"
-              >
-                <template #icon><IconMessageBanned /></template>
+              <a-button type="text" size="small" :status="isActive(record) ? 'warning' : 'success'" class="action-btn"
+                @click="handleStatusChange(record)">
+                <template #icon>
+                  <IconMessageBanned />
+                </template>
               </a-button>
             </a-tooltip>
             <a-tooltip content="删除">
               <a-button type="text" status="danger" size="small" class="action-btn" @click="handleDelete(record)">
-                <template #icon><IconDelete /></template>
+                <template #icon>
+                  <IconDelete />
+                </template>
               </a-button>
             </a-tooltip>
           </template>
@@ -542,37 +776,17 @@ function onPageSizeChange(size: number) {
       </a-table>
 
       <div class="pagination-wrap">
-        <a-pagination
-          v-model:current="paginationConfig.current"
-          v-model:page-size="paginationConfig.pageSize"
-          :total="paginationConfig.total"
-          :page-size-options="[10, 20, 50]"
-          show-total
-          show-page-size
-          @change="onPageChange"
-          @page-size-change="onPageSizeChange"
-        />
+        <a-pagination v-model:current="paginationConfig.current" v-model:page-size="paginationConfig.pageSize"
+          :total="paginationConfig.total" :page-size-options="[10, 20, 50]" show-total show-page-size
+          @change="onPageChange" @page-size-change="onPageSizeChange" />
       </div>
     </div>
 
     <!-- Edit Modal -->
-    <a-modal
-      v-model:visible="editDialogVisible"
-      title="编辑用户"
-      width="480px"
-      unmount-on-close
-      class="edit-modal"
-      :mask-style="{ background: 'var(--bg-overlay)' }"
-      @close="formRef?.clearValidate()"
-    >
-      <a-form
-        ref="formRef"
-        :model="editForm"
-        :rules="editRules"
-        layout="horizontal"
-        :label-col-props="{ span: 6 }"
-        :wrapper-col-props="{ span: 18 }"
-      >
+    <a-modal v-model:visible="editDialogVisible" title="编辑用户" width="480px" unmount-on-close class="edit-modal"
+      :mask-style="{ background: 'var(--bg-overlay)' }" @close="formRef?.clearValidate()">
+      <a-form ref="formRef" :model="editForm" :rules="editRules" layout="horizontal" :label-col-props="{ span: 6 }"
+        :wrapper-col-props="{ span: 18 }">
         <a-form-item label="手机号" field="phone">
           <a-input v-model="editForm.phone" disabled placeholder="登录账号，不能修改" />
         </a-form-item>
@@ -598,6 +812,30 @@ function onPageSizeChange(size: number) {
         <a-form-item label="余额" field="balance">
           <a-input-number v-model="editForm.balance" :min="0" :precision="2" style="width: 200px" />
         </a-form-item>
+        <a-form-item label="学院" field="collegeId">
+          <a-select v-model="editForm.collegeId" placeholder="可选" allow-clear style="width: 100%"
+            @change="onEditFormCollegeChange">
+            <a-option v-for="c in collegeOptionsForForm" :key="c.id" :value="c.id" :label="c.name" />
+          </a-select>
+        </a-form-item>
+        <a-form-item label="学级" field="gradeId">
+          <a-select v-model="editForm.gradeId" placeholder="先选学院" allow-clear :disabled="!editForm.collegeId"
+            style="width: 100%" @change="onEditFormGradeChange">
+            <a-option v-for="g in gradeOptionsForForm" :key="g.id" :value="g.id" :label="g.name" />
+          </a-select>
+        </a-form-item>
+        <a-form-item label="专业" field="majorId">
+          <a-select v-model="editForm.majorId" placeholder="先选学级" allow-clear :disabled="!editForm.gradeId"
+            style="width: 100%" @change="onEditFormMajorChange">
+            <a-option v-for="m in majorOptionsForForm" :key="m.id" :value="m.id" :label="m.name" />
+          </a-select>
+        </a-form-item>
+        <a-form-item label="班级" field="classId">
+          <a-select v-model="editForm.classId" placeholder="先选专业" allow-clear :disabled="!editForm.majorId"
+            style="width: 100%">
+            <a-option v-for="cl in classOptionsForForm" :key="cl.id" :value="cl.id" :label="cl.name" />
+          </a-select>
+        </a-form-item>
       </a-form>
       <template #footer>
         <a-button @click="editDialogVisible = false">取消</a-button>
@@ -608,23 +846,10 @@ function onPageSizeChange(size: number) {
     </a-modal>
 
     <!-- Add Modal -->
-    <a-modal
-      v-model:visible="addDialogVisible"
-      title="添加用户"
-      width="520px"
-      unmount-on-close
-      class="edit-modal"
-      :mask-style="{ background: 'var(--bg-overlay)' }"
-      @close="addFormRef?.clearValidate()"
-    >
-      <a-form
-        ref="addFormRef"
-        :model="addForm"
-        :rules="addRules"
-        layout="horizontal"
-        :label-col-props="{ span: 6 }"
-        :wrapper-col-props="{ span: 18 }"
-      >
+    <a-modal v-model:visible="addDialogVisible" title="添加用户" width="520px" unmount-on-close class="edit-modal"
+      :mask-style="{ background: 'var(--bg-overlay)' }" @close="addFormRef?.clearValidate()">
+      <a-form ref="addFormRef" :model="addForm" :rules="addRules" layout="horizontal" :label-col-props="{ span: 6 }"
+        :wrapper-col-props="{ span: 18 }">
         <a-form-item label="手机号" field="phone">
           <a-input v-model="addForm.phone" placeholder="登录账号，必填且唯一" />
         </a-form-item>
@@ -653,6 +878,30 @@ function onPageSizeChange(size: number) {
         <a-form-item label="初始余额" field="balance">
           <a-input-number v-model="addForm.balance" :min="0" :precision="2" style="width: 200px" />
         </a-form-item>
+        <a-form-item label="学院" field="collegeId">
+          <a-select v-model="addForm.collegeId" placeholder="可选" allow-clear style="width: 100%"
+            @change="onAddFormCollegeChange">
+            <a-option v-for="c in collegeOptionsForForm" :key="c.id" :value="c.id" :label="c.name" />
+          </a-select>
+        </a-form-item>
+        <a-form-item label="学级" field="gradeId">
+          <a-select v-model="addForm.gradeId" placeholder="先选学院" allow-clear :disabled="!addForm.collegeId"
+            style="width: 100%" @change="onAddFormGradeChange">
+            <a-option v-for="g in gradeOptionsForForm" :key="g.id" :value="g.id" :label="g.name" />
+          </a-select>
+        </a-form-item>
+        <a-form-item label="专业" field="majorId">
+          <a-select v-model="addForm.majorId" placeholder="先选学级" allow-clear :disabled="!addForm.gradeId"
+            style="width: 100%" @change="onAddFormMajorChange">
+            <a-option v-for="m in majorOptionsForForm" :key="m.id" :value="m.id" :label="m.name" />
+          </a-select>
+        </a-form-item>
+        <a-form-item label="班级" field="classId">
+          <a-select v-model="addForm.classId" placeholder="先选专业" allow-clear :disabled="!addForm.majorId"
+            style="width: 100%">
+            <a-option v-for="cl in classOptionsForForm" :key="cl.id" :value="cl.id" :label="cl.name" />
+          </a-select>
+        </a-form-item>
       </a-form>
       <template #footer>
         <a-button @click="addDialogVisible = false">取消</a-button>
@@ -660,23 +909,10 @@ function onPageSizeChange(size: number) {
       </template>
     </a-modal>
     <!-- Reset Password Modal -->
-    <a-modal
-      v-model:visible="resetDialogVisible"
-      title="重置密码"
-      width="420px"
-      unmount-on-close
-      class="edit-modal"
-      :mask-style="{ background: 'var(--bg-overlay)' }"
-      @close="resetFormRef?.clearValidate()"
-    >
-      <a-form
-        ref="resetFormRef"
-        :model="resetForm"
-        :rules="resetRules"
-        layout="horizontal"
-        :label-col-props="{ span: 6 }"
-        :wrapper-col-props="{ span: 18 }"
-      >
+    <a-modal v-model:visible="resetDialogVisible" title="重置密码" width="420px" unmount-on-close class="edit-modal"
+      :mask-style="{ background: 'var(--bg-overlay)' }" @close="resetFormRef?.clearValidate()">
+      <a-form ref="resetFormRef" :model="resetForm" :rules="resetRules" layout="horizontal"
+        :label-col-props="{ span: 6 }" :wrapper-col-props="{ span: 18 }">
         <a-form-item label="新密码" field="password">
           <a-input-password v-model="resetForm.password" placeholder="请输入新密码（至少 6 位）" />
         </a-form-item>
@@ -747,20 +983,32 @@ function onPageSizeChange(size: number) {
   border: none;
 }
 
-/* Toolbar */
+/* Toolbar：简单两行，不搞花里胡哨的适配 */
 .toolbar-card {
   padding: var(--sp-4);
 }
 
 .toolbar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   gap: var(--sp-4);
 }
 
+/* 纯 Grid：5 列，前 5 项第一行，后 3 项第二行；专业/班级与首行同列宽，按钮组不拉伸 */
+.toolbar-row-filters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(180px, 1fr));
+  gap: var(--sp-4);
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: var(--sp-4);
+  justify-self: start;
+}
+
 .search-input {
-  width: 260px;
+  width: 100%;
 }
 
 /* Table */
@@ -856,15 +1104,6 @@ function onPageSizeChange(size: number) {
   .header-card {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .search-input {
-    width: 100%;
   }
 }
 </style>

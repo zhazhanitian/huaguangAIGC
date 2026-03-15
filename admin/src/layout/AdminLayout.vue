@@ -35,6 +35,7 @@ const menuSections = [
     label: '管理',
     items: [
       { path: '/users', label: '用户管理', icon: IconUser },
+      { path: '/academic', label: '学院管理', icon: IconUserGroup },
       { path: '/models', label: '模型管理', icon: IconApps },
       { path: '/apikeys', label: 'API Key', icon: IconLock },
       { path: '/canvas', label: '画布管理', icon: IconEdit },
@@ -54,6 +55,7 @@ const breadcrumbItems = computed(() => {
   const names: Record<string, string> = {
     '/dashboard': '数据概览',
     '/users': '用户管理',
+    '/academic': '学院管理',
     '/models': '模型管理',
     '/apikeys': 'API Key 管理',
     '/config': '系统配置',

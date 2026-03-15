@@ -9,11 +9,13 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { InvitationModule } from '../invitation/invitation.module';
+import { AcademicModule } from '../academic/academic.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
     InvitationModule,
+    AcademicModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

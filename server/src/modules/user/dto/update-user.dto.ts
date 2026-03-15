@@ -6,6 +6,7 @@ import {
   Min,
   Max,
   IsEmail,
+  IsUUID,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole, UserStatus } from '../user.entity';
@@ -50,4 +51,24 @@ export class UpdateUserDto {
   @Min(0, { message: '余额不能小于 0' })
   @Max(99999999, { message: '余额过大' })
   balance?: number;
+
+  @ApiPropertyOptional({ description: '学院 ID，可为空' })
+  @IsOptional()
+  @IsUUID()
+  collegeId?: string | null;
+
+  @ApiPropertyOptional({ description: '学级 ID，可为空' })
+  @IsOptional()
+  @IsUUID()
+  gradeId?: string | null;
+
+  @ApiPropertyOptional({ description: '专业 ID，可为空' })
+  @IsOptional()
+  @IsUUID()
+  majorId?: string | null;
+
+  @ApiPropertyOptional({ description: '班级 ID，可为空' })
+  @IsOptional()
+  @IsUUID()
+  classId?: string | null;
 }

@@ -5,12 +5,13 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { User, UserRole, UserStatus } from './user.entity';
 import { UserListDto } from './dto/user-list.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
+import { College, Grade, Major, Clazz } from '../academic/academic.entity';
 
 /** 仅超级管理员可操作的角色 */
 const SUPER_ROLE = UserRole.SUPER;
@@ -68,6 +69,10 @@ export class UserService {
       balance: dto.balance ?? 0,
       inviteCode,
       invitedBy: null,
+      collegeId: dto.collegeId ?? null,
+      gradeId: dto.gradeId ?? null,
+      majorId: dto.majorId ?? null,
+      classId: dto.classId ?? null,
     });
 
     return this.userRepository.save(user);
@@ -84,6 +89,42 @@ export class UserService {
     if (caller && caller.role !== SUPER_ROLE && user.role === UserRole.SUPER) {
       throw new ForbiddenException('无权限查看该用户');
     }
+
+    // 附带学院/学级/专业/班级名称，便于前端直接展示
+    const manager = this.userRepository.manager;
+    if (user.collegeId) {
+      const college = await manager
+        .getRepository(College)
+        .findOne({ where: { id: user.collegeId } });
+      (user as any).collegeName = college?.name ?? null;
+    } else {
+      (user as any).collegeName = null;
+    }
+    if (user.gradeId) {
+      const grade = await manager
+        .getRepository(Grade)
+        .findOne({ where: { id: user.gradeId } });
+      (user as any).gradeName = grade?.name ?? null;
+    } else {
+      (user as any).gradeName = null;
+    }
+    if (user.majorId) {
+      const major = await manager
+        .getRepository(Major)
+        .findOne({ where: { id: user.majorId } });
+      (user as any).majorName = major?.name ?? null;
+    } else {
+      (user as any).majorName = null;
+    }
+    if (user.classId) {
+      const clazz = await manager
+        .getRepository(Clazz)
+        .findOne({ where: { id: user.classId } });
+      (user as any).className = clazz?.name ?? null;
+    } else {
+      (user as any).className = null;
+    }
+
     return user;
   }
 
@@ -115,6 +156,10 @@ export class UserService {
       status,
       startDate,
       endDate,
+      collegeId,
+      gradeId,
+      majorId,
+      classId,
     } = query;
     const skip = (page - 1) * pageSize;
 
@@ -141,6 +186,19 @@ export class UserService {
       qb.andWhere('user.status = :status', { status });
     }
 
+    if (collegeId) {
+      qb.andWhere('user.collegeId = :collegeId', { collegeId });
+    }
+    if (gradeId) {
+      qb.andWhere('user.gradeId = :gradeId', { gradeId });
+    }
+    if (majorId) {
+      qb.andWhere('user.majorId = :majorId', { majorId });
+    }
+    if (classId) {
+      qb.andWhere('user.classId = :classId', { classId });
+    }
+
     // 日期范围（按 createdAt）
     // 使用本地时区解析，避免 UTC 偏移导致筛选错一天
     const start = startDate ? new Date(`${startDate}T00:00:00.000`) : null;
@@ -157,6 +215,64 @@ export class UserService {
       .skip(skip)
       .take(pageSize)
       .getManyAndCount();
+
+    // 批量补全学院/学级/专业/班级名称，避免前端再查一遍
+    const manager = this.userRepository.manager;
+    const collegeIds = Array.from(
+      new Set(
+        list
+          .map((u) => u.collegeId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+    const gradeIds = Array.from(
+      new Set(
+        list
+          .map((u) => u.gradeId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+    const majorIds = Array.from(
+      new Set(
+        list
+          .map((u) => u.majorId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+    const classIds = Array.from(
+      new Set(
+        list
+          .map((u) => u.classId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+
+    const [colleges, grades, majors, classes] = await Promise.all([
+      collegeIds.length
+        ? manager.getRepository(College).find({ where: { id: In(collegeIds) } })
+        : Promise.resolve([]),
+      gradeIds.length
+        ? manager.getRepository(Grade).find({ where: { id: In(gradeIds) } })
+        : Promise.resolve([]),
+      majorIds.length
+        ? manager.getRepository(Major).find({ where: { id: In(majorIds) } })
+        : Promise.resolve([]),
+      classIds.length
+        ? manager.getRepository(Clazz).find({ where: { id: In(classIds) } })
+        : Promise.resolve([]),
+    ]);
+
+    const collegeMap = new Map(colleges.map((c) => [c.id, c.name]));
+    const gradeMap = new Map(grades.map((g) => [g.id, g.name]));
+    const majorMap = new Map(majors.map((m) => [m.id, m.name]));
+    const classMap = new Map(classes.map((c) => [c.id, c.name]));
+
+    for (const u of list as any[]) {
+      u.collegeName = u.collegeId ? collegeMap.get(u.collegeId) ?? null : null;
+      u.gradeName = u.gradeId ? gradeMap.get(u.gradeId) ?? null : null;
+      u.majorName = u.majorId ? majorMap.get(u.majorId) ?? null : null;
+      u.className = u.classId ? classMap.get(u.classId) ?? null : null;
+    }
 
     return {
       list,
@@ -175,7 +291,17 @@ export class UserService {
     updates: Partial<
       Pick<
         User,
-        'username' | 'email' | 'avatar' | 'role' | 'status' | 'sign' | 'balance'
+        | 'username'
+        | 'email'
+        | 'avatar'
+        | 'role'
+        | 'status'
+        | 'sign'
+        | 'balance'
+        | 'collegeId'
+        | 'gradeId'
+        | 'majorId'
+        | 'classId'
       >
     >,
     caller: User,
