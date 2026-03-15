@@ -94,7 +94,7 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
 </template>
 
 <style scoped>
-/* ---------- 大屏一屏 Dashboard 容器 ---------- */
+/* ---------- 大屏一屏 Dashboard 容器：严格一屏，高度自适应 ---------- */
 .dashboard-container {
   height: 100vh;
   min-height: 100vh;
@@ -105,10 +105,11 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
   background-color: var(--bg-body);
 }
 
-/* ---------- Hero：占据剩余高度，自由伸缩 ---------- */
+/* ---------- Hero：按视口比例伸缩，小屏自动压缩 ---------- */
 .hero-section {
-  flex: 1 1 0;
-  min-height: 0;
+  flex: 0 1 28vh;
+  min-height: 72px;
+  max-height: 32vh;
   position: relative;
   display: flex;
   align-items: center;
@@ -224,7 +225,7 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: clamp(0.25rem, 1.2vh, 0.5rem);
 }
 
 .hero-title {
@@ -281,14 +282,14 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
   box-shadow: 0 8px 28px rgba(22, 93, 255, 0.4);
 }
 
-/* ---------- Modules：固定高度，至少 600px 且不低于 65vh ---------- */
+/* ---------- Modules：占据剩余高度，小屏与 Hero 共同压缩保证一屏 ---------- */
 .modules-section {
-  flex: 0 0 max(600px, 68vh);
+  flex: 1 1 0;
   min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(10px, 1.2vw, 18px) clamp(16px, 2vw, 24px);
+  padding: clamp(8px, 1vw, 18px) clamp(12px, 1.5vw, 24px);
   overflow: hidden;
   background: var(--bg-body);
 }
@@ -300,7 +301,7 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
-  gap: clamp(10px, 1vw, 16px);
+  gap: clamp(6px, min(1vw, 1.8vh), 16px);
   align-content: stretch;
 }
 
@@ -309,8 +310,8 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
   min-height: 0;
   background: var(--bg-surface-1);
   border: 1px solid var(--border-1);
-  border-radius: 16px;
-  padding: clamp(12px, 1.3vw, 18px) clamp(14px, 1.4vw, 20px);
+  border-radius: clamp(10px, 1.2vmin, 16px);
+  padding: clamp(8px, min(1.2vw, 2vh), 18px) clamp(10px, min(1.4vw, 2.2vh), 20px);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -354,22 +355,30 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: clamp(6px, 0.8vw, 10px);
+  margin-bottom: clamp(4px, min(0.7vw, 1.2vh), 10px);
   position: relative;
   z-index: 1;
   flex-shrink: 0;
 }
 
 .icon-box {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: clamp(28px, min(4vw, 5vh), 42px);
+  height: clamp(28px, min(4vw, 5vh), 42px);
+  min-width: 0;
+  border-radius: clamp(8px, 1vmin, 12px);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: transform 0.25s ease;
+  flex-shrink: 0;
+}
+
+.icon-box :deep(svg) {
+  width: clamp(14px, min(2vw, 2.6vh), 22px) !important;
+  height: clamp(14px, min(2vw, 2.6vh), 22px) !important;
+  flex-shrink: 0;
 }
 
 .bento-card:hover .icon-box {
@@ -377,10 +386,10 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
 }
 
 .en-subtitle {
-  font-size: clamp(0.65rem, 0.85vw, 0.78rem);
+  font-size: clamp(0.55rem, min(0.85vw, 1.2vh), 0.78rem);
   color: var(--text-4);
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.6px;
   font-weight: 600;
 }
 
@@ -395,11 +404,11 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
 }
 
 .card-body h3 {
-  font-size: clamp(0.95rem, 1.2vw, 1.2rem);
+  font-size: clamp(0.8rem, min(1.2vw, 1.8vh), 1.2rem);
   font-weight: 700;
   color: var(--text-1);
-  margin: 0 0 4px;
-  line-height: 1.35;
+  margin: 0 0 clamp(2px, 0.5vh, 4px);
+  line-height: 1.3;
   transition: color 0.2s ease;
 }
 
@@ -408,9 +417,9 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
 }
 
 .card-body p {
-  font-size: clamp(0.72rem, 0.9vw, 0.85rem);
+  font-size: clamp(0.6rem, min(0.9vw, 1.3vh), 0.85rem);
   color: var(--text-3);
-  line-height: 1.5;
+  line-height: 1.45;
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -420,12 +429,12 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
 }
 
 .card-footer {
-  margin-top: clamp(6px, 0.8vw, 10px);
+  margin-top: clamp(4px, min(0.7vw, 1.2vh), 10px);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: clamp(4px, 0.5vmin, 6px);
   color: var(--text-3);
-  font-size: clamp(0.72rem, 0.88vw, 0.82rem);
+  font-size: clamp(0.6rem, min(0.88vw, 1.2vh), 0.82rem);
   font-weight: 500;
   transition: color 0.2s ease;
   position: relative;
@@ -463,47 +472,216 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
   background: var(--bg-surface-1);
 }
 
-/* ---------- 响应式：小屏仍保持 3×3，仅缩放 ---------- */
+/* ---------- 响应式：小宽屏 item 适配 ---------- */
 @media (max-width: 900px) {
   .bento-grid {
-    gap: 6px;
-    padding: 4px;
+    gap: clamp(4px, 1vw, 6px);
   }
 
   .bento-card {
-    padding: 10px 12px;
+    padding: clamp(8px, 1vw, 10px) clamp(10px, 1.2vw, 12px);
+  }
+
+  .card-body h3 {
+    font-size: clamp(0.8rem, 2.2vw, 0.95rem);
   }
 
   .card-body p {
+    font-size: clamp(0.62rem, 1.8vw, 0.78rem);
     -webkit-line-clamp: 2;
     line-clamp: 2;
+  }
+
+  .card-footer {
+    font-size: clamp(0.6rem, 1.6vw, 0.75rem);
   }
 }
 
 @media (max-width: 600px) {
-  .modules-section {
-    flex: 0 0 max(480px, 60vh);
-  }
-
   .bento-grid {
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(3, 1fr);
     gap: 4px;
   }
 
+  .bento-card {
+    padding: 6px 8px;
+    border-radius: 10px;
+  }
+
   .icon-box {
-    width: 32px;
-    height: 32px;
+    width: clamp(24px, 5vw, 32px);
+    height: clamp(24px, 5vw, 32px);
+    border-radius: 8px;
+  }
+
+  .icon-box :deep(svg) {
+    width: clamp(12px, 2.5vw, 16px);
+    height: clamp(12px, 2.5vw, 16px);
+  }
+
+  .en-subtitle {
+    font-size: 0.5rem;
+    letter-spacing: 0.4px;
+  }
+
+  .card-header {
+    margin-bottom: 2px;
   }
 
   .card-body h3 {
-    font-size: 0.8rem;
+    font-size: clamp(0.7rem, 3.2vw, 0.85rem);
   }
 
   .card-body p {
-    font-size: 0.65rem;
+    font-size: clamp(0.55rem, 2.2vw, 0.68rem);
     -webkit-line-clamp: 2;
     line-clamp: 2;
+  }
+
+  .card-footer {
+    margin-top: 2px;
+    font-size: clamp(0.55rem, 2vw, 0.68rem);
+    gap: 4px;
+  }
+}
+
+/* ---------- 小高度视口：进一步压缩保证一屏完整 ---------- */
+@media (max-height: 700px) {
+  .hero-section {
+    flex: 0 1 22vh;
+    min-height: 56px;
+    max-height: 26vh;
+    padding: 0 3%;
+  }
+
+  .hero-title {
+    font-size: clamp(1.5rem, 4vw, 2.25rem);
+  }
+
+  .school-badge {
+    padding: 4px 14px;
+    font-size: clamp(0.7rem, 1.2vw, 0.9rem);
+  }
+
+  .hero-subtitle {
+    font-size: clamp(0.65rem, 1vw, 0.8rem);
+    max-width: 480px;
+  }
+
+  .modules-section {
+    padding: 6px 12px;
+  }
+
+  .bento-grid {
+    gap: clamp(4px, 0.8vh, 10px);
+  }
+
+  .bento-card {
+    padding: clamp(6px, 1vh, 12px) clamp(8px, 1.2vw, 16px);
+    border-radius: 12px;
+  }
+
+  .card-header {
+    margin-bottom: clamp(2px, 0.6vh, 6px);
+  }
+
+  .icon-box {
+    width: clamp(28px, 4.5vh, 36px);
+    height: clamp(28px, 4.5vh, 36px);
+  }
+
+  .icon-box :deep(svg) {
+    width: clamp(12px, 2.2vh, 18px);
+    height: clamp(12px, 2.2vh, 18px);
+  }
+
+  .en-subtitle {
+    font-size: clamp(0.5rem, 1vh, 0.7rem);
+  }
+
+  .card-body h3 {
+    font-size: clamp(0.75rem, 1.6vh, 1rem);
+  }
+
+  .card-body p {
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    font-size: clamp(0.58rem, 1.2vh, 0.75rem);
+  }
+
+  .card-footer {
+    margin-top: clamp(2px, 0.6vh, 6px);
+    font-size: clamp(0.6rem, 1.1vh, 0.75rem);
+  }
+}
+
+@media (max-height: 560px) {
+  .hero-section {
+    flex: 0 1 18vh;
+    min-height: 48px;
+    max-height: 22vh;
+  }
+
+  .hero-title {
+    font-size: 1.35rem;
+  }
+
+  .school-badge {
+    padding: 3px 10px;
+    font-size: 0.65rem;
+  }
+
+  .hero-subtitle {
+    font-size: 0.6rem;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .bento-grid {
+    gap: 3px;
+  }
+
+  .bento-card {
+    padding: 4px 8px;
+    border-radius: 8px;
+  }
+
+  .card-header {
+    margin-bottom: 2px;
+  }
+
+  .icon-box {
+    width: clamp(22px, 4vh, 28px);
+    height: clamp(22px, 4vh, 28px);
+    border-radius: 6px;
+  }
+
+  .icon-box :deep(svg) {
+    width: 11px;
+    height: 11px;
+  }
+
+  .en-subtitle {
+    font-size: 0.45rem;
+  }
+
+  .card-body h3 {
+    font-size: clamp(0.65rem, 1.4vh, 0.8rem);
+  }
+
+  .card-body p {
+    font-size: clamp(0.5rem, 1vh, 0.6rem);
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    line-height: 1.35;
+  }
+
+  .card-footer {
+    margin-top: 2px;
+    font-size: clamp(0.5rem, 1vh, 0.6rem);
+    gap: 2px;
   }
 }
 </style>

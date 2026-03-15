@@ -297,7 +297,7 @@ async function send(prompt?: string) {
   const sentAttachments: MessageAttachment[] = pendingFiles.map((f) => ({
     id: f.id,
     name: f.name,
-    size: f.file.size,
+    size: String(f.file.size),
     type: f.type,
     url: f.serverUrl!,
     mimetype: f.file.type || undefined,

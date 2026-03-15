@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch, computed, h, resolveComponent } from 'vue'
+import { onMounted, onUnmounted, ref, watch, computed } from 'vue'
 import { Message, Modal } from '@arco-design/web-vue'
 import { ArrowUpRight, ImagePlus, MousePointer2, Square, Type as TypeIcon } from 'lucide-vue-next'
 
@@ -42,24 +42,6 @@ const SNAP_GRID_SIZE = 24
 
 /* === 内容安全预检结果 === */
 const lastCheckResult = ref<TextCheckResult | null>(null)
-
-// 转义正则特殊字符
-function escapeRegExp(str: string) {
-  // 匹配所有正则特殊字符并转义
-  return str.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
-}
-
-// 从文本中移除敏感词
-function removeBadWordsFromText(text: string, words: string[]) {
-  if (!text) return text
-  let result = text
-  for (const w of words) {
-    if (!w) continue
-    const reg = new RegExp(escapeRegExp(w), 'gi')
-    result = result.replace(reg, '')
-  }
-  return result.replace(/\s{2,}/g, ' ').trim()
-}
 
 const imageProvidersDef = [
   { value: 'nano-banana-pro', label: 'Nano Banana Pro', desc: 'Google 高质量绘画', color: '#FF7D00' },
@@ -551,18 +533,6 @@ function handleKeyDown(e: KeyboardEvent) {
     e.preventDefault()
     handleLayerAction('backward')
   }
-}
-
-// 删除节点中的敏感词
-function handleRemoveBadWordsFromNode(nodeId: string, words: string[]) {
-  const list = words.filter(Boolean)
-  if (!list.length) return
-  const node = nodes.value.find(n => n.id === nodeId)
-  if (!node) return
-  const newPrompt = removeBadWordsFromText(node.prompt || '', list)
-  const newNegativePrompt = removeBadWordsFromText(node.negativePrompt || '', list)
-  canvasStore.updateNode(nodeId, { prompt: newPrompt, negativePrompt: newNegativePrompt })
-  Message.success({ content: '已删除违禁词', duration: 3000 })
 }
 
 // 生成节点任务（带敏感词检测）
