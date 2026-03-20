@@ -25,6 +25,13 @@ import { ContentModerationService } from '../content-moderation/content-moderati
 import { OssService } from '../oss/oss.service';
 
 const POINTS_PER_VIDEO_FALLBACK = Number(process.env.POINTS_PER_VIDEO) || 50;
+// 控制是否走 Bull 队列（用于测试“去掉排队”带来的影响）。
+// 注意：必须动态读取 env，不能缓存为 top-level 常量，否则启动时序变化会导致“envRaw=false 但开关仍 true”的矛盾。
+function isTaskQueueEnabledFromEnv(): boolean {
+  const raw = process.env.TASK_QUEUE_ENABLED;
+  const normalized = String(raw ?? 'true').trim().toLowerCase();
+  return normalized !== 'false';
+}
 
 @Injectable()
 export class VideoService {
@@ -52,6 +59,44 @@ export class VideoService {
     private readonly contentModeration: ContentModerationService,
     private readonly oss: OssService,
   ) {}
+
+  /**
+   * 真实耗时：在进入 processing 和 completed/failed 时把时间戳写进库（task.params）。
+   * 这样列表接口拿到的是“落库后的真实时间”。
+   */
+  private readonly PARAM_PROCESSING_AT_MS = '__processingAtMs';
+  private readonly PARAM_ENDED_AT_MS = '__endedAtMs';
+
+  private extractExecutionTimeFromParams(task: VideoTask): {
+    queueMs: number | null;
+    procMs: number | null;
+    totalMs?: number;
+  } {
+    const createdAtMs =
+      task.createdAt instanceof Date
+        ? task.createdAt.getTime()
+        : task.createdAt
+          ? new Date(task.createdAt as any).getTime()
+          : null;
+    if (createdAtMs == null) return { queueMs: null, procMs: null };
+
+    const params = task.params as Record<string, unknown> | null;
+    if (!params || typeof params !== 'object')
+      return { queueMs: null, procMs: null };
+
+    const processingAtMs = Number((params as any)[this.PARAM_PROCESSING_AT_MS]);
+    const endedAtMs = Number((params as any)[this.PARAM_ENDED_AT_MS]);
+
+    const hasProcessingAt = Number.isFinite(processingAtMs);
+    const hasEndedAt = Number.isFinite(endedAtMs);
+
+    const queueMs = hasProcessingAt ? processingAtMs - createdAtMs : null;
+    const procMs =
+      hasProcessingAt && hasEndedAt ? endedAtMs - processingAtMs : null;
+    const totalMs = hasEndedAt ? endedAtMs - createdAtMs : undefined;
+
+    return { queueMs, procMs, ...(totalMs != null ? { totalMs } : {}) };
+  }
 
   private toPayload(task: VideoTask): Omit<TaskEventPayload, 'type'> {
     return {
@@ -168,8 +213,24 @@ export class VideoService {
     });
     const saved = await this.videoRepository.save(task);
 
-    await this.videoQueue.add('process', { taskId: saved.id }, { attempts: 3 });
     this.emit(userId, 'task.created', saved);
+    const taskQueueEnabled = isTaskQueueEnabledFromEnv();
+    if (taskQueueEnabled) {
+      // 加入 Bull 队列（会产生 pending/processing “排队等待”效果）
+      await this.videoQueue.add(
+        'process',
+        { taskId: saved.id },
+        { attempts: 3 },
+      );
+    } else {
+      // 不走队列：直接异步触发处理（用于对比测试）
+      void this.processVideoTask(saved).catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.error(
+          `TASK_QUEUE_ENABLED=false：视频任务直接处理失败: ${saved.id}, ${msg}`,
+        );
+      });
+    }
     return saved;
   }
 
@@ -192,20 +253,37 @@ export class VideoService {
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
-    return { list, total, page, pageSize };
+    // 给前端弹窗补充耗时（来自入库时间戳）
+    const mappedList = list.map((task) => ({
+      ...(task as any),
+      ...this.extractExecutionTimeFromParams(task),
+    }));
+    return { list: mappedList as any, total, page, pageSize };
   }
 
   async getTasksStatusBatch(
     userId: string,
     ids: string[],
-  ): Promise<VideoTask[]> {
+  ): Promise<
+    Array<
+      VideoTask & {
+        queueMs?: number | null;
+        procMs?: number | null;
+        totalMs?: number;
+      }
+    >
+  > {
     const uniq = Array.from(
       new Set((ids || []).map((x) => String(x || '').trim()).filter(Boolean)),
     );
     if (uniq.length === 0) return [];
-    return this.videoRepository.find({
+    const tasks = await this.videoRepository.find({
       where: { userId, id: In(uniq) },
     });
+    return tasks.map((task) => ({
+      ...(task as any),
+      ...this.extractExecutionTimeFromParams(task),
+    }));
   }
 
   /**
@@ -232,7 +310,16 @@ export class VideoService {
   /**
    * 获取任务详情/状态
    */
-  async getTaskStatus(taskId: string, userId?: string): Promise<VideoTask> {
+  async getTaskStatus(
+    taskId: string,
+    userId?: string,
+  ): Promise<
+    VideoTask & {
+      queueMs?: number | null;
+      procMs?: number | null;
+      totalMs?: number;
+    }
+  > {
     const task = await this.videoRepository.findOne({ where: { id: taskId } });
     if (!task) {
       throw new NotFoundException('任务不存在');
@@ -244,7 +331,7 @@ export class VideoService {
     ) {
       throw new NotFoundException('无权查看');
     }
-    return task;
+    return { ...(task as any), ...this.extractExecutionTimeFromParams(task) };
   }
 
   /**
@@ -262,6 +349,11 @@ export class VideoService {
     }
 
     try {
+      const processingAtMs = Date.now();
+      task.params = {
+        ...(task.params ?? {}),
+        [this.PARAM_PROCESSING_AT_MS]: processingAtMs,
+      } as any;
       task.status = VideoTaskStatus.PROCESSING;
       task.progress = 10;
       await this.videoRepository.save(task);
@@ -279,14 +371,24 @@ export class VideoService {
         /^https?:\/\//i.test(videoUrl)
       ) {
         try {
-          finalVideoUrl = await this.oss.uploadFromUrl(videoUrl, 'video', '.mp4');
+          finalVideoUrl = await this.oss.uploadFromUrl(
+            videoUrl,
+            'video',
+            '.mp4',
+          );
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          this.logger.warn(`视频转存 OSS 失败，保留第三方链接(${task.id}): ${msg}`);
+          this.logger.warn(
+            `视频转存 OSS 失败，保留第三方链接(${task.id}): ${msg}`,
+          );
         }
       }
 
       task.videoUrl = finalVideoUrl;
+      task.params = {
+        ...(task.params ?? {}),
+        [this.PARAM_ENDED_AT_MS]: Date.now(),
+      } as any;
       task.status = VideoTaskStatus.COMPLETED;
       task.progress = 100;
       task.errorMessage = null;
@@ -296,6 +398,10 @@ export class VideoService {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`视频任务失败: ${task.id}, ${msg}`);
+      task.params = {
+        ...(task.params ?? {}),
+        [this.PARAM_ENDED_AT_MS]: Date.now(),
+      } as any;
       task.status = VideoTaskStatus.FAILED;
       task.errorMessage = msg;
       task.progress = 0;

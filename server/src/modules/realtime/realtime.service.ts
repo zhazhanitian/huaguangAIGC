@@ -21,6 +21,22 @@ export type TaskFinishRecord = {
   errorMessage: string | null;
 };
 
+export type TaskExecutionTime = {
+  /**
+   * 排队耗时：从 task.created 到首次进入 processing
+   * 若尚未进入 processing，则为 null
+   */
+  queueMs: number | null;
+  /**
+   * 处理耗时：从首次进入 processing 到结束/当前（用于在途任务）
+   */
+  procMs: number | null;
+  /**
+   * 总耗时：从 task.created 到结束/当前（用于在途任务）
+   */
+  totalMs: number;
+};
+
 const MAX_EVENT_LOG = 4000;
 const EVENT_LOG_TTL_MS = 30 * 60 * 1000;
 
@@ -277,6 +293,60 @@ export class RealtimeService {
         },
       };
     });
+  }
+
+  /**
+   * 获取单个任务执行耗时（排队/处理/总耗时）
+   * 注：来自内存事件时间线，可能受 TTL 影响（默认 30min）。
+   */
+  getTaskExecutionTime(taskId: string): TaskExecutionTime | null {
+    return this.getTaskExecutionTimeBatch([taskId]).get(taskId) ?? null;
+  }
+
+  /**
+   * 获取批量任务执行耗时（排队/处理/总耗时）
+   * 处理在途任务：totalMs 会按当前时间计算；queueMs/procMs 取决于是否进入 processing。
+   */
+  getTaskExecutionTimeBatch(taskIds: string[]): Map<string, TaskExecutionTime> {
+    const uniq = Array.from(
+      new Set(
+        (taskIds || []).map((x) => String(x || '').trim()).filter(Boolean),
+      ),
+    );
+    const set = new Set(uniq);
+    const result = new Map<string, TaskExecutionTime>();
+    if (set.size === 0) return result;
+
+    // 保证 eventLog 不会长期保留过期数据
+    this.pruneEventLog();
+
+    const now = Date.now();
+
+    // 先取已结束的记录（eventLog 追加顺序为时间线顺序，因此从后往前取最新）
+    for (let i = this.eventLog.length - 1; i >= 0; i--) {
+      const r = this.eventLog[i];
+      if (!set.has(r.taskId) || result.has(r.taskId)) continue;
+      result.set(r.taskId, {
+        queueMs: r.queueMs,
+        procMs: r.procMs,
+        totalMs: r.totalMs,
+      });
+      if (result.size >= set.size) break;
+    }
+
+    // 再取在途记录（taskTimelines）
+    for (const tl of this.taskTimelines.values()) {
+      if (!set.has(tl.taskId) || result.has(tl.taskId)) continue;
+      const queueMs = tl.processingAtMs
+        ? tl.processingAtMs - tl.createdAtMs
+        : null;
+      const procMs = tl.processingAtMs ? now - tl.processingAtMs : null;
+      const totalMs = now - tl.createdAtMs;
+      result.set(tl.taskId, { queueMs, procMs, totalMs });
+      if (result.size >= set.size) break;
+    }
+
+    return result;
   }
 
   getRecentFailures(

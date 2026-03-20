@@ -33,6 +33,16 @@ const KIE_API_URL_FALLBACK = (
 ).replace(/\/+$/, '');
 const INTERNAL_TASK_SOURCE_KEY = '__taskSource';
 type DrawTaskSource = 'draw' | 'canvas';
+// 控制是否走 Bull 队列（用于测试“去掉排队”带来的影响）。
+// 默认开启：未配置 TASK_QUEUE_ENABLED 时视为 true
+function isTaskQueueEnabledFromEnv(): boolean {
+  // 注意：不要在模块加载阶段缓存该值，避免环境变量变更后仍被旧值影响
+  const raw = process.env.TASK_QUEUE_ENABLED;
+  const normalized = String(raw ?? 'true')
+    .trim()
+    .toLowerCase();
+  return normalized !== 'false';
+}
 
 @Injectable()
 export class DrawService {
@@ -60,6 +70,47 @@ export class DrawService {
     private readonly contentModeration: ContentModerationService,
     private readonly oss: OssService,
   ) {}
+
+  /**
+   * 真实耗时：我们在任务进入 `processing` 和 `completed/failed` 时，把时间戳“写进库”（task.params）。
+   * 这样即使重启服务，列表接口也仍能拿到准确耗时。
+   */
+  private readonly PARAM_PROCESSING_AT_MS = '__processingAtMs';
+  private readonly PARAM_ENDED_AT_MS = '__endedAtMs';
+
+  private extractExecutionTimeFromParams(task: DrawTask): {
+    queueMs: number | null;
+    procMs: number | null;
+    totalMs?: number;
+  } {
+    const createdAtMs =
+      task.createdAt instanceof Date
+        ? task.createdAt.getTime()
+        : task.createdAt
+          ? new Date(task.createdAt as any).getTime()
+          : null;
+    if (createdAtMs == null) {
+      return { queueMs: null, procMs: null };
+    }
+
+    const params = task.params as Record<string, unknown> | null;
+    if (!params || typeof params !== 'object') {
+      return { queueMs: null, procMs: null };
+    }
+
+    const processingAtMs = Number((params as any)[this.PARAM_PROCESSING_AT_MS]);
+    const endedAtMs = Number((params as any)[this.PARAM_ENDED_AT_MS]);
+
+    const hasProcessingAt = Number.isFinite(processingAtMs);
+    const hasEndedAt = Number.isFinite(endedAtMs);
+
+    const queueMs = hasProcessingAt ? processingAtMs - createdAtMs : null;
+    const procMs =
+      hasProcessingAt && hasEndedAt ? endedAtMs - processingAtMs : null;
+    const totalMs = hasEndedAt ? endedAtMs - createdAtMs : undefined;
+
+    return { queueMs, procMs, ...(totalMs != null ? { totalMs } : {}) };
+  }
 
   private toPayload(task: DrawTask): Omit<TaskEventPayload, 'type'> {
     return {
@@ -199,12 +250,32 @@ export class DrawService {
     });
     const saved = await this.drawRepository.save(task);
 
-    // 加入 Bull 队列
-    await this.drawQueue.add('process', { taskId: saved.id }, { attempts: 3 });
-
     this.emit(userId, 'task.created', saved);
-    // 乐观更新：虽然刚入队，但为了前端体验，这里也可以先返回一个 fake 进度或状态
-    // 不过前端是拿 saved 对象，所以这里先不动，主要靠 processDrawTask 里的立即更新
+    const taskQueueEnabled = isTaskQueueEnabledFromEnv();
+    if (taskQueueEnabled) {
+      // 加入 Bull 队列（会产生 pending/processing “排队等待”效果）
+      this.logger.log(
+        `[createTask] taskId=${saved.id} TASK_QUEUE_ENABLED=${taskQueueEnabled} envRaw=${process.env.TASK_QUEUE_ENABLED ?? ''} -> enqueue bull`,
+      );
+      await this.drawQueue.add(
+        'process',
+        { taskId: saved.id },
+        { attempts: 3 },
+      );
+    } else {
+      this.logger.log(
+        `[createTask] taskId=${saved.id} TASK_QUEUE_ENABLED=${taskQueueEnabled} envRaw=${process.env.TASK_QUEUE_ENABLED ?? ''} -> direct processDrawTask`,
+      );
+      // 不走队列：直接异步触发处理（用于对比测试）
+      void this.processDrawTask(saved).catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.error(
+          `TASK_QUEUE_ENABLED=false：绘画任务直接处理失败: ${saved.id}, ${msg}`,
+        );
+      });
+    }
+
+    // 乐观更新：虽然刚入队/或已开始处理，但为了前端体验，这里先返回 saved
     return saved;
   }
 
@@ -273,6 +344,12 @@ export class DrawService {
         this.logger.warn(`后台转存任务图片失败(getMyTasks): ${msg}`);
       },
     );
+
+    // 给前端弹窗补充耗时（来自入库时间戳）
+    list = list.map((task) => ({
+      ...(task as any),
+      ...this.extractExecutionTimeFromParams(task),
+    })) as any;
     return { list, total, page, pageSize };
   }
 
@@ -282,14 +359,26 @@ export class DrawService {
   async getTasksStatusBatch(
     userId: string,
     ids: string[],
-  ): Promise<DrawTask[]> {
+  ): Promise<
+    Array<
+      DrawTask & {
+        queueMs?: number | null;
+        procMs?: number | null;
+        totalMs?: number;
+      }
+    >
+  > {
     const uniq = Array.from(
       new Set((ids || []).map((x) => String(x || '').trim()).filter(Boolean)),
     );
     if (uniq.length === 0) return [];
-    return this.drawRepository.find({
+    const tasks = await this.drawRepository.find({
       where: { userId, id: In(uniq) },
     });
+    return tasks.map((task) => ({
+      ...(task as any),
+      ...this.extractExecutionTimeFromParams(task),
+    }));
   }
 
   /**
@@ -337,7 +426,16 @@ export class DrawService {
   /**
    * 获取任务详情/状态
    */
-  async getTaskStatus(taskId: string, userId?: string): Promise<DrawTask> {
+  async getTaskStatus(
+    taskId: string,
+    userId?: string,
+  ): Promise<
+    DrawTask & {
+      queueMs?: number | null;
+      procMs?: number | null;
+      totalMs?: number;
+    }
+  > {
     const task = await this.drawRepository.findOne({ where: { id: taskId } });
     if (!task) {
       throw new NotFoundException('任务不存在');
@@ -352,7 +450,10 @@ export class DrawService {
     }
     // Also don't block status response; mirroring can be slow.
     void this.maybeMirrorTaskImage(task);
-    return task;
+    return {
+      ...(task as any),
+      ...this.extractExecutionTimeFromParams(task),
+    };
   }
 
   /**
@@ -361,6 +462,12 @@ export class DrawService {
   async processDrawTask(task: DrawTask): Promise<void> {
     try {
       // 立即更新为 10%，让前端立刻感知到"开始处理"
+      const processingAtMs = Date.now();
+      // 落库真实时间戳：用于计算 queueMs/procMs/totalMs
+      task.params = {
+        ...(task.params ?? {}),
+        [this.PARAM_PROCESSING_AT_MS]: processingAtMs,
+      } as any;
       task.status = DrawTaskStatus.PROCESSING;
       task.progress = 10;
       await this.drawRepository.save(task);
@@ -421,6 +528,11 @@ export class DrawService {
           this.logger.warn(`图片转存失败，回退原始 URL(${task.id}): ${msg}`);
         }
         task.imageUrl = finalImageUrl;
+        // 落库真实时间戳：用于计算总耗时
+        task.params = {
+          ...(task.params ?? {}),
+          [this.PARAM_ENDED_AT_MS]: Date.now(),
+        } as any;
         task.status = DrawTaskStatus.COMPLETED;
         task.progress = 100;
         task.errorMessage = null;
@@ -433,6 +545,11 @@ export class DrawService {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`绘画任务失败: ${task.id}, ${msg}`);
+      // 落库真实结束时间
+      task.params = {
+        ...(task.params ?? {}),
+        [this.PARAM_ENDED_AT_MS]: Date.now(),
+      } as any;
       task.status = DrawTaskStatus.FAILED;
       task.errorMessage = msg;
       task.progress = 0;

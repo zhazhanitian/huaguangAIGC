@@ -1,0 +1,3378 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Draw 并发测试</title>
+    <style>
+      :root {
+        --bg: #f6f8ff;
+        --panel: rgba(255, 255, 255, 0.88);
+        --text: #0f172a;
+        --muted: #64748b;
+        --border: rgba(2, 6, 23, 0.1);
+        --primary: #2563eb;
+        --primary2: #60a5fa;
+        --danger: #ef4444;
+        --radius: 16px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial,
+          sans-serif;
+        color: var(--text);
+        background: radial-gradient(
+            1200px 650px at 15% -10%,
+            rgba(37, 99, 235, 0.18),
+            transparent 60%
+          ),
+          radial-gradient(
+            900px 450px at 90% 0%,
+            rgba(96, 165, 250, 0.14),
+            transparent 55%
+          ),
+          linear-gradient(180deg, #f6f8ff, #eef2ff);
+        padding: 18px 16px 40px;
+      }
+
+      .container {
+        max-width: 1280px;
+        margin: 0 auto;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        border-radius: var(--radius);
+        box-shadow: 0 10px 26px rgba(2, 6, 23, 0.06);
+        backdrop-filter: blur(10px);
+      }
+
+      .title {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 18px;
+        letter-spacing: 0.2px;
+      }
+
+      .subtitle {
+        margin: 0;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .pill {
+        font-size: 12px;
+        color: var(--muted);
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.7);
+        white-space: nowrap;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 1.25fr 0.75fr;
+        gap: 14px;
+        margin-top: 14px;
+        align-items: start;
+      }
+
+      @media (max-width: 980px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .panel {
+        border: 1px solid var(--border);
+        background: var(--panel);
+        border-radius: var(--radius);
+        box-shadow: 0 10px 26px rgba(2, 6, 23, 0.05);
+        backdrop-filter: blur(10px);
+        overflow: hidden;
+      }
+
+      .panel-hd {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .panel-hd strong {
+        font-size: 14px;
+      }
+
+      .panel-hd span {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .panel-bd {
+        padding: 14px;
+      }
+
+      label {
+        display: block;
+        font-size: 12px;
+        font-weight: 900;
+        color: #334155;
+        margin-bottom: 6px;
+      }
+
+      input[type="text"],
+      input[type="number"],
+      textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(2, 6, 23, 0.14);
+        background: rgba(255, 255, 255, 0.9);
+        outline: none;
+        transition: box-shadow 0.15s ease, border-color 0.15s ease;
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 90px;
+        max-height: 220px;
+      }
+
+      input:focus,
+      textarea:focus {
+        border-color: rgba(37, 99, 235, 0.55);
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+      }
+
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      @media (max-width: 680px) {
+        .grid2 {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.6);
+        margin-top: 12px;
+      }
+
+      .toolbar .left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .stat-chip {
+        padding: 7px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.7);
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .btn {
+        border: 0;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-weight: 900;
+        cursor: pointer;
+        color: #fff;
+        background: linear-gradient(180deg, #93c5fd, var(--primary));
+        box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+      }
+
+      .btn:hover {
+        filter: brightness(1.03);
+      }
+
+      .btn:active {
+        transform: translateY(1px);
+      }
+
+      .btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.7;
+        box-shadow: none;
+      }
+
+      .btn-danger {
+        background: linear-gradient(180deg, #ff9a9a, var(--danger));
+        box-shadow: 0 12px 24px rgba(239, 68, 68, 0.18);
+      }
+
+      .models-grid {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      @media (max-width: 1120px) {
+        .models-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .model-card {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .model-hd {
+        padding: 12px 12px 10px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .model-name {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .model-name .provider {
+        font-weight: 1000;
+        font-size: 13px;
+        word-break: break-word;
+      }
+
+      .model-name .meta {
+        font-size: 12px;
+        color: var(--muted);
+        word-break: break-word;
+      }
+
+      .model-enable {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+        margin-top: 2px;
+      }
+
+      .model-bd {
+        padding: 12px;
+      }
+
+      .model-bd .grid2 {
+        grid-template-columns: 160px 1fr;
+      }
+
+      @media (max-width: 480px) {
+        .model-bd .grid2 {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .log-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .summary-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .summary {
+        padding: 7px 10px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.72);
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      pre {
+        margin: 12px 0 0;
+        padding: 12px;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.55);
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 520px;
+        overflow: auto;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        font-size: 12px;
+      }
+
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      // 文件可能被意外拼接了多份 HTML（会导致叠样式/叠界面）。
+      // 这里在 DOMContentLoaded 后只保留第一套样式与 .container，避免“乱七八糟”。
+      (function () {
+        if (window.__drawConcurrencyCleanupDone) return;
+        window.__drawConcurrencyCleanupDone = true;
+        document.addEventListener("DOMContentLoaded", function () {
+          const styles = document.querySelectorAll("style");
+          for (let i = 1; i < styles.length; i++) styles[i].remove();
+
+          const firstContainer = document.querySelector(".container");
+          if (!firstContainer) return;
+          document.body.innerHTML = "";
+          document.body.appendChild(firstContainer);
+        });
+      })();
+    </script>
+    <div class="container">
+      <div class="topbar">
+        <div class="title">
+          <h1>Draw 并发测试</h1>
+          <p class="subtitle">勾选模型 + 填数量/提示词，一键并发创建任务。</p>
+        </div>
+        <div class="pill" id="pillState">未开始</div>
+      </div>
+
+      <div class="layout">
+        <div class="panel">
+          <div class="panel-hd">
+            <div>
+              <strong>配置</strong>
+              <span>POST `/api/draw/task`</span>
+            </div>
+            <span>只改提示词并发</span>
+          </div>
+          <div class="panel-bd">
+            <div class="grid2">
+              <div>
+                <label for="baseUrl">base请求地址</label>
+                <input id="baseUrl" type="text" value="http://127.0.0.1:3002" />
+              </div>
+              <div>
+                <label for="token">token（不带 Bearer 前缀）</label>
+                <input
+                  id="token"
+                  type="text"
+                  placeholder="eyJhbGciOi...（不带 Bearer）"
+                />
+              </div>
+            </div>
+
+            <div style="height: 12px"></div>
+
+            <div class="grid2">
+              <div>
+                <label for="globalCount">数量总输入框（回填到每个模型）</label>
+                <input id="globalCount" type="number" min="0" step="1" value="1" />
+              </div>
+              <div>
+                <label for="globalPrompt">提示词总输入框（回填到每个模型）</label>
+                <textarea id="globalPrompt" spellcheck="false">
+一只半透明的琉璃水母漂浮在巨树的根系之间，其触须延伸出细小的发光菌丝，连接着地面上正在生长的水晶状植物。画面采用仰视视角，阳光透过浓密的树冠形成丁达尔效应，整体色调为翡翠绿与琥珀金的渐变。细节要求：水母内部可见复杂的共生生态
+                </textarea>
+              </div>
+            </div>
+
+            <div class="toolbar">
+              <div class="left">
+                <div class="stat-chip">已选模型：<b id="selectedCount">0</b></div>
+                <div class="stat-chip">启用数量：<b id="enabledTotal">0</b></div>
+              </div>
+              <div class="actions">
+                <button class="btn" id="selectAllBtn" type="button">全选</button>
+                <button class="btn btn-danger" id="selectNoneBtn" type="button">全不选</button>
+              </div>
+            </div>
+
+            <div class="models-grid" id="models"></div>
+          </div>
+        </div>
+
+        <div class="panel log-panel">
+          <div class="panel-hd">
+            <div>
+              <strong>并发结果</strong>
+              <span>全部请求一次性发出</span>
+            </div>
+          </div>
+          <div class="panel-bd">
+            <div class="log-top">
+              <div class="summary-row">
+                <div class="summary">总请求：<b id="totalRequests">0</b></div>
+                <div class="summary">成功：<b id="successCount">0</b></div>
+                <div class="summary">失败：<b id="failCount">0</b></div>
+              </div>
+            </div>
+
+            <div style="height: 10px"></div>
+
+            <div class="actions">
+              <button id="runBtn" type="button" class="btn">测试（并发发出所有请求）</button>
+              <button id="clearBtn" type="button" class="btn btn-danger">清空日志</button>
+            </div>
+
+            <pre id="log">未开始</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const MODELS = [
+        {
+          id: "doubao-seedance-4-5",
+          provider: "doubao-seedance-4-5",
+          params: {
+            model: "doubao-seedance-4-5",
+            size: "1:1",
+            resolution: "2K",
+            n: 1,
+            imageUrls: [],
+          },
+        },
+        {
+          id: "grok-imagine-text-to-image",
+          provider: "grok-imagine/text-to-image",
+          params: { aspectRatio: "1:1" },
+        },
+        {
+          id: "qwen-text-to-image",
+          provider: "qwen/text-to-image",
+          params: {
+            imageSize: "square_hd",
+            numInferenceSteps: 30,
+            guidanceScale: 2,
+            enableSafetyChecker: true,
+            outputFormat: "png",
+            negativePrompt: "",
+            acceleration: "none",
+          },
+        },
+        {
+          id: "gpt-image-1-5",
+          provider: "gpt-image-1.5",
+          params: {
+            model: "gpt-image-1.5",
+            aspectRatio: "auto",
+            imageSize: "1K",
+            variants: 1,
+            urls: [],
+          },
+        },
+        {
+          id: "sora-image",
+          provider: "sora-image",
+          params: {
+            model: "sora-image",
+            aspectRatio: "auto",
+            imageSize: "1K",
+            variants: 1,
+            urls: [],
+          },
+        },
+        {
+          id: "nano-banana-pro",
+          provider: "nano-banana-pro",
+          params: {
+            model: "nano-banana-fast",
+            aspectRatio: "auto",
+            imageSize: "1K",
+            variants: 1,
+            urls: [],
+          },
+        },
+        {
+          id: "flux-2-pro",
+          provider: "flux-2-pro",
+          params: {
+            model: "flux-2-pro",
+            size: "1:1",
+            resolution: "1K",
+            imageUrls: [],
+          },
+        },
+        {
+          id: "z-image",
+          provider: "z-image",
+          params: { aspectRatio: "1:1" },
+        },
+      ];
+
+      const modelsEl = document.getElementById("models");
+      const globalCountEl = document.getElementById("globalCount");
+      const globalPromptEl = document.getElementById("globalPrompt");
+      const tokenEl = document.getElementById("token");
+      const baseUrlEl = document.getElementById("baseUrl");
+
+      const selectedCountEl = document.getElementById("selectedCount");
+      const enabledTotalEl = document.getElementById("enabledTotal");
+
+      const runBtn = document.getElementById("runBtn");
+      const clearBtn = document.getElementById("clearBtn");
+      const selectAllBtn = document.getElementById("selectAllBtn");
+      const selectNoneBtn = document.getElementById("selectNoneBtn");
+
+      const pillStateEl = document.getElementById("pillState");
+      const totalRequestsEl = document.getElementById("totalRequests");
+      const successCountEl = document.getElementById("successCount");
+      const failCountEl = document.getElementById("failCount");
+      const logEl = document.getElementById("log");
+
+      function $(id) {
+        return document.getElementById(id);
+      }
+
+      function safeInt(v, fallback = 0) {
+        const n = Number(v);
+        return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
+      }
+
+      function sanitizeToken(raw) {
+        const t = String(raw || "").trim();
+        if (!t) return "";
+        return t.toLowerCase().startsWith("bearer ") ? t.slice(7).trim() : t;
+      }
+
+      function getEndpoint() {
+        const baseUrl = String(baseUrlEl.value || "")
+          .trim()
+          .replace(/\/+$/, "");
+        if (!baseUrl) throw new Error("base请求地址不能为空");
+        return baseUrl + "/api/draw/task";
+      }
+
+      function appendLog(line) {
+        logEl.textContent += line + "\n";
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function clearLog() {
+        logEl.textContent = "";
+      }
+
+      function updateStats() {
+        let selectedModels = 0;
+        let enabledTotal = 0;
+        for (const m of MODELS) {
+          const checked = $(`m_chk_${m.id}`).checked;
+          if (!checked) continue;
+          selectedModels++;
+          enabledTotal += safeInt($(`m_count_${m.id}`).value, 0);
+        }
+        selectedCountEl.textContent = String(selectedModels);
+        enabledTotalEl.textContent = String(enabledTotal);
+      }
+
+      function syncGlobalCountToModels() {
+        const v = safeInt(globalCountEl.value, 0);
+        for (const m of MODELS) $(`m_count_${m.id}`).value = String(v);
+        updateStats();
+      }
+
+      function syncGlobalPromptToModels() {
+        const v = String(globalPromptEl.value || "");
+        for (const m of MODELS) $(`m_prompt_${m.id}`).value = v;
+      }
+
+      function renderModels() {
+        modelsEl.innerHTML = "";
+        for (const m of MODELS) {
+          const card = document.createElement("div");
+          card.className = "model-card";
+
+          const checkboxId = `m_chk_${m.id}`;
+          const countId = `m_count_${m.id}`;
+          const promptId = `m_prompt_${m.id}`;
+
+          // 展示 params.model（如果没有就展示 aspectRatio）
+          const modelChip =
+            typeof m.params?.model !== "undefined"
+              ? String(m.params.model)
+              : typeof m.params?.aspectRatio !== "undefined"
+                ? String(m.params.aspectRatio)
+                : "";
+
+          card.innerHTML = `
+            <div class="model-hd">
+              <div class="model-name">
+                <div class="provider">${m.provider}</div>
+                <div class="meta">model: <code>${modelChip}</code></div>
+              </div>
+              <div class="model-enable">
+                <input id="${checkboxId}" type="checkbox" checked />
+                <label for="${checkboxId}" style="margin:0;font-weight:900;color:#334155;">启用</label>
+              </div>
+            </div>
+
+            <div class="model-bd">
+              <div class="grid2">
+                <div>
+                  <label for="${countId}">数量</label>
+                  <input id="${countId}" type="number" min="0" step="1" value="${safeInt(globalCountEl.value, 1)}" />
+                </div>
+                <div>
+                  <label for="${promptId}">提示词</label>
+                  <textarea id="${promptId}" spellcheck="false">${globalPromptEl.value || ""}</textarea>
+                </div>
+              </div>
+            </div>
+          `;
+
+          modelsEl.appendChild(card);
+
+          $(`m_chk_${m.id}`).addEventListener("change", updateStats);
+          $(`m_count_${m.id}`).addEventListener("input", updateStats);
+        }
+      }
+
+      selectAllBtn.addEventListener("click", () => {
+        for (const m of MODELS) $(`m_chk_${m.id}`).checked = true;
+        updateStats();
+      });
+
+      selectNoneBtn.addEventListener("click", () => {
+        for (const m of MODELS) $(`m_chk_${m.id}`).checked = false;
+        updateStats();
+      });
+
+      globalCountEl.addEventListener("input", syncGlobalCountToModels);
+      globalPromptEl.addEventListener("input", syncGlobalPromptToModels);
+
+      clearBtn.addEventListener("click", () => {
+        clearLog();
+        pillStateEl.textContent = "未开始";
+        totalRequestsEl.textContent = "0";
+        successCountEl.textContent = "0";
+        failCountEl.textContent = "0";
+        logEl.textContent = "未开始";
+      });
+
+      async function sendCreateTask({ provider, prompt, params }) {
+        const token = sanitizeToken(tokenEl.value);
+        if (!token) throw new Error("token不能为空");
+
+        const url = getEndpoint();
+        const payload = {
+          source: "draw",
+          provider,
+          taskType: "text2img",
+          prompt,
+          negativePrompt: "",
+          params: params ?? {},
+        };
+
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        let json;
+        try {
+          json = await res.json();
+        } catch (e) {
+          json = { raw: await res.text() };
+        }
+
+        if (json && typeof json === "object" && "code" in json) {
+          if (json.code !== 200) throw new Error(json.message || `请求失败(code=${json.code})`);
+          return json.data;
+        }
+        if (!res.ok) {
+          throw new Error((json && json.message) || json?.error || res.statusText || `HTTP ${res.status}`);
+        }
+        return json;
+      }
+
+      runBtn.addEventListener("click", async () => {
+        const startAt = Date.now();
+        runBtn.disabled = true;
+        pillStateEl.textContent = "运行中...";
+        clearLog();
+        logEl.textContent = "开始...\n";
+
+        try {
+          const selected = [];
+          for (const m of MODELS) {
+            if (!$(`m_chk_${m.id}`).checked) continue;
+            const count = safeInt($(`m_count_${m.id}`).value, 0);
+            const prompt = String($(`m_prompt_${m.id}`).value || "");
+            if (count <= 0) continue;
+            if (!prompt.trim()) {
+              appendLog(`[跳过] ${m.provider} 提示词为空`);
+              continue;
+            }
+            selected.push({ m, count, prompt });
+          }
+
+          if (selected.length === 0) {
+            pillStateEl.textContent = "未选中模型（或数量为 0）";
+            appendLog("未选中模型（或数量为 0）");
+            return;
+          }
+
+          const total = selected.reduce((sum, x) => sum + x.count, 0);
+          totalRequestsEl.textContent = String(total);
+          successCountEl.textContent = "0";
+          failCountEl.textContent = "0";
+
+          appendLog(`Endpoint: ${getEndpoint()}`);
+          appendLog(`Start: ${new Date().toISOString()}`);
+          appendLog(`Total requests: ${total}`);
+          appendLog("------------------------------------------------------------");
+
+          let ok = 0;
+          let fail = 0;
+          let idx = 0;
+          const tasks = [];
+
+          // 并发：一次性发出所有请求（Promise.all）
+          for (const x of selected) {
+            for (let i = 0; i < x.count; i++) {
+              const curIdx = idx++;
+              tasks.push(
+                sendCreateTask({
+                  provider: x.m.provider,
+                  prompt: x.prompt, // 仅提示词变化（params/provider 固定）
+                  params: x.m.params,
+                })
+                  .then((data) => {
+                    ok++;
+                    successCountEl.textContent = String(ok);
+                    const taskId = data?.id || data?.taskId || data?._id || "unknown";
+                    const status = data?.status || "";
+                    appendLog(`[OK]   #${curIdx} provider=${x.m.provider} taskId=${taskId} status=${status}`);
+                  })
+                  .catch((err) => {
+                    fail++;
+                    failCountEl.textContent = String(fail);
+                    appendLog(`[FAIL] #${curIdx} provider=${x.m.provider} err=${String(err?.message || err)}`);
+                  })
+              );
+            }
+          }
+
+          await Promise.all(tasks);
+
+          const elapsedMs = Date.now() - startAt;
+          pillStateEl.textContent = `完成：成功 ${ok} / 失败 ${fail}（耗时 ${(elapsedMs / 1000).toFixed(1)}s）`;
+          appendLog("------------------------------------------------------------");
+          appendLog(`Done @ ${new Date().toISOString()}`);
+          appendLog(`Success=${ok} Failed=${fail}`);
+        } catch (err) {
+          pillStateEl.textContent = "出错";
+          appendLog(`ERROR: ${String(err?.message || err)}`);
+        } finally {
+          runBtn.disabled = false;
+        }
+      });
+
+      // 初始化
+      renderModels();
+      syncGlobalCountToModels();
+      syncGlobalPromptToModels();
+      updateStats();
+      logEl.textContent = "未开始";
+    </script>
+  </body>
+</html>
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Draw 并发测试</title>
+    <style>
+      :root {
+        --bg1: #f6f8ff;
+        --bg2: #eef2ff;
+        --panel: rgba(255, 255, 255, 0.86);
+        --text: #0f172a;
+        --muted: #64748b;
+        --border: rgba(2, 6, 23, 0.08);
+        --border2: rgba(2, 6, 23, 0.12);
+        --primary: #3b82f6;
+        --primary2: #60a5fa;
+        --danger: #ef4444;
+        --radius: 18px;
+        --radius2: 14px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(
+            1200px 650px at 18% -10%,
+            rgba(59, 130, 246, 0.18),
+            transparent 60%
+          ),
+          radial-gradient(
+            900px 450px at 88% 0%,
+            rgba(96, 165, 250, 0.16),
+            transparent 55%
+          ),
+          linear-gradient(180deg, var(--bg1), var(--bg2));
+      }
+
+      .container {
+        max-width: 1260px;
+        margin: 0 auto;
+        padding: 22px 16px 40px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: var(--radius);
+        background: var(--panel);
+        border: 1px solid var(--border);
+        backdrop-filter: blur(12px);
+        box-shadow: 0 8px 26px rgba(2, 6, 23, 0.05);
+      }
+
+      .title {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 240px;
+      }
+
+      .title h2 {
+        margin: 0;
+        font-size: 18px;
+        letter-spacing: 0.2px;
+      }
+
+      .subtitle {
+        margin: 0;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--muted);
+        padding: 8px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.72);
+        white-space: nowrap;
+      }
+
+      .layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 14px;
+        align-items: start;
+      }
+
+      @media (max-width: 1100px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: 0 8px 26px rgba(2, 6, 23, 0.05);
+        backdrop-filter: blur(10px);
+        overflow: hidden;
+      }
+
+      .panel-hd {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .hd-title {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .hd-title strong {
+        font-size: 14px;
+      }
+
+      .hd-title span {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .panel-bd {
+        padding: 14px;
+      }
+
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      @media (max-width: 700px) {
+        .grid2 {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      label {
+        display: block;
+        font-weight: 900;
+        font-size: 12px;
+        color: #334155;
+        margin-bottom: 6px;
+      }
+
+      input[type="text"],
+      input[type="number"],
+      textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border2);
+        border-radius: 12px;
+        outline: none;
+        background: rgba(255, 255, 255, 0.92);
+        color: var(--text);
+        transition:
+          box-shadow 0.15s ease,
+          border-color 0.15s ease;
+      }
+
+      textarea {
+        min-height: 92px;
+        resize: vertical;
+      }
+
+      input:focus,
+      textarea:focus {
+        border-color: rgba(59, 130, 246, 0.55);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      button {
+        border: 0;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-weight: 900;
+        cursor: pointer;
+        color: #fff;
+        background: linear-gradient(180deg, var(--primary2), var(--primary));
+        box-shadow: 0 12px 24px rgba(59, 130, 246, 0.24);
+        transition:
+          transform 0.08s ease,
+          filter 0.15s ease,
+          box-shadow 0.15s ease;
+      }
+
+      button:hover {
+        filter: brightness(1.03);
+        box-shadow: 0 16px 28px rgba(59, 130, 246, 0.28);
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.7;
+        box-shadow: none;
+      }
+
+      .btn-danger {
+        background: linear-gradient(180deg, #ff7a7a, var(--danger));
+        box-shadow: 0 12px 24px rgba(239, 68, 68, 0.22);
+      }
+
+      .mini-stat {
+        font-size: 12px;
+        color: var(--muted);
+        padding: 8px 10px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .models-wrap {
+        margin-top: 14px;
+      }
+
+      .models-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius2);
+        background: rgba(255, 255, 255, 0.55);
+      }
+
+      .models-toolbar .left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.7);
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .chip b {
+        color: var(--text);
+      }
+
+      .models-grid {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      @media (max-width: 900px) {
+        .models-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .model-card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius2);
+        background: rgba(255, 255, 255, 0.65);
+        overflow: hidden;
+      }
+
+      .model-card-hd {
+        padding: 12px 12px 10px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .model-card-hd .name {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .model-title {
+        font-weight: 1000;
+        font-size: 13px;
+        word-break: break-word;
+      }
+
+      .model-provider {
+        font-size: 12px;
+        color: var(--muted);
+        word-break: break-all;
+      }
+
+      .model-enable {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 2px;
+        user-select: none;
+        white-space: nowrap;
+      }
+
+      .model-enable input {
+        width: 18px;
+        height: 18px;
+      }
+
+      .model-card-bd {
+        padding: 12px;
+      }
+
+      .model-row {
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        gap: 10px;
+        align-items: start;
+        margin-bottom: 10px;
+      }
+
+      @media (max-width: 420px) {
+        .model-row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .field-inline label {
+        margin: 0 0 6px;
+      }
+
+      .model-prompt textarea {
+        min-height: 78px;
+        max-height: 160px;
+      }
+
+      .log-panel {
+        position: sticky;
+        top: 16px;
+      }
+
+      .summary-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .summary-row .mini {
+        flex: 1;
+        min-width: 130px;
+      }
+
+      .help {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      pre {
+        margin: 0;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius2);
+        background: rgba(255, 255, 255, 0.55);
+        max-height: 520px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        font-size: 12px;
+        color: #0b1220;
+      }
+
+      .row-actions {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="topbar">
+        <div class="title">
+          <h2>Draw 并发测试页</h2>
+          <p class="subtitle">选择模型 + 填数量/提示词 + 一键并发创建任务</p>
+        </div>
+        <div class="pill" id="pillState">未开始</div>
+      </div>
+
+      <div class="layout">
+        <div class="panel">
+          <div class="panel-hd">
+            <div class="hd-title">
+              <strong>请求与回填</strong>
+              <span>baseUrl/token 支持动态变更</span>
+            </div>
+            <div class="mini-stat">POST: <code>/api/draw/task</code></div>
+          </div>
+
+          <div class="panel-bd">
+            <div class="grid2">
+              <div>
+                <label for="baseUrl">base请求地址</label>
+                <input id="baseUrl" type="text" value="http://127.0.0.1:3002" />
+              </div>
+              <div>
+                <label for="token">token（不带 Bearer 前缀）</label>
+                <input
+                  id="token"
+                  type="text"
+                  placeholder="例如：eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                />
+              </div>
+            </div>
+
+            <div style="height: 12px"></div>
+
+            <div class="grid2">
+              <div>
+                <label for="globalCount">数量总输入框（回填到每个模型）</label>
+                <input
+                  id="globalCount"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="1"
+                />
+              </div>
+              <div>
+                <label for="globalPrompt"
+                  >提示词总输入框（回填到每个模型）</label
+                >
+                <textarea id="globalPrompt" spellcheck="false">
+一只半透明的琉璃水母漂浮在巨树的根系之间，其触须延伸出细小的发光菌丝，连接着地面上正在生长的水晶状植物。画面采用仰视视角，阳光透过浓密的树冠形成丁达尔效应，整体色调为翡翠绿与琥珀金的渐变。细节要求：水母内部可见复杂的共生生态
+                </textarea>
+              </div>
+            </div>
+
+            <div class="models-wrap">
+              <div class="models-toolbar">
+                <div class="left">
+                  <span class="chip"
+                    >已选模型：<b id="selectedCount">0</b></span
+                  >
+                  <span class="chip">启用数量：<b id="enabledTotal">0</b></span>
+                </div>
+                <div class="actions">
+                  <button
+                    id="selectAllBtn"
+                    type="button"
+                    style="
+                      background: linear-gradient(180deg, #93c5fd, #3b82f6);
+                      box-shadow: 0 12px 24px rgba(59, 130, 246, 0.18);
+                    "
+                  >
+                    全选
+                  </button>
+                  <button
+                    id="selectNoneBtn"
+                    type="button"
+                    class="btn-danger"
+                    style="
+                      background: linear-gradient(180deg, #ffd1d1, #ef4444);
+                      box-shadow: 0 12px 24px rgba(239, 68, 68, 0.18);
+                    "
+                  >
+                    全不选
+                  </button>
+                </div>
+              </div>
+
+              <div class="models-grid" id="models"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel log-panel">
+          <div class="panel-hd">
+            <div class="hd-title">
+              <strong>并发结果</strong>
+              <span>全部请求一次性发出</span>
+            </div>
+          </div>
+
+          <div class="panel-bd">
+            <div class="summary-row">
+              <div class="mini mini-stat">
+                总请求：<b id="totalRequests">0</b>
+              </div>
+              <div class="mini mini-stat">成功：<b id="successCount">0</b></div>
+              <div class="mini mini-stat">失败：<b id="failCount">0</b></div>
+            </div>
+
+            <div style="height: 12px"></div>
+
+            <div class="row-actions">
+              <div class="help">
+                说明：如果跨域/鉴权失败，请检查后端 CORS/鉴权配置。token
+                为空会直接报错。
+              </div>
+              <div class="actions">
+                <button id="runBtn" type="button">
+                  测试（并发发出所有请求）
+                </button>
+                <button id="clearBtn" type="button" class="btn-danger">
+                  清空日志
+                </button>
+              </div>
+            </div>
+
+            <div class="log-output" style="margin-top: 12px">
+              <pre id="log">未开始</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const MODELS = [
+        {
+          id: "doubao-seedance-4-5",
+          provider: "doubao-seedance-4-5",
+          title: "doubao-seedance-4-5",
+          baseParams: {
+            model: "doubao-seedance-4-5",
+            size: "1:1",
+            resolution: "2K",
+            n: 1,
+            imageUrls: [],
+          },
+        },
+        {
+          id: "grok-imagine-text-to-image",
+          provider: "grok-imagine/text-to-image",
+          title: "grok-imagine/text-to-image",
+          baseParams: { aspectRatio: "1:1" },
+        },
+        {
+          id: "qwen-text-to-image",
+          provider: "qwen/text-to-image",
+          title: "qwen/text-to-image",
+          baseParams: {
+            imageSize: "square_hd",
+            numInferenceSteps: 30,
+            guidanceScale: 2,
+            enableSafetyChecker: true,
+            outputFormat: "png",
+            negativePrompt: "",
+            acceleration: "none",
+          },
+        },
+        {
+          id: "gpt-image-1-5",
+          provider: "gpt-image-1.5",
+          title: "gpt-image-1.5",
+          baseParams: {
+            model: "gpt-image-1.5",
+            aspectRatio: "auto",
+            imageSize: "1K",
+            variants: 1,
+            urls: [],
+          },
+        },
+        {
+          id: "sora-image",
+          provider: "sora-image",
+          title: "sora-image",
+          baseParams: {
+            model: "sora-image",
+            aspectRatio: "auto",
+            imageSize: "1K",
+            variants: 1,
+            urls: [],
+          },
+        },
+        {
+          id: "nano-banana-pro",
+          provider: "nano-banana-pro",
+          title: "nano-banana-pro（params 按示例）",
+          baseParams: {
+            model: "nano-banana-fast",
+            aspectRatio: "auto",
+            imageSize: "1K",
+            variants: 1,
+            urls: [],
+          },
+        },
+        {
+          id: "flux-2-pro",
+          provider: "flux-2-pro",
+          title: "flux-2-pro",
+          baseParams: {
+            model: "flux-2-pro",
+            size: "1:1",
+            resolution: "1K",
+            imageUrls: [],
+          },
+        },
+        {
+          id: "z-image",
+          provider: "z-image",
+          title: "z-image",
+          baseParams: { aspectRatio: "1:1" },
+        },
+      ];
+
+      const modelsEl = document.getElementById("models");
+      const baseUrlEl = document.getElementById("baseUrl");
+      const tokenEl = document.getElementById("token");
+      const globalCountEl = document.getElementById("globalCount");
+      const globalPromptEl = document.getElementById("globalPrompt");
+
+      const selectedCountEl = document.getElementById("selectedCount");
+      const enabledTotalEl = document.getElementById("enabledTotal");
+
+      const runBtn = document.getElementById("runBtn");
+      const clearBtn = document.getElementById("clearBtn");
+      const selectAllBtn = document.getElementById("selectAllBtn");
+      const selectNoneBtn = document.getElementById("selectNoneBtn");
+
+      const totalRequestsEl = document.getElementById("totalRequests");
+      const successCountEl = document.getElementById("successCount");
+      const failCountEl = document.getElementById("failCount");
+
+      const logEl = document.getElementById("log");
+      const pillStateEl = document.getElementById("pillState");
+
+      function $(id) {
+        return document.getElementById(id);
+      }
+
+      function safeInt(v, fallback = 0) {
+        const n = Number(v);
+        return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
+      }
+
+      function sanitizeToken(raw) {
+        const t = String(raw || "").trim();
+        if (!t) return "";
+        return t.toLowerCase().startsWith("bearer ") ? t.slice(7).trim() : t;
+      }
+
+      function escapeHtml(str) {
+        return String(str ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function getEndpoint() {
+        const baseUrl = String(baseUrlEl.value || "")
+          .trim()
+          .replace(/\/+$/, "");
+        if (!baseUrl) throw new Error("base请求地址不能为空");
+        return baseUrl + "/api/draw/task";
+      }
+
+      function setLog(text) {
+        logEl.textContent = text;
+      }
+
+      function appendLog(line) {
+        logEl.textContent += line + "\\n";
+      }
+
+      function modelIds() {
+        return MODELS.map((m) => m.id);
+      }
+
+      function updateSelectedStats() {
+        let selectedModels = 0;
+        let enabledTotal = 0;
+        for (const m of MODELS) {
+          if (!$(`m_chk_${m.id}`).checked) continue;
+          selectedModels++;
+          enabledTotal += safeInt($(`m_count_${m.id}`).value, 0);
+        }
+        selectedCountEl.textContent = String(selectedModels);
+        enabledTotalEl.textContent = String(enabledTotal);
+      }
+
+      function syncGlobalCountToModels() {
+        const v = safeInt(globalCountEl.value, 0);
+        for (const m of MODELS) $(`m_count_${m.id}`).value = String(v);
+        updateSelectedStats();
+      }
+
+      function syncGlobalPromptToModels() {
+        const v = String(globalPromptEl.value || "");
+        for (const m of MODELS) $(`m_prompt_${m.id}`).value = v;
+      }
+
+      function buildModelsUI() {
+        modelsEl.innerHTML = "";
+
+        for (const m of MODELS) {
+          const checkedDefault = true;
+          const checkboxId = `m_chk_${m.id}`;
+          const countId = `m_count_${m.id}`;
+          const promptId = `m_prompt_${m.id}`;
+
+          const card = document.createElement("div");
+          card.className = "model-card";
+          card.innerHTML = `
+            <div class="model-card-hd">
+              <div class="name">
+                <div class="model-title">${escapeHtml(m.title)}</div>
+                <div class="model-provider">provider: <code style="font-family:inherit;">${escapeHtml(m.provider)}</code></div>
+                <div class="model-enable">
+                  <input id="${checkboxId}" type="checkbox" ${checkedDefault ? "checked" : ""} />
+                  <span>启用</span>
+                </div>
+              </div>
+              <div class="chip" style="align-self:flex-start;">
+                params.model: <b>${escapeHtml(String(m.baseParams?.model ?? ""))}</b>
+              </div>
+            </div>
+
+            <div class="model-card-bd">
+              <div class="model-row">
+                <div class="field-inline">
+                  <label for="${countId}">数量</label>
+                  <input id="${countId}" type="number" min="0" step="1" value="${safeInt(globalCountEl.value, 1)}" />
+                </div>
+                <div class="model-prompt">
+                  <label for="${promptId}">提示词</label>
+                  <textarea id="${promptId}" spellcheck="false">${escapeHtml(globalPromptEl.value || "")}</textarea>
+                </div>
+              </div>
+            </div>
+          `;
+
+          modelsEl.appendChild(card);
+
+          $(`m_chk_${m.id}`).addEventListener("change", updateSelectedStats);
+          $(`m_count_${m.id}`).addEventListener("input", updateSelectedStats);
+        }
+      }
+
+      async function sendCreateTask({ provider, prompt, params }) {
+        const token = sanitizeToken(tokenEl.value);
+        if (!token) throw new Error("token不能为空");
+
+        const url = getEndpoint();
+        const payload = {
+          source: "draw",
+          provider,
+          taskType: "text2img",
+          prompt,
+          negativePrompt: "",
+          params: params ?? {},
+        };
+
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        let json;
+        try {
+          json = await res.json();
+        } catch (e) {
+          json = { raw: await res.text() };
+        }
+
+        // 后端统一返回 { code, message, data }
+        if (json && typeof json === "object" && "code" in json) {
+          if (json.code !== 200)
+            throw new Error(json.message || `请求失败(code=${json.code})`);
+          return json.data;
+        }
+
+        if (!res.ok) {
+          throw new Error(
+            (json && json.message) ||
+              json?.error ||
+              res.statusText ||
+              `HTTP ${res.status}`,
+          );
+        }
+        return json;
+      }
+
+      selectAllBtn.addEventListener("click", () => {
+        for (const id of modelIds()) $(`m_chk_${id}`).checked = true;
+        updateSelectedStats();
+      });
+
+      selectNoneBtn.addEventListener("click", () => {
+        for (const id of modelIds()) $(`m_chk_${id}`).checked = false;
+        updateSelectedStats();
+      });
+
+      globalCountEl.addEventListener("input", syncGlobalCountToModels);
+      globalPromptEl.addEventListener("input", syncGlobalPromptToModels);
+
+      clearBtn.addEventListener("click", () => {
+        setLog("");
+        pillStateEl.textContent = "未开始";
+        totalRequestsEl.textContent = "0";
+        successCountEl.textContent = "0";
+        failCountEl.textContent = "0";
+      });
+
+      runBtn.addEventListener("click", async () => {
+        const startAt = Date.now();
+        let ok = 0;
+        let fail = 0;
+
+        try {
+          runBtn.disabled = true;
+          pillStateEl.textContent = "运行中...";
+          setLog("");
+
+          const selected = [];
+          for (const m of MODELS) {
+            if (!$(`m_chk_${m.id}`).checked) continue;
+            const count = safeInt($(`m_count_${m.id}`).value, 0);
+            const prompt = String($(`m_prompt_${m.id}`).value || "");
+
+            if (count <= 0) continue;
+            if (!prompt.trim()) {
+              appendLog(`[跳过] ${m.provider}：提示词为空`);
+              continue;
+            }
+
+            selected.push({ m, count, prompt });
+          }
+
+          if (selected.length === 0) {
+            pillStateEl.textContent = "未选中模型（或数量为 0）";
+            setLog("未选中模型（或数量为 0）");
+            return;
+          }
+
+          const total = selected.reduce((sum, x) => sum + x.count, 0);
+          totalRequestsEl.textContent = String(total);
+          successCountEl.textContent = "0";
+          failCountEl.textContent = "0";
+
+          appendLog(`Endpoint: ${getEndpoint()}`);
+          appendLog(`Start: ${new Date().toISOString()}`);
+          appendLog(`Total requests: ${total}`);
+          appendLog(
+            "------------------------------------------------------------",
+          );
+
+          let idx = 0;
+          const tasks = [];
+
+          for (const x of selected) {
+            for (let i = 0; i < x.count; i++) {
+              const curIdx = idx++;
+              const provider = x.m.provider;
+              const prompt = x.prompt;
+              const params = x.m.baseParams;
+
+              tasks.push(
+                sendCreateTask({ provider, prompt, params })
+                  .then((data) => {
+                    ok++;
+                    successCountEl.textContent = String(ok);
+                    const taskId =
+                      data?.id || data?.taskId || data?._id || "unknown";
+                    const status = data?.status || "";
+                    appendLog(
+                      `[OK]   #${curIdx} provider=${provider} taskId=${taskId} status=${status}`,
+                    );
+                  })
+                  .catch((err) => {
+                    fail++;
+                    failCountEl.textContent = String(fail);
+                    appendLog(
+                      `[FAIL] #${curIdx} provider=${provider} err=${String(err?.message || err)}`,
+                    );
+                  }),
+              );
+            }
+          }
+
+          // 并发：一次性发出所有请求，然后等待全部结束
+          await Promise.all(tasks);
+
+          const elapsedMs = Date.now() - startAt;
+          pillStateEl.textContent = `完成：成功 ${ok} / 失败 ${fail}（耗时 ${(elapsedMs / 1000).toFixed(1)}s）`;
+          appendLog(
+            "------------------------------------------------------------",
+          );
+          appendLog(`Done @ ${new Date().toISOString()}`);
+          appendLog(`Success=${ok} Failed=${fail}`);
+        } finally {
+          runBtn.disabled = false;
+        }
+      });
+
+      // 初始化 UI
+      buildModelsUI();
+      syncGlobalCountToModels();
+      syncGlobalPromptToModels();
+      updateSelectedStats();
+    </script>
+  </body>
+</html>
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Draw 并发测试</title>
+    <style>
+      :root {
+        --bg1: #f6f8ff;
+        --bg2: #eef2ff;
+        --panel: rgba(255, 255, 255, 0.82);
+        --panelSolid: #ffffff;
+        --text: #0f172a;
+        --muted: #64748b;
+        --border: rgba(2, 6, 23, 0.08);
+        --border2: rgba(2, 6, 23, 0.12);
+        --shadow: 0 14px 40px rgba(2, 6, 23, 0.08);
+        --primary: #3b82f6;
+        --primary2: #60a5fa;
+        --danger: #ef4444;
+        --radius: 18px;
+        --radius2: 14px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(
+            1200px 650px at 18% -10%,
+            rgba(59, 130, 246, 0.18),
+            transparent 60%
+          ),
+          radial-gradient(
+            900px 450px at 88% 0%,
+            rgba(96, 165, 250, 0.16),
+            transparent 55%
+          ),
+          linear-gradient(180deg, var(--bg1), var(--bg2));
+      }
+
+      .container {
+        max-width: 1260px;
+        margin: 0 auto;
+        padding: 22px 16px 40px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: var(--radius);
+        background: var(--panel);
+        border: 1px solid var(--border);
+        box-shadow: 0 8px 26px rgba(2, 6, 23, 0.05);
+        backdrop-filter: blur(12px);
+      }
+
+      .title {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 240px;
+      }
+
+      .title h2 {
+        margin: 0;
+        font-size: 18px;
+        letter-spacing: 0.2px;
+      }
+
+      .subtitle {
+        margin: 0;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--muted);
+        padding: 8px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.72);
+        white-space: nowrap;
+      }
+
+      .layout {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 14px;
+        align-items: start;
+      }
+
+      @media (max-width: 1100px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: 0 8px 26px rgba(2, 6, 23, 0.05);
+        backdrop-filter: blur(10px);
+        overflow: hidden;
+      }
+
+      .panel-hd {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .panel-hd .hd-title {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .panel-hd .hd-title strong {
+        font-size: 14px;
+      }
+
+      .panel-hd .hd-title span {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .panel-bd {
+        padding: 14px;
+      }
+
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      @media (max-width: 700px) {
+        .grid2 {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      label {
+        display: block;
+        font-weight: 800;
+        font-size: 12px;
+        color: #334155;
+        margin-bottom: 6px;
+      }
+
+      input[type="text"],
+      input[type="number"],
+      textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border2);
+        border-radius: 12px;
+        outline: none;
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--text);
+        transition:
+          box-shadow 0.15s ease,
+          border-color 0.15s ease,
+          transform 0.08s ease;
+      }
+
+      textarea {
+        min-height: 92px;
+        resize: vertical;
+      }
+
+      input:focus,
+      textarea:focus {
+        border-color: rgba(59, 130, 246, 0.55);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      button {
+        border: 0;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-weight: 900;
+        cursor: pointer;
+        color: #fff;
+        background: linear-gradient(180deg, var(--primary2), var(--primary));
+        box-shadow: 0 12px 24px rgba(59, 130, 246, 0.24);
+        transition:
+          transform 0.08s ease,
+          filter 0.15s ease,
+          box-shadow 0.15s ease;
+      }
+
+      button:hover {
+        filter: brightness(1.03);
+        box-shadow: 0 16px 28px rgba(59, 130, 246, 0.28);
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.7;
+        box-shadow: none;
+      }
+
+      .btn-danger {
+        background: linear-gradient(180deg, #ff7a7a, var(--danger));
+        box-shadow: 0 12px 24px rgba(239, 68, 68, 0.22);
+      }
+
+      .mini-stat {
+        font-size: 12px;
+        color: var(--muted);
+        padding: 8px 10px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .models-wrap {
+        margin-top: 14px;
+      }
+
+      .models-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius2);
+        background: rgba(255, 255, 255, 0.55);
+      }
+
+      .models-toolbar .left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.7);
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .chip b {
+        color: var(--text);
+      }
+
+      .models-grid {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      @media (max-width: 900px) {
+        .models-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .model-card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius2);
+        background: rgba(255, 255, 255, 0.65);
+        overflow: hidden;
+      }
+
+      .model-card-hd {
+        padding: 12px 12px 10px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .model-card-hd .name {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .model-title {
+        font-weight: 1000;
+        font-size: 13px;
+        word-break: break-word;
+      }
+
+      .model-provider {
+        font-size: 12px;
+        color: var(--muted);
+        word-break: break-all;
+      }
+
+      .model-card-bd {
+        padding: 12px;
+      }
+
+      .model-row {
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        gap: 10px;
+        align-items: start;
+        margin-bottom: 10px;
+      }
+      @media (max-width: 420px) {
+        .model-row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .field-inline label {
+        margin: 0 0 6px;
+      }
+
+      .model-count input {
+        width: 100%;
+      }
+
+      .model-prompt textarea {
+        min-height: 78px;
+        max-height: 160px;
+      }
+
+      .model-enable {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 2px;
+        user-select: none;
+        white-space: nowrap;
+      }
+
+      .model-enable input {
+        width: 18px;
+        height: 18px;
+      }
+
+      .log-panel {
+        position: sticky;
+        top: 16px;
+      }
+
+      .log-top {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .summary-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .summary-row .mini {
+        flex: 1;
+        min-width: 130px;
+      }
+
+      .log-output {
+        margin-top: 12px;
+      }
+
+      pre {
+        margin: 0;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius2);
+        background: rgba(255, 255, 255, 0.55);
+        max-height: 520px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        font-size: 12px;
+        color: #0b1220;
+      }
+
+      .row-actions {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .help {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="topbar">
+        <div class="title">
+          <h2>Draw 并发测试页</h2>
+          <p class="subtitle">
+            并发创建绘画任务：选择模型 + 填数量/提示词 + 一键发出所有请求。
+          </p>
+        </div>
+        <div class="pill" id="pillState">未开始</div>
+      </div>
+
+      <div class="layout">
+        <!-- 左：配置 -->
+        <div class="panel">
+          <div class="panel-hd">
+            <div class="hd-title">
+              <strong>请求与回填</strong>
+              <span>baseUrl/token 支持动态变更</span>
+            </div>
+            <div class="mini-stat">POST: <code>/api/draw/task</code></div>
+          </div>
+          <div class="panel-bd">
+            <div class="grid2">
+              <div>
+                <label for="baseUrl">base请求地址</label>
+                <input id="baseUrl" type="text" value="http://127.0.0.1:3002" />
+              </div>
+              <div>
+                <label for="token">token（不带 Bearer 前缀）</label>
+                <input
+                  id="token"
+                  type="text"
+                  placeholder="例如：eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                />
+              </div>
+            </div>
+
+            <div style="height: 12px"></div>
+
+            <div class="grid2">
+              <div>
+                <label for="globalCount">数量总输入框（回填到每个模型）</label>
+                <input
+                  id="globalCount"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="1"
+                />
+              </div>
+              <div>
+                <label for="globalPrompt"
+                  >提示词总输入框（回填到每个模型）</label
+                >
+                <textarea id="globalPrompt" spellcheck="false">
+一只半透明的琉璃水母漂浮在巨树的根系之间，其触须延伸出细小的发光菌丝，连接着地面上正在生长的水晶状植物。画面采用仰视视角，阳光透过浓密的树冠形成丁达尔效应，整体色调为翡翠绿与琥珀金的渐变。细节要求：水母内部可见复杂的共生生态
+                </textarea>
+              </div>
+            </div>
+
+            <div class="models-wrap" id="modelsWrap">
+              <div class="models-toolbar">
+                <div class="left">
+                  <span class="chip"
+                    >已选模型：<b id="selectedCount">0</b></span
+                  >
+                  <span class="chip">启用数量：<b id="enabledTotal">0</b></span>
+                </div>
+                <div class="actions">
+                  <button
+                    id="selectAllBtn"
+                    type="button"
+                    style="
+                      background: linear-gradient(180deg, #93c5fd, #3b82f6);
+                      box-shadow: 0 12px 24px rgba(59, 130, 246, 0.18);
+                    "
+                  >
+                    全选
+                  </button>
+                  <button
+                    id="selectNoneBtn"
+                    type="button"
+                    class="btn-danger"
+                    style="
+                      background: linear-gradient(180deg, #ffd1d1, #ef4444);
+                      box-shadow: 0 12px 24px rgba(239, 68, 68, 0.18);
+                    "
+                  >
+                    全不选
+                  </button>
+                </div>
+              </div>
+              <div class="models-grid" id="models"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右：日志 -->
+        <div class="panel log-panel">
+          <div class="panel-hd">
+            <div class="hd-title">
+              <strong>并发结果</strong>
+              <span>全部请求一次性发出，显示成功/失败</span>
+            </div>
+          </div>
+          <div class="panel-bd">
+            <div class="log-top">
+              <div class="summary-row">
+                <div class="mini mini-stat">
+                  总请求：<b id="totalRequests">0</b>
+                </div>
+                <div class="mini mini-stat">
+                  成功：<b id="successCount">0</b>
+                </div>
+                <div class="mini mini-stat">失败：<b id="failCount">0</b></div>
+              </div>
+
+              <div class="row-actions">
+                <div class="help">
+                  说明：若跨域/鉴权失败，需后端允许 CORS
+                  或使用同源方式访问；token 为空会直接报错。
+                </div>
+                <div class="actions">
+                  <button id="runBtn" type="button">
+                    测试（并发发出所有请求）
+                  </button>
+                  <button id="clearBtn" type="button" class="btn-danger">
+                    清空日志
+                  </button>
+                </div>
+              </div>
+
+              <div class="log-output">
+                <pre id="log">未开始</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const MODELS = [
+        {
+          id: "doubao-seedance-4-5",
+          provider: "doubao-seedance-4-5",
+          title: "doubao-seedance-4-5",
+          baseParams: {
+            model: "doubao-seedance-4-5",
+            size: "1:1",
+            resolution: "2K",
+            n: 1,
+            imageUrls: [],
+          },
+        },
+        {
+          id: "grok-imagine-text-to-image",
+          provider: "grok-imagine/text-to-image",
+          title: "grok-imagine/text-to-image",
+          baseParams: {
+            aspectRatio: "1:1",
+          },
+        },
+        {
+          id: "qwen-text-to-image",
+          provider: "qwen/text-to-image",
+          title: "qwen/text-to-image",
+          baseParams: {
+            imageSize: "square_hd",
+            numInferenceSteps: 30,
+            guidanceScale: 2,
+            enableSafetyChecker: true,
+            outputFormat: "png",
+            negativePrompt: "",
+            acceleration: "none",
+          },
+        },
+        {
+          id: "gpt-image-1-5",
+          provider: "gpt-image-1.5",
+          title: "gpt-image-1.5",
+          baseParams: {
+            model: "gpt-image-1.5",
+            aspectRatio: "auto",
+            imageSize: "1K",
+            variants: 1,
+            urls: [],
+          },
+        },
+        {
+          id: "sora-image",
+          provider: "sora-image",
+          title: "sora-image",
+          baseParams: {
+            model: "sora-image",
+            aspectRatio: "auto",
+            imageSize: "1K",
+            variants: 1,
+            urls: [],
+          },
+        },
+        {
+          id: "nano-banana-pro",
+          provider: "nano-banana-pro",
+          title: "nano-banana-pro（params 按示例）",
+          baseParams: {
+            model: "nano-banana-fast",
+            aspectRatio: "auto",
+            imageSize: "1K",
+            variants: 1,
+            urls: [],
+          },
+        },
+        {
+          id: "flux-2-pro",
+          provider: "flux-2-pro",
+          title: "flux-2-pro",
+          baseParams: {
+            model: "flux-2-pro",
+            size: "1:1",
+            resolution: "1K",
+            imageUrls: [],
+          },
+        },
+        {
+          id: "z-image",
+          provider: "z-image",
+          title: "z-image",
+          baseParams: {
+            aspectRatio: "1:1",
+          },
+        },
+      ];
+
+      const modelsEl = document.getElementById("models");
+      const baseUrlEl = document.getElementById("baseUrl");
+      const tokenEl = document.getElementById("token");
+      const globalCountEl = document.getElementById("globalCount");
+      const globalPromptEl = document.getElementById("globalPrompt");
+
+      const selectedCountEl = document.getElementById("selectedCount");
+      const enabledTotalEl = document.getElementById("enabledTotal");
+
+      const runBtn = document.getElementById("runBtn");
+      const clearBtn = document.getElementById("clearBtn");
+      const selectAllBtn = document.getElementById("selectAllBtn");
+      const selectNoneBtn = document.getElementById("selectNoneBtn");
+
+      const totalRequestsEl = document.getElementById("totalRequests");
+      const successCountEl = document.getElementById("successCount");
+      const failCountEl = document.getElementById("failCount");
+
+      const logEl = document.getElementById("log");
+      const pillStateEl = document.getElementById("pillState");
+
+      function $(id) {
+        return document.getElementById(id);
+      }
+
+      function safeInt(v, fallback = 0) {
+        const n = Number(v);
+        return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
+      }
+
+      function sanitizeToken(raw) {
+        const t = String(raw || "").trim();
+        if (!t) return "";
+        return t.toLowerCase().startsWith("bearer ") ? t.slice(7).trim() : t;
+      }
+
+      function escapeHtml(str) {
+        return String(str ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function getEndpoint() {
+        const baseUrl = String(baseUrlEl.value || "")
+          .trim()
+          .replace(/\/+$/, "");
+        if (!baseUrl) throw new Error("base请求地址不能为空");
+        return baseUrl + "/api/draw/task";
+      }
+
+      function setLog(text) {
+        logEl.textContent = text;
+      }
+
+      function appendLog(line) {
+        logEl.textContent += line + "\\n";
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function modelIds() {
+        return MODELS.map((m) => m.id);
+      }
+
+      function updateSelectedStats() {
+        let selectedModels = 0;
+        let enabledTotal = 0;
+        for (const m of MODELS) {
+          const checked = $(`m_chk_${m.id}`).checked;
+          if (!checked) continue;
+          selectedModels++;
+          enabledTotal += safeInt($(`m_count_${m.id}`).value, 0);
+        }
+        selectedCountEl.textContent = String(selectedModels);
+        enabledTotalEl.textContent = String(enabledTotal);
+      }
+
+      function syncGlobalCountToModels() {
+        const v = safeInt(globalCountEl.value, 0);
+        for (const m of MODELS) $(`m_count_${m.id}`).value = String(v);
+        updateSelectedStats();
+      }
+
+      function syncGlobalPromptToModels() {
+        const v = String(globalPromptEl.value || "");
+        for (const m of MODELS) $(`m_prompt_${m.id}`).value = v;
+      }
+
+      function buildModelsUI() {
+        modelsEl.innerHTML = "";
+
+        for (const m of MODELS) {
+          const checkedDefault = true;
+          const checkboxId = `m_chk_${m.id}`;
+          const countId = `m_count_${m.id}`;
+          const promptId = `m_prompt_${m.id}`;
+
+          const card = document.createElement("div");
+          card.className = "model-card";
+          card.innerHTML = `
+            <div class="model-card-hd">
+              <div class="name">
+                <div class="model-title">${escapeHtml(m.title)}</div>
+                <div class="model-provider">provider: <code style="font-family:inherit;">${escapeHtml(m.provider)}</code></div>
+                <div class="model-enable">
+                  <input id="${checkboxId}" type="checkbox" ${checkedDefault ? "checked" : ""} />
+                  <span>启用</span>
+                </div>
+              </div>
+              <div class="chip" style="align-self:flex-start;">
+                model: <b style="max-width:170px; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(String(m.baseParams?.model ?? ""))}</b>
+              </div>
+            </div>
+
+            <div class="model-card-bd">
+              <div class="model-row">
+                <div class="field-inline model-count">
+                  <label for="${countId}">数量</label>
+                  <input id="${countId}" type="number" min="0" step="1" value="${safeInt(globalCountEl.value, 1)}" />
+                </div>
+                <div class="model-prompt">
+                  <label for="${promptId}">提示词</label>
+                  <textarea id="${promptId}" spellcheck="false">${escapeHtml(globalPromptEl.value || "")}</textarea>
+                </div>
+              </div>
+            </div>
+          `;
+
+          modelsEl.appendChild(card);
+
+          $(`m_chk_${m.id}`).addEventListener("change", updateSelectedStats);
+          $(`m_count_${m.id}`).addEventListener("input", updateSelectedStats);
+        }
+      }
+
+      async function sendCreateTask({ provider, prompt, params }) {
+        const token = sanitizeToken(tokenEl.value);
+        if (!token) throw new Error("token不能为空");
+        const url = getEndpoint();
+
+        // 每次仅改变 prompt，其它字段/params 固定（符合“只改提示词就行”）
+        const payload = {
+          source: "draw",
+          provider,
+          taskType: "text2img",
+          prompt,
+          negativePrompt: "",
+          params: params ?? {},
+        };
+
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        let json;
+        try {
+          json = await res.json();
+        } catch (e) {
+          json = { raw: await res.text() };
+        }
+
+        // 兼容后端统一返回 {code,message,data}
+        if (json && typeof json === "object" && "code" in json) {
+          if (json.code !== 200)
+            throw new Error(json.message || `请求失败(code=${json.code})`);
+          return json.data;
+        }
+        if (!res.ok) {
+          throw new Error(
+            (json && json.message) ||
+              json?.error ||
+              res.statusText ||
+              `HTTP ${res.status}`,
+          );
+        }
+        return json;
+      }
+
+      selectAllBtn.addEventListener("click", () => {
+        for (const id of modelIds()) $(`m_chk_${id}`).checked = true;
+        updateSelectedStats();
+      });
+
+      selectNoneBtn.addEventListener("click", () => {
+        for (const id of modelIds()) $(`m_chk_${id}`).checked = false;
+        updateSelectedStats();
+      });
+
+      globalCountEl.addEventListener("input", syncGlobalCountToModels);
+      globalPromptEl.addEventListener("input", syncGlobalPromptToModels);
+
+      clearBtn.addEventListener("click", () => {
+        setLog("");
+        pillStateEl.textContent = "未开始";
+        totalRequestsEl.textContent = "0";
+        successCountEl.textContent = "0";
+        failCountEl.textContent = "0";
+      });
+
+      runBtn.addEventListener("click", async () => {
+        const startAt = Date.now();
+        let ok = 0;
+        let fail = 0;
+
+        try {
+          runBtn.disabled = true;
+          pillStateEl.textContent = "运行中...";
+          setLog("");
+
+          const selected = [];
+          for (const m of MODELS) {
+            if (!$(`m_chk_${m.id}`).checked) continue;
+            const count = safeInt($(`m_count_${m.id}`).value, 0);
+            const prompt = String($(`m_prompt_${m.id}`).value || "");
+            if (count <= 0) continue;
+            if (!prompt.trim()) {
+              appendLog(`[跳过] ${m.provider}：提示词为空`);
+              continue;
+            }
+            selected.push({ m, count, prompt });
+          }
+
+          if (selected.length === 0) {
+            pillStateEl.textContent = "未选中模型（或数量为 0）";
+            setLog("未选中模型（或数量为 0）");
+            return;
+          }
+
+          const total = selected.reduce((sum, x) => sum + x.count, 0);
+          totalRequestsEl.textContent = String(total);
+          successCountEl.textContent = "0";
+          failCountEl.textContent = "0";
+
+          appendLog(`Endpoint: ${getEndpoint()}`);
+          appendLog(`Start: ${new Date().toISOString()}`);
+          appendLog(`Total requests: ${total}`);
+          appendLog(
+            "------------------------------------------------------------",
+          );
+
+          let idx = 0;
+          const tasks = [];
+
+          for (const x of selected) {
+            for (let i = 0; i < x.count; i++) {
+              const curIdx = idx++;
+              const provider = x.m.provider;
+              const prompt = x.prompt;
+              const params = x.m.baseParams;
+
+              tasks.push(
+                sendCreateTask({ provider, prompt, params })
+                  .then((data) => {
+                    ok++;
+                    successCountEl.textContent = String(ok);
+                    const taskId =
+                      data?.id || data?.taskId || data?._id || "unknown";
+                    const status = data?.status || "";
+                    appendLog(
+                      `[OK]   #${curIdx} provider=${provider} taskId=${taskId} status=${status}`,
+                    );
+                  })
+                  .catch((err) => {
+                    fail++;
+                    failCountEl.textContent = String(fail);
+                    appendLog(
+                      `[FAIL] #${curIdx} provider=${provider} err=${String(err?.message || err)}`,
+                    );
+                  }),
+              );
+            }
+          }
+
+          // 并发：一次性发出所有请求，然后等待全部结束
+          await Promise.all(tasks);
+
+          const elapsedMs = Date.now() - startAt;
+          pillStateEl.textContent = `完成：成功 ${ok} / 失败 ${fail}（耗时 ${(elapsedMs / 1000).toFixed(1)}s）`;
+          appendLog(
+            "------------------------------------------------------------",
+          );
+          appendLog(`Done @ ${new Date().toISOString()}`);
+          appendLog(`Success=${ok} Failed=${fail}`);
+        } finally {
+          runBtn.disabled = false;
+        }
+      });
+
+      // 初始化
+      buildModelsUI();
+      syncGlobalCountToModels();
+      syncGlobalPromptToModels();
+      updateSelectedStats();
+    </script>
+  </body>
+</html>
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Draw 并发测试页</title>
+    <style>
+      :root {
+        --bg: #f6f8fc;
+        --panel: rgba(255, 255, 255, 0.78);
+        --text: #0f172a;
+        --muted: #64748b;
+        --border: rgba(2, 6, 23, 0.08);
+        --shadow: 0 10px 30px rgba(2, 6, 23, 0.08);
+        --primary: #2f6fed;
+        --primary2: #4f8dfd;
+        --danger: #d73b3e;
+        --radius: 16px;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+        margin: 0;
+        padding: 24px 16px 32px;
+        background:
+          radial-gradient(
+            1200px 600px at 20% -10%,
+            rgba(47, 111, 237, 0.18),
+            transparent 60%
+          ),
+          radial-gradient(
+            900px 450px at 90% 10%,
+            rgba(79, 141, 253, 0.18),
+            transparent 60%
+          ),
+          var(--bg);
+        color: var(--text);
+        line-height: 1.4;
+      }
+      h2 {
+        margin: 0 0 10px;
+        font-size: 20px;
+        letter-spacing: 0.2px;
+      }
+      .status {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .note {
+        margin-bottom: 12px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.72);
+        border-radius: 12px;
+      }
+      .row {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+      }
+      label {
+        display: inline-block;
+        font-weight: 700;
+        font-size: 12px;
+        color: #334155;
+        margin-bottom: 6px;
+      }
+      input[type="text"],
+      input[type="number"],
+      textarea {
+        width: 100%;
+        max-width: none;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        outline: none;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 1px 0 rgba(2, 6, 23, 0.02);
+        transition:
+          border-color 0.15s ease,
+          box-shadow 0.15s ease,
+          transform 0.05s ease;
+        color: var(--text);
+      }
+      input[type="text"]:focus,
+      input[type="number"]:focus,
+      textarea:focus {
+        border-color: rgba(47, 111, 237, 0.5);
+        box-shadow: 0 0 0 4px rgba(47, 111, 237, 0.14);
+      }
+      textarea {
+        min-height: 92px;
+        resize: vertical;
+      }
+      .field {
+        min-width: 260px;
+      }
+      .actions {
+        margin-top: 14px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      #summary {
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.72);
+        border-radius: 12px;
+      }
+      button {
+        padding: 10px 14px;
+        border: 0;
+        border-radius: 12px;
+        background: linear-gradient(180deg, var(--primary2), var(--primary));
+        color: white;
+        cursor: pointer;
+        font-weight: 800;
+        box-shadow: 0 10px 22px rgba(47, 111, 237, 0.22);
+        transition:
+          transform 0.08s ease,
+          filter 0.15s ease,
+          box-shadow 0.15s ease;
+      }
+      button:hover {
+        filter: brightness(1.03);
+        box-shadow: 0 14px 26px rgba(47, 111, 237, 0.26);
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.7;
+        box-shadow: none;
+      }
+      .danger {
+        background: linear-gradient(180deg, #ff6668, var(--danger));
+        box-shadow: 0 10px 22px rgba(215, 59, 62, 0.18);
+      }
+      .models {
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(420px, 1fr));
+        gap: 14px;
+      }
+      @media (max-width: 1100px) {
+        .models {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px;
+        background: var(--panel);
+        box-shadow: 0 1px 0 rgba(2, 6, 23, 0.03);
+        backdrop-filter: blur(10px);
+      }
+      .card-head {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+      .card-title {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+      .provider {
+        font-weight: 900;
+        word-break: break-word;
+        background: rgba(47, 111, 237, 0.1);
+        border: 1px solid rgba(47, 111, 237, 0.2);
+        color: #1d4ed8;
+        padding: 6px 10px;
+        border-radius: 999px;
+        width: fit-content;
+        max-width: 100%;
+      }
+      .hint {
+        font-size: 12px;
+        color: var(--muted);
+        word-break: break-all;
+      }
+      .mini-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .mini-row input[type="number"] {
+        width: 180px;
+      }
+      pre {
+        margin-top: 16px;
+        padding: 14px 14px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.66);
+        max-height: 420px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      code {
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Draw 并发测试</h2>
+    <div class="status note">
+      说明：打开页面并发创建任务。跨域/鉴权如不通，需要后端允许 CORS
+      或用同源方式访问。
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="baseUrl">base请求地址</label>
+        <input
+          id="baseUrl"
+          type="text"
+          value="http://127.0.0.1:3002"
+          placeholder="http://127.0.0.1:3002"
+        />
+      </div>
+      <div class="field">
+        <label for="token">token（不带 Bearer）</label>
+        <input
+          id="token"
+          type="text"
+          placeholder="例如：eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        />
+      </div>
+      <div class="field">
+        <label for="globalCount">数量总输入框（回填到每个模型）</label>
+        <input id="globalCount" type="number" min="0" step="1" value="1" />
+      </div>
+      <div class="field" style="flex: 1; min-width: 340px">
+        <label for="globalPrompt">提示词总输入框（回填到每个模型）</label>
+        <textarea id="globalPrompt" spellcheck="false">
+一只半透明的琉璃水母漂浮在巨树的根系之间，其触须延伸出细小的发光菌丝，连接着地面上正在生长的水晶状植物。画面采用仰视视角，阳光透过浓密的树冠形成丁达尔效应，整体色调为翡翠绿与琥珀金的渐变。细节要求：水母内部可见复杂的共生生态
+        </textarea>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="runBtn" type="button">测试（一次性并发发出所有请求）</button>
+      <button id="clearBtn" type="button" class="danger">清空日志</button>
+      <div id="summary" class="status">未开始</div>
+    </div>
+
+    <div class="models" id="models"></div>
+
+    <pre id="log"></pre>
+
+    <script>
+      const MODELS = [
+        {
+          id: "doubao-seedance-4-5",
+          provider: "doubao-seedance-4-5",
+          title: "doubao-seedance-4-5",
+          baseParams: {
+            model: "doubao-seedance-4-5",
+            size: "1:1",
+            resolution: "2K",
+            n: 1,
+            imageUrls: [],
+          },
+        },
+        {
+          id: "grok-imagine-text-to-image",
+          provider: "grok-imagine/text-to-image",
+          title: "grok-imagine/text-to-image",
+          baseParams: {
+            aspectRatio: "1:1",
+          },
+        },
+        {
+          id: "qwen-text-to-image",
+          provider: "qwen/text-to-image",
+          title: "qwen/text-to-image",
+          baseParams: {
+            imageSize: "square_hd",
+            numInferenceSteps: 30,
+            guidanceScale: 2,
+            enableSafetyChecker: true,
+            outputFormat: "png",
+            negativePrompt: "",
+            acceleration: "none",
+          },
+        },
+        {
+          id: "gpt-image-1-5",
+          provider: "gpt-image-1.5",
+          title: "gpt-image-1.5",
+          baseParams: {
+            model: "gpt-image-1.5",
+            aspectRatio: "auto",
+            imageSize: "1K",
+            variants: 1,
+            urls: [],
+          },
+        },
+        {
+          id: "sora-image",
+          provider: "sora-image",
+          title: "sora-image",
+          baseParams: {
+            model: "sora-image",
+            aspectRatio: "auto",
+            imageSize: "1K",
+            variants: 1,
+            urls: [],
+          },
+        },
+        {
+          id: "nano-banana-pro",
+          provider: "nano-banana-pro",
+          title: "nano-banana-pro（模型参数按示例）",
+          baseParams: {
+            model: "nano-banana-fast",
+            aspectRatio: "auto",
+            imageSize: "1K",
+            variants: 1,
+            urls: [],
+          },
+        },
+        {
+          id: "flux-2-pro",
+          provider: "flux-2-pro",
+          title: "flux-2-pro",
+          baseParams: {
+            model: "flux-2-pro",
+            size: "1:1",
+            resolution: "1K",
+            imageUrls: [],
+          },
+        },
+        {
+          id: "z-image",
+          provider: "z-image",
+          title: "z-image",
+          baseParams: {
+            aspectRatio: "1:1",
+          },
+        },
+      ];
+
+      const modelsEl = document.getElementById("models");
+      const globalCountEl = document.getElementById("globalCount");
+      const globalPromptEl = document.getElementById("globalPrompt");
+      const tokenEl = document.getElementById("token");
+      const baseUrlEl = document.getElementById("baseUrl");
+      const runBtn = document.getElementById("runBtn");
+      const clearBtn = document.getElementById("clearBtn");
+      const summaryEl = document.getElementById("summary");
+      const logEl = document.getElementById("log");
+
+      function $(id) {
+        return document.getElementById(id);
+      }
+
+      function safeInt(v, fallback = 0) {
+        const n = Number(v);
+        return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
+      }
+
+      function sanitizeToken(raw) {
+        const t = String(raw || "").trim();
+        if (!t) return "";
+        return t.toLowerCase().startsWith("bearer ") ? t.slice(7).trim() : t;
+      }
+
+      function setLog(text) {
+        logEl.textContent = text;
+      }
+
+      function appendLog(line) {
+        logEl.textContent += line + "\\n";
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function buildModelsUI() {
+        modelsEl.innerHTML = "";
+        for (const m of MODELS) {
+          const card = document.createElement("div");
+          card.className = "card";
+
+          const checkboxId = `m_chk_${m.id}`;
+          const countId = `m_count_${m.id}`;
+          const promptId = `m_prompt_${m.id}`;
+
+          card.innerHTML = `
+            <div class="card-head">
+              <div class="card-title">
+                <div class="provider">${escapeHtml(m.title)}</div>
+                <div class="hint">provider: <code>${escapeHtml(m.provider)}</code></div>
+              </div>
+              <div class="mini-row">
+                <input id="${checkboxId}" type="checkbox" checked />
+                <label for="${checkboxId}" style="margin:0;font-weight:600;">启用</label>
+              </div>
+            </div>
+
+            <div class="mini-row" style="margin-bottom: 10px;">
+              <div class="field" style="min-width: 220px;">
+                <label for="${countId}">该模型数量</label>
+                <input id="${countId}" type="number" min="0" step="1" value="${safeInt(globalCountEl.value, 1)}" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="${promptId}">该模型提示词</label>
+              <textarea id="${promptId}" spellcheck="false">${escapeHtml(
+                globalPromptEl.value || "",
+              )}</textarea>
+            </div>
+          `;
+
+          modelsEl.appendChild(card);
+        }
+      }
+
+      function escapeHtml(str) {
+        return String(str ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      // 全量回填：数量 + 提示词
+      function syncGlobalCount() {
+        const v = safeInt(globalCountEl.value, 0);
+        for (const m of MODELS) {
+          $(`m_count_${m.id}`).value = String(v);
+        }
+      }
+      function syncGlobalPrompt() {
+        const v = String(globalPromptEl.value || "");
+        for (const m of MODELS) {
+          $(`m_prompt_${m.id}`).value = v;
+        }
+      }
+
+      globalCountEl.addEventListener("input", syncGlobalCount);
+      globalPromptEl.addEventListener("input", syncGlobalPrompt);
+
+      clearBtn.addEventListener("click", () => {
+        setLog("");
+        summaryEl.textContent = "未开始";
+      });
+
+      function getEndpoint() {
+        const baseUrl = String(baseUrlEl.value || "")
+          .trim()
+          .replace(/\/+$/, "");
+        if (!baseUrl) throw new Error("base请求地址不能为空");
+        return `${baseUrl}/api/draw/task`;
+      }
+
+      async function sendCreateTask(
+        { provider, prompt, negativePrompt, params },
+        idx,
+      ) {
+        const token = sanitizeToken(tokenEl.value);
+        if (!token) throw new Error("token不能为空");
+        const url = getEndpoint();
+
+        const payload = {
+          source: "draw",
+          provider,
+          taskType: "text2img",
+          prompt,
+          negativePrompt: negativePrompt ?? "",
+          params: params ?? {},
+        };
+
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        let json = null;
+        try {
+          json = await res.json();
+        } catch (e) {
+          // 非 JSON 响应
+          json = { raw: await res.text() };
+        }
+
+        // 兼容后端统一响应 {code,message,data}
+        if (json && typeof json === "object" && "code" in json) {
+          if (json.code !== 200) {
+            throw new Error(json.message || `请求失败(code=${json.code})`);
+          }
+          return json.data;
+        }
+        if (!res.ok) {
+          const msg = (json && json.message) || json?.error || res.statusText;
+          throw new Error(msg || `HTTP ${res.status}`);
+        }
+        return json;
+      }
+
+      runBtn.addEventListener("click", async () => {
+        try {
+          setLog("");
+          runBtn.disabled = true;
+
+          const selected = [];
+          for (const m of MODELS) {
+            const checked = $(`m_chk_${m.id}`).checked;
+            if (!checked) continue;
+            const count = safeInt($(`m_count_${m.id}`).value, 0);
+            const prompt = String($(`m_prompt_${m.id}`).value || "");
+            if (count <= 0) continue;
+            if (!prompt.trim()) {
+              appendLog(`[跳过] ${m.provider} 提示词为空`);
+              continue;
+            }
+            selected.push({ model: m, count, prompt });
+          }
+
+          if (selected.length === 0) {
+            summaryEl.textContent = "未选中任何模型（或数量为 0）";
+            appendLog("未选中任何模型（或数量为 0）");
+            return;
+          }
+
+          const totalRequests = selected.reduce((sum, x) => sum + x.count, 0);
+          summaryEl.textContent = `开始：共 ${totalRequests} 个请求（并发发出）`;
+          appendLog(
+            `Start @ ${new Date().toISOString()} | endpoint=${getEndpoint()} | total=${totalRequests}`,
+          );
+
+          let completed = 0;
+          let failed = 0;
+
+          const tasks = [];
+          let globalIdx = 0;
+          for (const x of selected) {
+            for (let i = 0; i < x.count; i++) {
+              const myIdx = globalIdx++;
+              const payload = {
+                provider: x.model.provider,
+                prompt: x.prompt,
+                negativePrompt: "",
+                params: x.model.baseParams,
+              };
+
+              const p = sendCreateTask(payload, myIdx)
+                .then((data) => {
+                  completed++;
+                  const taskId =
+                    data?.id || data?.taskId || data?._id || "unknown";
+                  const status = data?.status || "";
+                  appendLog(
+                    `[OK] #${myIdx} provider=${x.model.provider} taskId=${taskId} status=${status}`,
+                  );
+                  return data;
+                })
+                .catch((err) => {
+                  failed++;
+                  appendLog(
+                    `[ERR] #${myIdx} provider=${x.model.provider} ${String(
+                      err?.message || err,
+                    )}`,
+                  );
+                  return null;
+                });
+
+              tasks.push(p);
+            }
+          }
+
+          // 并发：一次性发出所有请求，然后等待全部结束
+          await Promise.all(tasks);
+
+          summaryEl.textContent = `完成：成功 ${totalRequests - failed} / 失败 ${failed}（共 ${totalRequests}）`;
+          appendLog(
+            `Done @ ${new Date().toISOString()} | success=${totalRequests - failed} failed=${failed}`,
+          );
+        } finally {
+          runBtn.disabled = false;
+        }
+      });
+
+      // 初始化 UI
+      buildModelsUI();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,153 @@
+curl 'http://127.0.0.1:3002/api/draw/task' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: zh,en;q=0.9,ja;q=0.8,zh-CN;q=0.7,ko;q=0.6' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYWE3ODAyMS1jODgzLTQwMTYtOWJiNi04Y2M2YjIzM2FiMWQiLCJlbWFpbCI6InF3ZXIxQGdtYWlsLmNvbSIsInBob25lIjoiMTk5MTIzNDEyMzQiLCJpYXQiOjE3NzM1NzM5ODksImV4cCI6MTc3NDE3ODc4OX0.EjqETAqqDkqWCpICLdmdX28uxLlvnidBDvkDN-1wkKo' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: http://127.0.0.1:3002' \
+  -H 'Referer: http://127.0.0.1:3002/draw' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36' \
+  -H 'sec-ch-ua: "Not(A:Brand";v="8", "Chromium";v="144", "Google Chrome";v="144"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  --data-raw '{"source":"draw","provider":"doubao-seedance-4-5","taskType":"text2img","prompt":"一只半透明的琉璃水母漂浮在巨树的根系之间，其触须延伸出细小的发光菌丝，连接着地面上正在生长的水晶状植物。画面采用仰视视角，阳光透过浓密的树冠形成丁达尔效应，整体色调为翡翠绿与琥珀金的渐变。细节要求：水母内部可见复杂的共生生态","negativePrompt":"","params":{"model":"doubao-seedance-4-5","size":"1:1","resolution":"2K","n":1,"imageUrls":[]}}'
+
+
+curl 'http://127.0.0.1:3002/api/draw/task' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: zh,en;q=0.9,ja;q=0.8,zh-CN;q=0.7,ko;q=0.6' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYWE3ODAyMS1jODgzLTQwMTYtOWJiNi04Y2M2YjIzM2FiMWQiLCJlbWFpbCI6InF3ZXIxQGdtYWlsLmNvbSIsInBob25lIjoiMTk5MTIzNDEyMzQiLCJpYXQiOjE3NzM1NzM5ODksImV4cCI6MTc3NDE3ODc4OX0.EjqETAqqDkqWCpICLdmdX28uxLlvnidBDvkDN-1wkKo' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: http://127.0.0.1:3002' \
+  -H 'Referer: http://127.0.0.1:3002/draw' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36' \
+  -H 'sec-ch-ua: "Not(A:Brand";v="8", "Chromium";v="144", "Google Chrome";v="144"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  --data-raw '{"source":"draw","provider":"grok-imagine/text-to-image","taskType":"text2img","prompt":"一只半透明的琉璃水母漂浮在巨树的根系之间，其触须延伸出细小的发光菌丝，连接着地面上正在生长的水晶状植物。画面采用仰视视角，阳光透过浓密的树冠形成丁达尔效应，整体色调为翡翠绿与琥珀金的渐变。细节要求：水母内部可见复杂的共生生态","negativePrompt":"","params":{"aspectRatio":"1:1"}}'
+
+
+curl 'http://127.0.0.1:3002/api/draw/task' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: zh,en;q=0.9,ja;q=0.8,zh-CN;q=0.7,ko;q=0.6' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYWE3ODAyMS1jODgzLTQwMTYtOWJiNi04Y2M2YjIzM2FiMWQiLCJlbWFpbCI6InF3ZXIxQGdtYWlsLmNvbSIsInBob25lIjoiMTk5MTIzNDEyMzQiLCJpYXQiOjE3NzM1NzM5ODksImV4cCI6MTc3NDE3ODc4OX0.EjqETAqqDkqWCpICLdmdX28uxLlvnidBDvkDN-1wkKo' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: http://127.0.0.1:3002' \
+  -H 'Referer: http://127.0.0.1:3002/draw' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36' \
+  -H 'sec-ch-ua: "Not(A:Brand";v="8", "Chromium";v="144", "Google Chrome";v="144"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  --data-raw '{"source":"draw","provider":"qwen/text-to-image","taskType":"text2img","prompt":"一只半透明的琉璃水母漂浮在巨树的根系之间，其触须延伸出细小的发光菌丝，连接着地面上正在生长的水晶状植物。画面采用仰视视角，阳光透过浓密的树冠形成丁达尔效应，整体色调为翡翠绿与琥珀金的渐变。细节要求：水母内部可见复杂的共生生态","negativePrompt":"","params":{"imageSize":"square_hd","numInferenceSteps":30,"guidanceScale":2,"enableSafetyChecker":true,"outputFormat":"png","negativePrompt":"","acceleration":"none"}}'
+
+
+curl 'http://127.0.0.1:3002/api/draw/task' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: zh,en;q=0.9,ja;q=0.8,zh-CN;q=0.7,ko;q=0.6' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYWE3ODAyMS1jODgzLTQwMTYtOWJiNi04Y2M2YjIzM2FiMWQiLCJlbWFpbCI6InF3ZXIxQGdtYWlsLmNvbSIsInBob25lIjoiMTk5MTIzNDEyMzQiLCJpYXQiOjE3NzM1NzM5ODksImV4cCI6MTc3NDE3ODc4OX0.EjqETAqqDkqWCpICLdmdX28uxLlvnidBDvkDN-1wkKo' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: http://127.0.0.1:3002' \
+  -H 'Referer: http://127.0.0.1:3002/draw' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36' \
+  -H 'sec-ch-ua: "Not(A:Brand";v="8", "Chromium";v="144", "Google Chrome";v="144"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  --data-raw '{"source":"draw","provider":"gpt-image-1.5","taskType":"text2img","prompt":"一只半透明的琉璃水母漂浮在巨树的根系之间，其触须延伸出细小的发光菌丝，连接着地面上正在生长的水晶状植物。画面采用仰视视角，阳光透过浓密的树冠形成丁达尔效应，整体色调为翡翠绿与琥珀金的渐变。细节要求：水母内部可见复杂的共生生态","negativePrompt":"","params":{"model":"gpt-image-1.5","aspectRatio":"auto","imageSize":"1K","variants":1,"urls":[]}}'
+
+curl 'http://127.0.0.1:3002/api/draw/task' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: zh,en;q=0.9,ja;q=0.8,zh-CN;q=0.7,ko;q=0.6' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYWE3ODAyMS1jODgzLTQwMTYtOWJiNi04Y2M2YjIzM2FiMWQiLCJlbWFpbCI6InF3ZXIxQGdtYWlsLmNvbSIsInBob25lIjoiMTk5MTIzNDEyMzQiLCJpYXQiOjE3NzM1NzM5ODksImV4cCI6MTc3NDE3ODc4OX0.EjqETAqqDkqWCpICLdmdX28uxLlvnidBDvkDN-1wkKo' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: http://127.0.0.1:3002' \
+  -H 'Referer: http://127.0.0.1:3002/draw' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36' \
+  -H 'sec-ch-ua: "Not(A:Brand";v="8", "Chromium";v="144", "Google Chrome";v="144"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  --data-raw '{"source":"draw","provider":"gpt-image-1.5","taskType":"text2img","prompt":"一只半透明的琉璃水母漂浮在巨树的根系之间，其触须延伸出细小的发光菌丝，连接着地面上正在生长的水晶状植物。画面采用仰视视角，阳光透过浓密的树冠形成丁达尔效应，整体色调为翡翠绿与琥珀金的渐变。细节要求：水母内部可见复杂的共生生态","negativePrompt":"","params":{"model":"sora-image","aspectRatio":"auto","imageSize":"1K","variants":1,"urls":[]}}'
+
+
+curl 'http://127.0.0.1:3002/api/draw/task' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: zh,en;q=0.9,ja;q=0.8,zh-CN;q=0.7,ko;q=0.6' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYWE3ODAyMS1jODgzLTQwMTYtOWJiNi04Y2M2YjIzM2FiMWQiLCJlbWFpbCI6InF3ZXIxQGdtYWlsLmNvbSIsInBob25lIjoiMTk5MTIzNDEyMzQiLCJpYXQiOjE3NzM1NzM5ODksImV4cCI6MTc3NDE3ODc4OX0.EjqETAqqDkqWCpICLdmdX28uxLlvnidBDvkDN-1wkKo' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: http://127.0.0.1:3002' \
+  -H 'Referer: http://127.0.0.1:3002/draw' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36' \
+  -H 'sec-ch-ua: "Not(A:Brand";v="8", "Chromium";v="144", "Google Chrome";v="144"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  --data-raw '{"source":"draw","provider":"nano-banana-pro","taskType":"text2img","prompt":"一只半透明的琉璃水母漂浮在巨树的根系之间，其触须延伸出细小的发光菌丝，连接着地面上正在生长的水晶状植物。画面采用仰视视角，阳光透过浓密的树冠形成丁达尔效应，整体色调为翡翠绿与琥珀金的渐变。细节要求：水母内部可见复杂的共生生态","negativePrompt":"","params":{"model":"nano-banana-fast","aspectRatio":"auto","imageSize":"1K","variants":1,"urls":[]}}'
+
+
+curl 'http://127.0.0.1:3002/api/draw/task' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: zh,en;q=0.9,ja;q=0.8,zh-CN;q=0.7,ko;q=0.6' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYWE3ODAyMS1jODgzLTQwMTYtOWJiNi04Y2M2YjIzM2FiMWQiLCJlbWFpbCI6InF3ZXIxQGdtYWlsLmNvbSIsInBob25lIjoiMTk5MTIzNDEyMzQiLCJpYXQiOjE3NzM1NzM5ODksImV4cCI6MTc3NDE3ODc4OX0.EjqETAqqDkqWCpICLdmdX28uxLlvnidBDvkDN-1wkKo' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: http://127.0.0.1:3002' \
+  -H 'Referer: http://127.0.0.1:3002/draw' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36' \
+  -H 'sec-ch-ua: "Not(A:Brand";v="8", "Chromium";v="144", "Google Chrome";v="144"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  --data-raw '{"source":"draw","provider":"flux-2-pro","taskType":"text2img","prompt":"一只半透明的琉璃水母漂浮在巨树的根系之间，其触须延伸出细小的发光菌丝，连接着地面上正在生长的水晶状植物。画面采用仰视视角，阳光透过浓密的树冠形成丁达尔效应，整体色调为翡翠绿与琥珀金的渐变。细节要求：水母内部可见复杂的共生生态","negativePrompt":"","params":{"model":"flux-2-pro","size":"1:1","resolution":"1K","imageUrls":[]}}'
+
+
+
+curl 'http://127.0.0.1:3002/api/draw/task' \
+  -H 'Accept: application/json, text/plain, */*' \
+  -H 'Accept-Language: zh,en;q=0.9,ja;q=0.8,zh-CN;q=0.7,ko;q=0.6' \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYWE3ODAyMS1jODgzLTQwMTYtOWJiNi04Y2M2YjIzM2FiMWQiLCJlbWFpbCI6InF3ZXIxQGdtYWlsLmNvbSIsInBob25lIjoiMTk5MTIzNDEyMzQiLCJpYXQiOjE3NzM1NzM5ODksImV4cCI6MTc3NDE3ODc4OX0.EjqETAqqDkqWCpICLdmdX28uxLlvnidBDvkDN-1wkKo' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/json' \
+  -H 'Origin: http://127.0.0.1:3002' \
+  -H 'Referer: http://127.0.0.1:3002/draw' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36' \
+  -H 'sec-ch-ua: "Not(A:Brand";v="8", "Chromium";v="144", "Google Chrome";v="144"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  --data-raw '{"source":"draw","provider":"z-image","taskType":"text2img","prompt":"一只半透明的琉璃水母漂浮在巨树的根系之间，其触须延伸出细小的发光菌丝，连接着地面上正在生长的水晶状植物。画面采用仰视视角，阳光透过浓密的树冠形成丁达尔效应，整体色调为翡翠绿与琥珀金的渐变。细节要求：水母内部可见复杂的共生生态","negativePrompt":"","params":{"aspectRatio":"1:1"}}'
+
+
+
+
+帮我写一个HTML测试页面，用来测试文生图模型的并发，这个HTML页面要有一些功能：
+1. 帮我把模型都裂出来，然后对应的要有一个输入框，输入创建改模型任务的数量；
+2.要支持勾选模型，也就是我可以选择只测试那几个模型；
+3.要有一个数量总输入框，输入后我可以全量用到所有模型的输入框里面去；
+4.每个模型也要有个提示词输入框，同时也要有总输入框，总输入改变后就回填到每个模型的提示词里面去；
+5.并发测试只需要更具输入的数量和提示词，进行调用相关接口，只改提示词就行，点击测试按钮的时候直接同时去发出所有请求就行；
+6.base请求地址和token都要支持输入设置，有可能变更

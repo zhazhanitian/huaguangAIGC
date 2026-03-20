@@ -30,6 +30,9 @@ export interface DrawTask {
   isPublic?: boolean | number
   params?: Record<string, unknown>
   createdAt?: string
+  queueMs?: number | null
+  procMs?: number | null
+  totalMs?: number | null
 }
 
 export interface DrawTaskListResponse {

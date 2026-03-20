@@ -885,6 +885,14 @@ vueWatch(actualProvider, () => {
       if (target) URL.revokeObjectURL(target.url)
     }
   }
+  // 切换到“不支持参考图”的模型时，清空已选择的参考图并回到文字生图
+  if ((modelConfigs[selectedProvider.value]?.maxRefImages ?? FALLBACK_MAX_REF_IMAGES) === 0) {
+    if (refImages.value.length > 0) {
+      refImages.value.forEach(t => { if (t?.url?.startsWith('blob:')) URL.revokeObjectURL(t.url) })
+      refImages.value = []
+    }
+    form.value.taskType = 'text2img'
+  }
 
   // Qwen defaults（按文档推荐）
   qwenOutputFormat.value = 'png'
@@ -1102,6 +1110,10 @@ async function handleGenerate(forceGenerate = false) {
       Message.warning('当前模型需要上传 1 张图片作为输入')
       return
     }
+    if ((provider === 'flux-kontext-pro' || provider === 'flux-kontext-max') && refImages.value.length === 0) {
+      Message.warning('当前模型（Flux Kontext）需要上传 1 张参考图作为输入')
+      return
+    }
     if (provider === 'midjourney' && mjTaskType.value !== 'mj_txt2img' && refImages.value.length === 0) {
       Message.warning('Midjourney 当前 taskType 需要上传 1 张图片作为输入')
       return
@@ -1266,6 +1278,14 @@ async function handleGenerate(forceGenerate = false) {
 function isCompleted(s: string) { return s === 'done' || s === 'completed' }
 function statusText(s: string) { return ({ pending: '排队中', processing: '生成中', done: '已完成', completed: '已完成', failed: '失败' } as Record<string, string>)[s] ?? s }
 function statusColor(s: string) { return ({ pending: '#6B7785', processing: '#FF7D00', done: '#00B42A', completed: '#00B42A', failed: '#F53F3F' } as Record<string, string>)[s] ?? '#6B7785' }
+function fmtExecMs(ms?: number | null) {
+  if (ms == null || !Number.isFinite(ms)) return '-'
+  const totalSeconds = ms / 1000
+  if (totalSeconds < 60) return `${totalSeconds.toFixed(1)}s`
+  const m = Math.floor(totalSeconds / 60)
+  const s = Math.round(totalSeconds % 60)
+  return `${m}m${String(s).padStart(2, '0')}s`
+}
 function drawStageText(task: { status: string; progress?: number }) {
   if (task.status === 'pending') return '正在排队中...'
   const p = task.progress ?? 0
@@ -1464,7 +1484,7 @@ function handleDownload(url?: string) {
         </section>
 
         <!-- 参考图（图生图） -->
-        <section class="form-group">
+        <section v-if="maxRefImages > 0" class="form-group">
           <div class="group-label-row">
             <label class="group-label">参考图</label>
             <span class="ref-count">{{ refImages.length }}/{{ maxRefImages }}</span>
@@ -1935,19 +1955,28 @@ function handleDownload(url?: string) {
                   any)?.label
                   || previewTask.provider || '-' }}</span></div>
                 <div class="detail-item"><span class="k">任务类型</span><span class="v">{{ previewTask.taskType || '-'
-                    }}</span>
+                }}</span>
                 </div>
                 <div class="detail-item"><span class="k">状态</span><span class="v">{{ statusText(previewTask.status) ||
                   '-'
                     }}</span></div>
                 <div class="detail-item"><span class="k">进度</span><span class="v">{{ previewTask.progress ?? 0
-                    }}%</span>
+                }}%</span>
                 </div>
                 <div class="detail-item"><span class="k">公开状态</span><span class="v">{{ previewTask.isPublic ? '公开' :
                   '私密'
                     }}</span></div>
                 <div class="detail-item"><span class="k">创建时间</span><span class="v">{{ previewTask.createdAt ? new
                   Date(previewTask.createdAt).toLocaleString() : '-' }}</span></div>
+                <div class="detail-item"><span class="k">排队耗时</span><span class="v">{{
+                  fmtExecMs(previewTask.queueMs)
+                    }}</span></div>
+                <div class="detail-item"><span class="k">处理耗时</span><span class="v">{{
+                  fmtExecMs(previewTask.procMs)
+                    }}</span></div>
+                <div class="detail-item"><span class="k">总耗时</span><span class="v">{{
+                  fmtExecMs(previewTask.totalMs)
+                    }}</span></div>
                 <div class="detail-item" v-if="previewTask.errorMessage"><span class="k">失败原因</span><span class="v"
                     style="color: var(--accent-red)">{{ previewTask.errorMessage }}</span></div>
               </div>
@@ -1985,6 +2014,9 @@ function handleDownload(url?: string) {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  /* 固定卡片尺寸：高度不足时不挤压 item，而是触发父容器 Y 滚动 */
+  --work-img-h: 200px;
+  --work-card-h: 270px;
 }
 
 /* === 顶部 === */
@@ -2530,7 +2562,16 @@ function handleDownload(url?: string) {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 4px;
+}
+
+.works-grid {
+  /* 在 flex-column 内，避免 grid 被收缩从而挤压卡片高度 */
+  flex: 0 0 auto;
+  min-height: max-content;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .works-spin {
@@ -2741,6 +2782,8 @@ function handleDownload(url?: string) {
   gap: 20px;
   padding: 0 4px 4px 0;
   align-content: start;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* 单张作品卡片 */
@@ -2752,6 +2795,9 @@ function handleDownload(url?: string) {
   cursor: pointer;
   transition: box-shadow 0s, border-color 0s, transform 0s;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  height: var(--work-card-h);
 }
 
 .work-card:hover {
@@ -2805,7 +2851,8 @@ function handleDownload(url?: string) {
 .work-img-box {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  height: var(--work-img-h);
+  aspect-ratio: unset;
   overflow: hidden;
   background: var(--bg-surface-3);
 }
@@ -2977,16 +3024,23 @@ function handleDownload(url?: string) {
 .work-info {
   padding: var(--sp-3);
   background: var(--bg-surface-2);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .work-prompt {
   margin: 0 0 6px 0;
   font-size: 0.75rem;
   color: var(--text-2);
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  line-height: 1.1;
 }
 
 .failed-overlay {
@@ -3068,6 +3122,15 @@ function handleDownload(url?: string) {
   flex: 1;
   padding: var(--sp-4) var(--sp-8) var(--sp-6);
   overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.gallery-grid {
+  /* 在 flex 容器内避免被收缩 */
+  width: 100%;
+  box-sizing: border-box;
+  min-height: max-content;
+  flex: 0 0 auto;
 }
 
 .gallery-empty {
@@ -3084,6 +3147,9 @@ function handleDownload(url?: string) {
   overflow: hidden;
   cursor: pointer;
   transition: box-shadow 0s, border-color 0s;
+  display: flex;
+  flex-direction: column;
+  height: var(--work-card-h);
 }
 
 .gallery-card:hover {
@@ -3094,7 +3160,8 @@ function handleDownload(url?: string) {
 .gallery-img-box {
   position: relative;
   width: 100%;
-  padding-bottom: 100%;
+  height: var(--work-img-h);
+  padding-bottom: 0;
   overflow: hidden;
   background: var(--bg-surface-3);
 }
@@ -3149,6 +3216,11 @@ function handleDownload(url?: string) {
 
 .gallery-info {
   padding: var(--sp-3);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .gallery-prompt {

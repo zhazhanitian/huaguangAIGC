@@ -534,6 +534,14 @@ function sText(s: string) {
 function sColor(s: string) {
   return ({ pending: '#6B7785', processing: '#FF7D00', completed: '#00B42A', done: '#00B42A', failed: '#F53F3F' } as Record<string, string>)[s] ?? '#6B7785'
 }
+function fmtExecMs(ms?: number | null) {
+  if (ms == null || !Number.isFinite(ms)) return '-'
+  const totalSeconds = ms / 1000
+  if (totalSeconds < 60) return `${totalSeconds.toFixed(1)}s`
+  const m = Math.floor(totalSeconds / 60)
+  const s = Math.round(totalSeconds % 60)
+  return `${m}m${String(s).padStart(2, '0')}s`
+}
 function progressStage(task: Model3dTask) {
   const params = (task.params || {}) as Record<string, unknown>
   const upstream = String(params.tencentStatus || '').toUpperCase()
@@ -1301,6 +1309,9 @@ onUnmounted(() => {
             <div class="item"><span class="k">模型</span><span class="v">{{ previewTask.provider || '-' }}</span></div>
             <div class="item"><span class="k">进度</span><span class="v">{{ previewTask.progress ?? 0 }}%</span></div>
             <div class="item"><span class="k">创建时间</span><span class="v">{{ previewTask.createdAt || '-' }}</span></div>
+            <div class="item"><span class="k">排队耗时</span><span class="v">{{ fmtExecMs(previewTask.queueMs) }}</span></div>
+            <div class="item"><span class="k">处理耗时</span><span class="v">{{ fmtExecMs(previewTask.procMs) }}</span></div>
+            <div class="item"><span class="k">总耗时</span><span class="v">{{ fmtExecMs(previewTask.totalMs) }}</span></div>
           </div>
           <div class="detail-block">
             <div class="kb">提示词</div>

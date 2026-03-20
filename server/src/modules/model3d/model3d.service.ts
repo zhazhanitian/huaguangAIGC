@@ -32,6 +32,13 @@ import { PayPrintOrderDto } from './dto/pay-print-order.dto';
 
 const POINTS_PER_MODEL3D_FALLBACK =
   Number(process.env.POINTS_PER_MODEL3D) || 30;
+// 控制是否走 Bull 队列（用于测试“去掉排队”带来的影响）。
+// 注意：必须动态读取 env，不能缓存为 top-level 常量，否则启动时序变化会导致“envRaw=false 但开关仍 true”的矛盾。
+function isTaskQueueEnabledFromEnv(): boolean {
+  const raw = process.env.TASK_QUEUE_ENABLED;
+  const normalized = String(raw ?? 'true').trim().toLowerCase();
+  return normalized !== 'false';
+}
 const AI3D_VERSION = '2025-05-13';
 const AI3D_REGION = process.env.TENCENTCLOUD_AI3D_REGION || 'ap-guangzhou';
 const AI3D_ENDPOINT =
@@ -74,10 +81,44 @@ export class Model3dService {
     private readonly oss: OssService,
   ) {}
 
-  private toPayload(
-    task: Model3dTask,
-    type: TaskEventType,
-  ): Omit<TaskEventPayload, 'type'> {
+  /**
+   * 真实耗时：在进入 processing 和 completed/failed 时把时间戳写进库（task.params）。
+   */
+  private readonly PARAM_PROCESSING_AT_MS = '__processingAtMs';
+  private readonly PARAM_ENDED_AT_MS = '__endedAtMs';
+
+  private extractExecutionTimeFromParams(task: Model3dTask): {
+    queueMs: number | null;
+    procMs: number | null;
+    totalMs?: number;
+  } {
+    const createdAtMs =
+      task.createdAt instanceof Date
+        ? task.createdAt.getTime()
+        : task.createdAt
+          ? new Date(task.createdAt as any).getTime()
+          : null;
+    if (createdAtMs == null) return { queueMs: null, procMs: null };
+
+    const params = task.params as Record<string, unknown> | null;
+    if (!params || typeof params !== 'object')
+      return { queueMs: null, procMs: null };
+
+    const processingAtMs = Number((params as any)[this.PARAM_PROCESSING_AT_MS]);
+    const endedAtMs = Number((params as any)[this.PARAM_ENDED_AT_MS]);
+
+    const hasProcessingAt = Number.isFinite(processingAtMs);
+    const hasEndedAt = Number.isFinite(endedAtMs);
+
+    const queueMs = hasProcessingAt ? processingAtMs - createdAtMs : null;
+    const procMs =
+      hasProcessingAt && hasEndedAt ? endedAtMs - processingAtMs : null;
+    const totalMs = hasEndedAt ? endedAtMs - createdAtMs : undefined;
+
+    return { queueMs, procMs, ...(totalMs != null ? { totalMs } : {}) };
+  }
+
+  private toPayload(task: Model3dTask): Omit<TaskEventPayload, 'type'> {
     return {
       module: 'model3d',
       taskId: task.id,
@@ -95,7 +136,7 @@ export class Model3dService {
   }
 
   private emit(userId: string, type: TaskEventType, task: Model3dTask) {
-    this.realtime.emitToUser(userId, type, this.toPayload(task, type));
+    this.realtime.emitToUser(userId, type, this.toPayload(task));
   }
 
   private async resolvePoints(modelName?: string): Promise<number> {
@@ -140,12 +181,23 @@ export class Model3dService {
       status: Model3dTaskStatus.PENDING,
     });
     const saved = await this.model3dRepository.save(task);
-    await this.model3dQueue.add(
-      'process',
-      { taskId: saved.id },
-      { attempts: 3 },
-    );
     this.emit(userId, 'task.created', saved);
+    const taskQueueEnabled = isTaskQueueEnabledFromEnv();
+    if (taskQueueEnabled) {
+      await this.model3dQueue.add(
+        'process',
+        { taskId: saved.id },
+        { attempts: 3 },
+      );
+    } else {
+      // 不走队列：直接异步触发处理（用于对比测试）
+      void this.processModel3dTask(saved).catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.error(
+          `TASK_QUEUE_ENABLED=false：3D任务直接处理失败: ${saved.id}, ${msg}`,
+        );
+      });
+    }
     return saved;
   }
 
@@ -165,7 +217,13 @@ export class Model3dService {
       skip: (page - 1) * pageSize,
       take: pageSize,
     });
-    return { list, total, page, pageSize };
+    // 给前端弹窗补充耗时：
+    // 来自入库时间戳（task.params）
+    const mappedList = list.map((task) => ({
+      ...(task as any),
+      ...this.extractExecutionTimeFromParams(task),
+    }));
+    return { list: mappedList as any, total, page, pageSize };
   }
 
   private getPrintMaterialPrice(material: Model3dPrintMaterial): number {
@@ -280,14 +338,26 @@ export class Model3dService {
   async getTasksStatusBatch(
     userId: string,
     ids: string[],
-  ): Promise<Model3dTask[]> {
+  ): Promise<
+    Array<
+      Model3dTask & {
+        queueMs?: number | null;
+        procMs?: number | null;
+        totalMs?: number;
+      }
+    >
+  > {
     const uniq = Array.from(
       new Set((ids || []).map((x) => String(x || '').trim()).filter(Boolean)),
     );
     if (uniq.length === 0) return [];
-    return this.model3dRepository.find({
+    const tasks = await this.model3dRepository.find({
       where: { userId, id: In(uniq) },
     });
+    return tasks.map((task) => ({
+      ...(task as any),
+      ...this.extractExecutionTimeFromParams(task),
+    }));
   }
 
   async getGallery(
@@ -308,7 +378,16 @@ export class Model3dService {
     return { list, total, page, pageSize };
   }
 
-  async getTaskStatus(taskId: string, userId?: string): Promise<Model3dTask> {
+  async getTaskStatus(
+    taskId: string,
+    userId?: string,
+  ): Promise<
+    Model3dTask & {
+      queueMs?: number | null;
+      procMs?: number | null;
+      totalMs?: number;
+    }
+  > {
     let task = await this.model3dRepository.findOne({ where: { id: taskId } });
     if (!task) {
       throw new NotFoundException('任务不存在');
@@ -323,11 +402,19 @@ export class Model3dService {
     if (task.status === Model3dTaskStatus.COMPLETED) {
       task = await this.ensurePreviewModelUrl(task);
     }
-    return task;
+    return {
+      ...(task as any),
+      ...this.extractExecutionTimeFromParams(task),
+    } as any;
   }
 
   async processModel3dTask(task: Model3dTask): Promise<void> {
     try {
+      // 落库真实处理开始时间戳
+      task.params = {
+        ...(task.params ?? {}),
+        [this.PARAM_PROCESSING_AT_MS]: Date.now(),
+      } as any;
       task.status = Model3dTaskStatus.PROCESSING;
       task.progress = Math.max(task.progress || 0, 8);
       await this.model3dRepository.save(task);
@@ -355,6 +442,11 @@ export class Model3dService {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`3D 任务失败: ${task.id}, ${msg}`);
+      // 落库真实结束时间戳
+      task.params = {
+        ...(task.params ?? {}),
+        [this.PARAM_ENDED_AT_MS]: Date.now(),
+      } as any;
       task.status = Model3dTaskStatus.FAILED;
       task.errorMessage = msg;
       task.progress = 0;
@@ -582,6 +674,11 @@ export class Model3dService {
             }
           }
         }
+        // 落库真实结束时间戳
+        task.params = {
+          ...(task.params ?? {}),
+          [this.PARAM_ENDED_AT_MS]: Date.now(),
+        } as any;
         task.status = Model3dTaskStatus.COMPLETED;
         task.progress = 100;
         task.errorMessage = null;

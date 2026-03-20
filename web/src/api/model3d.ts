@@ -25,6 +25,9 @@ export interface Model3dTask {
   isPublic?: boolean | number
   params?: Record<string, unknown> | null
   createdAt?: string
+  queueMs?: number | null
+  procMs?: number | null
+  totalMs?: number | null
 }
 
 export interface Model3dTaskListResponse {

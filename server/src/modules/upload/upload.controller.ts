@@ -14,9 +14,6 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { memoryStorage } from 'multer';
-import { join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
-import { writeFile, unlink } from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
 
 import { OssService } from '../oss/oss.service';
@@ -30,24 +27,6 @@ interface MulterFile {
   mimetype: string;
   size: number;
   buffer: Buffer;
-}
-
-/** 上传目录相对路径（OSS 未配置时本地上传） */
-const UPLOAD_DIR = './uploads';
-
-function ensureUploadDir() {
-  const dir = join(process.cwd(), UPLOAD_DIR);
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-  return dir;
-}
-
-function uniqueFilename(originalName: string): string {
-  const ext = originalName.includes('.')
-    ? originalName.slice(originalName.lastIndexOf('.'))
-    : '';
-  return `${uuidv4()}${ext}`;
 }
 
 /** 从 Nest 异常或 Error 中取出可返回给前端的文案（含第三方审核结果） */
@@ -115,49 +94,31 @@ export class UploadController {
       throw new BadRequestException('请选择要上传的文件');
     }
 
-    if (this.oss.isConfigured()) {
-      const ext = file.originalname.includes('.')
-        ? file.originalname.slice(file.originalname.lastIndexOf('.'))
-        : '';
-      const key = `aigc/upload/${uuidv4()}${ext}`;
-      const url = await this.oss.uploadBuffer(key, file.buffer, {
-        contentType: file.mimetype,
-      });
-      if (file.mimetype.startsWith('image/')) {
-        try {
-          await this.contentModeration.assertImageSafe(url);
-        } catch (err: any) {
-          await this.oss.deleteObject(key).catch(() => {});
-          const msg = getExceptionMessage(err) || '图片不合规，请更换图片后重试';
-          throw new BadRequestException(msg);
-        }
-      }
-      return {
-        url,
-        filename: key.split('/').pop() || key,
-        originalName: file.originalname,
-        size: file.size,
-        mimetype: file.mimetype,
-      };
+    if (!this.oss.isConfigured()) {
+      throw new BadRequestException(
+        '未配置 OSS：请在运行环境中设置 OSS_ACCESS_KEY_ID 和 OSS_ACCESS_KEY_SECRET（建议在 server/.env 配置并确保容器可读），禁止本地落盘上传。',
+      );
     }
 
-    const dir = ensureUploadDir();
-    const filename = uniqueFilename(file.originalname);
-    const filePath = join(dir, filename);
-    await writeFile(filePath, file.buffer);
-    const url = `/uploads/${filename}`;
+    const ext = file.originalname.includes('.')
+      ? file.originalname.slice(file.originalname.lastIndexOf('.'))
+      : '';
+    const key = `aigc/upload/${uuidv4()}${ext}`;
+    const url = await this.oss.uploadBuffer(key, file.buffer, {
+      contentType: file.mimetype,
+    });
     if (file.mimetype.startsWith('image/')) {
       try {
         await this.contentModeration.assertImageSafe(url);
       } catch (err: any) {
-        await unlink(filePath).catch(() => {});
+        await this.oss.deleteObject(key).catch(() => {});
         const msg = getExceptionMessage(err) || '图片不合规，请更换图片后重试';
         throw new BadRequestException(msg);
       }
     }
     return {
       url,
-      filename,
+      filename: key.split('/').pop() || key,
       originalName: file.originalname,
       size: file.size,
       mimetype: file.mimetype,

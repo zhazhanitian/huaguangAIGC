@@ -1107,6 +1107,14 @@ async function handleGenerate() {
 function isDone(s: string) { return s === 'done' || s === 'completed' }
 function sText(s: string) { return ({ pending: '排队中', processing: '生成中', done: '已完成', completed: '已完成', failed: '失败' } as Record<string, string>)[s] ?? s }
 function sColor(s: string) { return ({ pending: '#6B7785', processing: '#FF7D00', done: '#00B42A', completed: '#00B42A', failed: '#F53F3F' } as Record<string, string>)[s] ?? '#6B7785' }
+function fmtExecMs(ms?: number | null) {
+  if (ms == null || !Number.isFinite(ms)) return '-'
+  const totalSeconds = ms / 1000
+  if (totalSeconds < 60) return `${totalSeconds.toFixed(1)}s`
+  const m = Math.floor(totalSeconds / 60)
+  const s = Math.round(totalSeconds % 60)
+  return `${m}m${String(s).padStart(2, '0')}s`
+}
 function thumb(t: VideoTask) { return t.thumbnailUrl || t.videoUrl || t.resultUrl || '' }
 function stepIdx(t: VideoTask) { if (isDone(t.status)) return 3; if (t.status === 'failed') return -1; const p = t.progress ?? 0; return p < 30 ? 1 : 2 }
 function videoStageText(t: VideoTask) {
@@ -1801,6 +1809,9 @@ function handleDeleteTask(task: VideoTask) {
             <div class="detail-item"><span class="k">创建时间</span><span class="v">{{ previewTask.createdAt || '-'
                 }}</span>
             </div>
+            <div class="detail-item"><span class="k">排队耗时</span><span class="v">{{ fmtExecMs(previewTask.queueMs) }}</span></div>
+            <div class="detail-item"><span class="k">处理耗时</span><span class="v">{{ fmtExecMs(previewTask.procMs) }}</span></div>
+            <div class="detail-item"><span class="k">总耗时</span><span class="v">{{ fmtExecMs(previewTask.totalMs) }}</span></div>
             <div class="detail-item"><span class="k">失败原因</span><span class="v">{{ previewTask.errorMessage || '-'
                 }}</span></div>
           </div>

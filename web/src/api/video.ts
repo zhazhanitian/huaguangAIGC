@@ -25,6 +25,9 @@ export interface VideoTask {
   params?: Record<string, unknown>
   createdAt?: string
   isPublic?: boolean
+  queueMs?: number | null
+  procMs?: number | null
+  totalMs?: number | null
 }
 
 export interface VideoTaskListResponse {

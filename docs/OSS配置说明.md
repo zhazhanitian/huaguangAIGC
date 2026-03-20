@@ -23,7 +23,7 @@ OSS_ACCESS_KEY_SECRET=你的AccessKeySecret
 1. **用户端文件上传**  
    - 接口：`POST /upload/file`  
    - 配置 OSS 后，文件上传到 OSS，返回**完整可访问链接**（如 `https://hgaigc.oss-cn-shanghai.aliyuncs.com/aigc/upload/xxx.jpg`）  
-   - 未配置时仍使用本地上传目录 `./uploads`，返回相对路径 `/uploads/xxx`
+   - 未配置 OSS 时接口直接报错（不再落盘到本地 `./uploads`）
 
 2. **AI 任务结果永久存储**  
    任务成功后，将第三方返回的有时效的结果链接转存到自有 OSS，并写回数据库：
