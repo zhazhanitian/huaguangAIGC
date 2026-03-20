@@ -30,6 +30,9 @@ services:
     restart: always
     ports:
       - "3101:3001"
+    # 显式加载 server/.env，避免 compose 目录下没有 .env 时 OSS 等环境变量为空
+    env_file:
+      - ./server/.env
     environment:
       - PORT=3001
       - DB_SYNC=true
