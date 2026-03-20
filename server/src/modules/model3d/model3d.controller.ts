@@ -56,6 +56,8 @@ export class Model3dController {
       'tencent-cloud.com',
       // Tencent COS 常见域名
       'tencentcos.cn',
+      // Alibaba OSS（例如 hgaigc.oss-cn-shanghai.aliyuncs.com）
+      'oss-cn-shanghai.aliyuncs.com',
     ];
     const allowed = allowedSuffixes.some(
       (s) => host === s || host.endsWith(`.${s}`),
