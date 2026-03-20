@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   mysql:
@@ -45,6 +45,7 @@ services:
       - REDIS_PORT=6379
       - JWT_SECRET=huaguang-aigc-jwt-secret-2026
       - JWT_EXPIRES_IN=7d
+      - TASK_QUEUE_ENABLED=false
     depends_on:
       - mysql
       - redis
