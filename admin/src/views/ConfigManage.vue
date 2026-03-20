@@ -37,7 +37,7 @@ const sections: ConfigSection[] = [
     icon: IconSettings,
     iconColor: '#4080FF',
     fields: [
-      { key: 'siteName', label: '站点名称', description: '显示在页面标题和 Logo 旁的网站名', type: 'text', defaultVal: '江苏食品药品竞赛平台', placeholder: '例如：江苏食品药品竞赛平台' },
+      { key: 'siteName', label: '站点名称', description: '显示在页面标题和 Logo 旁的网站名', type: 'text', defaultVal: '苏食创境', placeholder: '例如：苏食创境' },
       { key: 'siteDescription', label: '站点描述', description: '用于 SEO 和分享预览的网站简介', type: 'textarea', defaultVal: '', placeholder: '一句话描述你的平台' },
       { key: 'maintenanceMode', label: '维护模式', description: '开启后前端将显示维护公告，用户无法使用生成功能', type: 'switch', defaultVal: false },
       { key: 'registerEnabled', label: '开放注册', description: '关闭后新用户将无法注册账号', type: 'switch', defaultVal: true },

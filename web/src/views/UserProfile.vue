@@ -380,7 +380,7 @@ const balance = computed(() => Number(userStore.userInfo?.balance ?? 0))
         <a-tab-pane key="about" title="关于">
           <div class="pnl">
             <h3 class="ph">关于</h3>
-            <p class="abt">江苏食品药品竞赛平台 — 集 人工智能 对话、绘画、视频、音乐于一体的智能创作工具。</p>
+            <p class="abt">苏食创境 — 集 人工智能 对话、绘画、视频、音乐于一体的智能创作工具。</p>
             <div class="abt-l">
               <a-tag color="gray">版本 1.0.0</a-tag>
               <a href="#" class="link">服务条款</a>

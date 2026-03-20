@@ -68,7 +68,7 @@ watch(
         <div class="login-icon">
           <IconThunderbolt />
         </div>
-        <h1 class="title">江苏食品药品竞赛平台</h1>
+        <h1 class="title">苏食创境</h1>
         <p class="subtitle">请使用管理员账号登录</p>
       </div>
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" size="large" class="login-form">

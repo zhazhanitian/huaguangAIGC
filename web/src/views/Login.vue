@@ -57,7 +57,7 @@ async function handleLogin() {
       <div class="blob blob-3" />
     </div>
     <div class="login-card glow-breathe">
-      <h1 class="title">江苏食品药品竞赛平台</h1>
+      <h1 class="title">苏食创境</h1>
       <p class="subtitle">智能对话 · 创意无限</p>
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" class="login-form">
         <a-form-item field="phone">
