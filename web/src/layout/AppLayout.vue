@@ -75,21 +75,12 @@ function handleThemeSelect(value: string | number) {
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-icon" @click="goTo('/home')">
-          <img class="brand-logo-img" :src="huaguangLogo" alt="华光 logo" />
+          <img class="brand-logo-img" :src="huaguangLogo" alt="logo" />
         </div>
       </div>
       <nav class="nav-items">
-        <a-tooltip
-          v-for="item in navItems"
-          :key="item.path"
-          :content="item.title"
-          position="right"
-        >
-          <div
-            class="nav-item"
-            :class="{ active: isActive(item.path) }"
-            @click="goTo(item.path)"
-          >
+        <a-tooltip v-for="item in navItems" :key="item.path" :content="item.title" position="right">
+          <div class="nav-item" :class="{ active: isActive(item.path) }" @click="goTo(item.path)">
             <span v-if="isActive(item.path)" class="nav-indicator" />
             <component :is="item.icon" :size="22" />
           </div>
@@ -110,13 +101,8 @@ function handleThemeSelect(value: string | number) {
         </a-tooltip>
         <div class="divider" />
         <a-tooltip content="个人中心" position="right">
-          <a-avatar
-            :key="userStore.userInfo?.avatar || 'avatar-fallback'"
-            :size="36"
-            class="user-avatar"
-            :image-url="userStore.userInfo?.avatar || undefined"
-            @click="goTo('/user')"
-          >
+          <a-avatar :key="userStore.userInfo?.avatar || 'avatar-fallback'" :size="36" class="user-avatar"
+            :image-url="userStore.userInfo?.avatar || undefined" @click="goTo('/user')">
             {{ userStore.userInfo?.username?.charAt(0)?.toUpperCase() || 'U' }}
           </a-avatar>
         </a-tooltip>

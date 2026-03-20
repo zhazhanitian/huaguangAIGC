@@ -106,7 +106,7 @@ function comingSoon() {
         </div>
         <transition name="fade-text">
           <div v-if="!collapsed" class="sb-logo-text">
-            <span class="sb-logo-title">华光管理后台系统</span>
+            <span class="sb-logo-title">江苏食品药品竞赛平台</span>
             <span class="sb-logo-sub">Admin Console</span>
           </div>
         </transition>
