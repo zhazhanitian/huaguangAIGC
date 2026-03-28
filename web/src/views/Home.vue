@@ -58,8 +58,8 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
         <div class="grid-pattern"></div>
       </div>
       <div class="hero-content">
-        <h1 class="hero-title">苏食创境</h1>
-        <div class="school-badge">人工智能应用平台</div>
+        <h1 class="hero-title">钧匠人AI</h1>
+        <div class="school-badge">AIGC创意设计</div>
         <p class="hero-subtitle">汇聚前沿 人工智能 技术，打造校级一站式创意设计中枢</p>
       </div>
     </header>
@@ -89,7 +89,7 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
     </section>
 
     <!-- Footer 5% 极简 -->
-    <!-- <footer class="footer">© 2026 苏食创境 · 人工智能创意设计平台</footer> -->
+    <!-- <footer class="footer">© 2026 钧匠人AI · 人工智能创意设计平台</footer> -->
   </div>
 </template>
 
