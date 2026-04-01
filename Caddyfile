@@ -1,0 +1,12 @@
+ai.junjiangren.com {
+  reverse_proxy server:3001
+}
+
+ai1.junjiangren.com {
+  reverse_proxy web:80
+}
+
+ai2.junjiangren.com {
+  reverse_proxy admin:80
+}
+

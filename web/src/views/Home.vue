@@ -23,8 +23,8 @@ const coreModules = [
 
 const upcomingModules = [
   { id: 'self-learn', title: '自学模块', subtitle: 'Self Learning', description: '聚合图文与视频学习内容，构建可持续迭代的 人工智能 自学资源中心。', icon: IconEdit, color: 'linear-gradient(135deg, #4FACFE 0%, #00F2FE 100%)', bgLight: 'rgba(79, 172, 254, 0.08)', actionText: '内容筹备中' },
-  { id: 'quanzhou-carving', title: '泉州雕艺大模型', subtitle: 'Carving Model', description: '木雕、石雕、白瓷雕塑垂类应用项目。', icon: IconApps, color: 'linear-gradient(135deg, #FA709A 0%, #FEE140 100%)', bgLight: 'rgba(250, 112, 154, 0.08)', actionText: '内容筹备中' },
-  { id: 'quanzhou-food', title: '泉州美食之都垂类大模型', subtitle: 'Cuisine Model', description: '世界美食之都大模型应用项目。', icon: IconMusic, color: 'linear-gradient(135deg, #43E97B 0%, #38F9D7 100%)', bgLight: 'rgba(67, 233, 123, 0.08)', actionText: '内容筹备中' },
+  { id: 'quanzhou-carving', title: '钧瓷大模型', subtitle: 'Carving Model', description: '木雕、石雕、白瓷雕塑垂类应用项目。', icon: IconApps, color: 'linear-gradient(135deg, #FA709A 0%, #FEE140 100%)', bgLight: 'rgba(250, 112, 154, 0.08)', actionText: '内容筹备中' },
+  { id: 'quanzhou-food', title: '神垕镇钧瓷之都垂类大模型', subtitle: 'Cuisine Model', description: '世界美食之都大模型应用项目。', icon: IconMusic, color: 'linear-gradient(135deg, #43E97B 0%, #38F9D7 100%)', bgLight: 'rgba(67, 233, 123, 0.08)', actionText: '内容筹备中' },
 ]
 
 // Dashboard 3×3 顺序: [Chat, Draw, Canvas] [Video, Music, 3D] [Self Learn, Carving, Cuisine]
@@ -60,7 +60,7 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
       <div class="hero-content">
         <h1 class="hero-title">钧匠人AI</h1>
         <div class="school-badge">AIGC创意设计</div>
-        <p class="hero-subtitle">汇聚前沿 人工智能 技术，打造校级一站式创意设计中枢</p>
+        <p class="hero-subtitle">汇聚前沿 人工智能 技术，打造一站式创意设计中枢</p>
       </div>
     </header>
 

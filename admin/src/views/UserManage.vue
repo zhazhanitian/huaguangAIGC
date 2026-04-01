@@ -132,7 +132,7 @@ const columns = [
     minWidth: 220,
   },
   {
-    title: '学院/学级/专业/班级',
+    title: '窑口/设计/生产/宣传',
     slotName: 'academic',
     minWidth: 260,
   },
@@ -663,19 +663,19 @@ function onPageSizeChange(size: number) {
             <a-option label="正常" value="active" />
             <a-option label="已封禁" value="banned" />
           </a-select>
-          <a-select v-model="collegeId" placeholder="学院" allow-clear class="filter-select college"
+          <a-select v-model="collegeId" placeholder="窑口" allow-clear class="filter-select college"
             @change="onFilterCollegeChange">
             <a-option v-for="c in filterCollegeList" :key="c.id" :value="c.id" :label="c.name" />
           </a-select>
-          <a-select v-model="gradeId" placeholder="学级" allow-clear :disabled="!collegeId" class="filter-select grade"
+          <a-select v-model="gradeId" placeholder="设计" allow-clear :disabled="!collegeId" class="filter-select grade"
             @change="onFilterGradeChange">
             <a-option v-for="g in filterGradeList" :key="g.id" :value="g.id" :label="g.name" />
           </a-select>
-          <a-select v-model="majorId" placeholder="专业" allow-clear :disabled="!gradeId" class="filter-select major"
+          <a-select v-model="majorId" placeholder="生产" allow-clear :disabled="!gradeId" class="filter-select major"
             @change="onFilterMajorChange">
             <a-option v-for="m in filterMajorList" :key="m.id" :value="m.id" :label="m.name" />
           </a-select>
-          <a-select v-model="classId" placeholder="班级" allow-clear :disabled="!majorId" class="filter-select class">
+          <a-select v-model="classId" placeholder="宣传" allow-clear :disabled="!majorId" class="filter-select class">
             <a-option v-for="cl in filterClassList" :key="cl.id" :value="cl.id" :label="cl.name" />
           </a-select>
           <div class="toolbar-actions">
@@ -808,26 +808,26 @@ function onPageSizeChange(size: number) {
         <a-form-item label="余额" field="balance">
           <a-input-number v-model="editForm.balance" :min="0" :precision="2" style="width: 200px" />
         </a-form-item>
-        <a-form-item label="学院" field="collegeId">
+        <a-form-item label="窑口" field="collegeId">
           <a-select v-model="editForm.collegeId" placeholder="可选" allow-clear style="width: 100%"
             @change="onEditFormCollegeChange">
             <a-option v-for="c in collegeOptionsForForm" :key="c.id" :value="c.id" :label="c.name" />
           </a-select>
         </a-form-item>
-        <a-form-item label="学级" field="gradeId">
-          <a-select v-model="editForm.gradeId" placeholder="先选学院" allow-clear :disabled="!editForm.collegeId"
+        <a-form-item label="设计" field="gradeId">
+          <a-select v-model="editForm.gradeId" placeholder="先选窑口" allow-clear :disabled="!editForm.collegeId"
             style="width: 100%" @change="onEditFormGradeChange">
             <a-option v-for="g in gradeOptionsForForm" :key="g.id" :value="g.id" :label="g.name" />
           </a-select>
         </a-form-item>
-        <a-form-item label="专业" field="majorId">
-          <a-select v-model="editForm.majorId" placeholder="先选学级" allow-clear :disabled="!editForm.gradeId"
+        <a-form-item label="生产" field="majorId">
+          <a-select v-model="editForm.majorId" placeholder="先选设计" allow-clear :disabled="!editForm.gradeId"
             style="width: 100%" @change="onEditFormMajorChange">
             <a-option v-for="m in majorOptionsForForm" :key="m.id" :value="m.id" :label="m.name" />
           </a-select>
         </a-form-item>
-        <a-form-item label="班级" field="classId">
-          <a-select v-model="editForm.classId" placeholder="先选专业" allow-clear :disabled="!editForm.majorId"
+        <a-form-item label="宣传" field="classId">
+          <a-select v-model="editForm.classId" placeholder="先选生产" allow-clear :disabled="!editForm.majorId"
             style="width: 100%">
             <a-option v-for="cl in classOptionsForForm" :key="cl.id" :value="cl.id" :label="cl.name" />
           </a-select>
@@ -874,26 +874,26 @@ function onPageSizeChange(size: number) {
         <a-form-item label="初始余额" field="balance">
           <a-input-number v-model="addForm.balance" :min="0" :precision="2" style="width: 200px" />
         </a-form-item>
-        <a-form-item label="学院" field="collegeId">
+        <a-form-item label="窑口" field="collegeId">
           <a-select v-model="addForm.collegeId" placeholder="可选" allow-clear style="width: 100%"
             @change="onAddFormCollegeChange">
             <a-option v-for="c in collegeOptionsForForm" :key="c.id" :value="c.id" :label="c.name" />
           </a-select>
         </a-form-item>
-        <a-form-item label="学级" field="gradeId">
-          <a-select v-model="addForm.gradeId" placeholder="先选学院" allow-clear :disabled="!addForm.collegeId"
+        <a-form-item label="设计" field="gradeId">
+          <a-select v-model="addForm.gradeId" placeholder="先选窑口" allow-clear :disabled="!addForm.collegeId"
             style="width: 100%" @change="onAddFormGradeChange">
             <a-option v-for="g in gradeOptionsForForm" :key="g.id" :value="g.id" :label="g.name" />
           </a-select>
         </a-form-item>
-        <a-form-item label="专业" field="majorId">
-          <a-select v-model="addForm.majorId" placeholder="先选学级" allow-clear :disabled="!addForm.gradeId"
+        <a-form-item label="生产" field="majorId">
+          <a-select v-model="addForm.majorId" placeholder="先选设计" allow-clear :disabled="!addForm.gradeId"
             style="width: 100%" @change="onAddFormMajorChange">
             <a-option v-for="m in majorOptionsForForm" :key="m.id" :value="m.id" :label="m.name" />
           </a-select>
         </a-form-item>
-        <a-form-item label="班级" field="classId">
-          <a-select v-model="addForm.classId" placeholder="先选专业" allow-clear :disabled="!addForm.majorId"
+        <a-form-item label="宣传" field="classId">
+          <a-select v-model="addForm.classId" placeholder="先选生产" allow-clear :disabled="!addForm.majorId"
             style="width: 100%">
             <a-option v-for="cl in classOptionsForForm" :key="cl.id" :value="cl.id" :label="cl.name" />
           </a-select>
@@ -990,7 +990,7 @@ function onPageSizeChange(size: number) {
   gap: var(--sp-4);
 }
 
-/* 纯 Grid：5 列，前 5 项第一行，后 3 项第二行；专业/班级与首行同列宽，按钮组不拉伸 */
+/* 纯 Grid：5 列，前 5 项第一行，后 3 项第二行；生产/宣传与首行同列宽，按钮组不拉伸 */
 .toolbar-row-filters {
   display: grid;
   grid-template-columns: repeat(5, minmax(180px, 1fr));
