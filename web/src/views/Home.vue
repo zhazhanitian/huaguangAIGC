@@ -23,8 +23,8 @@ const coreModules = [
 
 const upcomingModules = [
   { id: 'self-learn', title: '自学模块', subtitle: 'Self Learning', description: '聚合图文与视频学习内容，构建可持续迭代的 人工智能 自学资源中心。', icon: IconEdit, color: 'linear-gradient(135deg, #4FACFE 0%, #00F2FE 100%)', bgLight: 'rgba(79, 172, 254, 0.08)', actionText: '内容筹备中' },
-  { id: 'quanzhou-carving', title: '泉州雕艺大模型', subtitle: 'Carving Model', description: '木雕、石雕、白瓷雕塑垂类应用项目。', icon: IconApps, color: 'linear-gradient(135deg, #FA709A 0%, #FEE140 100%)', bgLight: 'rgba(250, 112, 154, 0.08)', actionText: '内容筹备中' },
-  { id: 'quanzhou-food', title: '泉州美食之都垂类大模型', subtitle: 'Cuisine Model', description: '世界美食之都大模型应用项目。', icon: IconMusic, color: 'linear-gradient(135deg, #43E97B 0%, #38F9D7 100%)', bgLight: 'rgba(67, 233, 123, 0.08)', actionText: '内容筹备中' },
+  // { id: 'quanzhou-carving', title: '泉州雕艺大模型', subtitle: 'Carving Model', description: '木雕、石雕、白瓷雕塑垂类应用项目。', icon: IconApps, color: 'linear-gradient(135deg, #FA709A 0%, #FEE140 100%)', bgLight: 'rgba(250, 112, 154, 0.08)', actionText: '内容筹备中' },
+  // { id: 'quanzhou-food', title: '泉州美食之都垂类大模型', subtitle: 'Cuisine Model', description: '世界美食之都大模型应用项目。', icon: IconMusic, color: 'linear-gradient(135deg, #43E97B 0%, #38F9D7 100%)', bgLight: 'rgba(67, 233, 123, 0.08)', actionText: '内容筹备中' },
 ]
 
 // Dashboard 3×3 顺序: [Chat, Draw, Canvas] [Video, Music, 3D] [Self Learn, Carving, Cuisine]
