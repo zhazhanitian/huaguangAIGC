@@ -425,7 +425,7 @@ function clearAllRef() {
 const providersDef = [
   { value: 'nano-banana-pro', label: 'Nano Banana Pro', desc: 'Google 高质量绘画', color: '#FF7D00' },
   { value: 'gpt-image-1', label: 'GPT Image 1', desc: 'OpenAI 图像生成/编辑', color: '#00B42A' },
-  { value: 'doubao-seedance-4-5', label: 'Doubao Seedance 4.5', desc: '豆包高质量生成，支持图生图', color: '#165DFF' },
+  { value: 'doubao-seedance-4-5', label: 'Doubao Seedream 4.5', desc: '豆包高质量生成，支持图生图', color: '#165DFF' },
   { value: 'flux', label: 'Flux', desc: 'Flux 系列（文生图/图片编辑）', color: '#14C9C9' },
   { value: 'z-image', label: 'Z-Image', desc: '极速文生图，画质清晰', color: '#22c55e' },
   { value: 'grok-imagine/text-to-image', label: 'Grok Imagine', desc: 'xAI 文生图，支持多种比例', color: '#f472b6' },
