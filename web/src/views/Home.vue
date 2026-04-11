@@ -77,11 +77,11 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
           :class="{ 'bento-card--static': !(mod as { path?: string }).path }" @click="handleCardClick(mod)">
           <div class="card-bg" :style="{ background: mod.bgLight }"></div>
           <div class="card-header">
-            <div class="icon-box" :style="{ background: isModuleContestDisabled(mod.id) ? mod.color : mod.color, opacity: isModuleContestDisabled(mod.id) ? 0.35 : 1 }">
+            <div class="icon-box" :style="{ background: isModuleContestDisabled(mod.id) ? '#d8d8d8' : mod.color, color: '#fff' }">
               <component :is="mod.icon" :size="22" />
             </div>
             <span v-if="isModuleContestDisabled(mod.id)" class="contest-badge">比赛停用</span>
-            <span v-else class="en-subtitle">{{ mod.subtitle }}</span>
+            <span v-else-if="!isContestDisabled" class="en-subtitle">{{ mod.subtitle }}</span>
           </div>
           <div class="card-body">
             <h3>{{ mod.title }}</h3>
@@ -376,7 +376,6 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: transform 0.25s ease;
   flex-shrink: 0;
@@ -403,10 +402,10 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
 .contest-badge {
   font-size: clamp(0.52rem, min(0.78vw, 1.05vh), 0.7rem);
   font-weight: 600;
-  color: #8c6800;
-  background: #fff7e0;
-  border: 1px solid #ffd666;
-  padding: 2px 7px;
+  color: #ad4e00;
+  background: #fff2e8;
+  border: 1px solid #ffbb96;
+  padding: 2px 8px;
   border-radius: 4px;
   letter-spacing: 0.3px;
   white-space: nowrap;
