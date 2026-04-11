@@ -9,8 +9,14 @@ import {
   IconApps,
   IconArrowRight,
 } from '@arco-design/web-vue/es/icon'
+import { useContestMode } from '../composables/useContestMode'
 
 const router = useRouter()
+const { isContestDisabled } = useContestMode()
+
+function isModuleContestDisabled(id: string) {
+  return isContestDisabled.value && id !== 'draw'
+}
 
 const coreModules = [
   { id: 'chat', title: '智能对话', subtitle: 'Chat', description: '搭载先进的自然语言处理模型，为您提供编程辅助、文案创作与日常问答的智能交互体验。', icon: IconMessage, path: '/chat', color: 'linear-gradient(135deg, #00C6FF 0%, #0072FF 100%)', bgLight: 'rgba(0, 114, 255, 0.05)' },
@@ -71,10 +77,11 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
           :class="{ 'bento-card--static': !(mod as { path?: string }).path }" @click="handleCardClick(mod)">
           <div class="card-bg" :style="{ background: mod.bgLight }"></div>
           <div class="card-header">
-            <div class="icon-box" :style="{ background: mod.color }">
+            <div class="icon-box" :style="{ background: isModuleContestDisabled(mod.id) ? mod.color : mod.color, opacity: isModuleContestDisabled(mod.id) ? 0.35 : 1 }">
               <component :is="mod.icon" :size="22" />
             </div>
-            <span class="en-subtitle">{{ mod.subtitle }}</span>
+            <span v-if="isModuleContestDisabled(mod.id)" class="contest-badge">比赛停用</span>
+            <span v-else class="en-subtitle">{{ mod.subtitle }}</span>
           </div>
           <div class="card-body">
             <h3>{{ mod.title }}</h3>
@@ -391,6 +398,18 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
   text-transform: uppercase;
   letter-spacing: 0.6px;
   font-weight: 600;
+}
+
+.contest-badge {
+  font-size: clamp(0.52rem, min(0.78vw, 1.05vh), 0.7rem);
+  font-weight: 600;
+  color: #8c6800;
+  background: #fff7e0;
+  border: 1px solid #ffd666;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
 }
 
 .card-body {
