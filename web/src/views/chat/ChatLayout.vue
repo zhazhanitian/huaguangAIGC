@@ -18,6 +18,7 @@ import { submitFeedback } from '../../api/feedback'
 import { uploadFile } from '../../api/upload'
 import { checkText } from '../../api/content-moderation'
 import huaguangLogo from '../../assets/huaguang-logo.png'
+import { useContestMode } from '../../composables/useContestMode'
 
 dayjs.extend(relativeTime)
 dayjs.locale(zhCn)
@@ -259,7 +260,10 @@ async function deleteGroup(e: Event, id: string) {
   })
 }
 
+const { isContestDisabled } = useContestMode()
+
 async function send(prompt?: string) {
+  if (isContestDisabled.value) return
   const text = (prompt ?? inputText.value).trim()
   const pendingFiles = attachedFiles.value.filter((f) => f.serverUrl)
   const hasAttachments = attachedFiles.value.length > 0
@@ -684,6 +688,11 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
+    <!-- 比赛模式提醒 -->
+    <div v-if="isContestDisabled" class="contest-banner">
+      🏆 比赛进行中，对话功能暂时禁用，感谢理解
+    </div>
+
     <!-- 对话列表面板（下拉展开） -->
     <Transition name="panel-slide">
       <div v-if="showConvPanel" class="conv-panel" @click.self="showConvPanel = false">
@@ -824,8 +833,8 @@ onBeforeUnmount(() => {
                     <span>{{ copiedId === msg.id ? '已复制' : '复制' }}</span>
                   </button>
                   <template v-if="msg.role === 'assistant'">
-                    <button class="act-btn" @click.stop="regenerate(msg.id)">
-                      <IconRefresh :size="14" /><span>重新生成</span>
+                    <button class="act-btn" :disabled="isContestDisabled" @click.stop="!isContestDisabled && regenerate(msg.id)">
+                      <IconRefresh :size="14" /><span>{{ isContestDisabled ? '重新生成（比赛禁用）' : '重新生成' }}</span>
                     </button>
                     <button class="act-btn react-btn" :class="{ activeUp: msgReactions[msg.id] === 'up' }"
                       :disabled="reactionSending[msg.id]" @click.stop="toggleReaction(msg, 'up')">
@@ -889,7 +898,8 @@ onBeforeUnmount(() => {
               rows="1" :disabled="chatStore.streaming" @keydown="onKeydown"
               @input="(_, e) => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 200) + 'px' }" />
             <a-button class="send"
-              :disabled="(!inputText.trim() && attachedFiles.length === 0) || chatStore.streaming || uploadingAttachments || (attachedFiles.length > 0 && attachedFiles.some(f => !f.serverUrl))"
+              :disabled="isContestDisabled || (!inputText.trim() && attachedFiles.length === 0) || chatStore.streaming || uploadingAttachments || (attachedFiles.length > 0 && attachedFiles.some(f => !f.serverUrl))"
+              :title="isContestDisabled ? '比赛禁用' : '发送'"
               @click="send()">
               <IconSend :size="18" />
             </a-button>
@@ -928,6 +938,17 @@ onBeforeUnmount(() => {
   padding: 0 20px;
   border-bottom: 1px solid var(--border-1);
   background: var(--bg-surface-1);
+}
+
+.contest-banner {
+  flex-shrink: 0;
+  padding: 8px 20px;
+  background: #fffbe6;
+  border-bottom: 1px solid #ffe58f;
+  color: #874d00;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: center;
 }
 
 .topbar-left {

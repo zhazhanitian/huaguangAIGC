@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { Message, Modal } from '@arco-design/web-vue'
 import { Grid3X3, Image as ImageIcon, Play, Plus, SlidersHorizontal, X } from 'lucide-vue-next'
+import { useContestMode } from '../../../composables/useContestMode'
 
 // 参数选项类型
 type RatioOption = { value: string; label: string; icon: string }
@@ -247,8 +248,11 @@ function removeRefImage(id: string) {
   emit('update-ref-images', refImages.value)
 }
 
+const { isContestDisabled } = useContestMode()
+
 // 生成
 function handleGenerate() {
+  if (isContestDisabled.value) return
   emit('generate')
 }
 </script>
@@ -473,8 +477,8 @@ function handleGenerate() {
         <!-- 生成按钮 -->
         <button
           class="generate-btn"
-          :disabled="!promptText?.trim()"
-          title="生成"
+          :disabled="!promptText?.trim() || isContestDisabled"
+          :title="isContestDisabled ? '比赛禁用' : '生成'"
           @click="handleGenerate"
         >
           <Play :size="16" />

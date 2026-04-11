@@ -11,6 +11,9 @@ import CanvasSidebar from './canvas/CanvasSidebar.vue'
 import { getModels } from '../../api/model'
 import { checkText, type TextCheckResult } from '../../api/content-moderation'
 import { uploadFile } from '../../api/upload'
+import { useContestMode } from '../../composables/useContestMode'
+
+const { isContestDisabled } = useContestMode()
 
 const canvasStore = useCanvasStore()
 const {
@@ -827,6 +830,11 @@ async function handleUploadChange(event: Event) {
         @zoom-in="handleZoomIn" @zoom-out="handleZoomOut" @zoom-reset="handleZoomReset" @undo="handleUndo"
         @redo="handleRedo" />
 
+      <!-- 比赛模式提醒 -->
+      <div v-if="isContestDisabled" class="contest-banner">
+        🏆 比赛进行中，画布生成功能暂时禁用，感谢理解
+      </div>
+
       <div class="canvas-body">
         <CanvasStage v-model:viewport="viewport" :nodes="nodes" :selected-id="selectedNodeId || ''"
           :selected-ids="[...selectedNodeIds]" :active-tool="activeTool" :shape-kind="shapeKind"
@@ -900,6 +908,18 @@ async function handleUploadChange(event: Event) {
   flex-direction: column;
   position: relative;
   min-width: 0;
+}
+
+.contest-banner {
+  flex-shrink: 0;
+  padding: 8px 20px;
+  background: #fffbe6;
+  border-bottom: 1px solid #ffe58f;
+  color: #874d00;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: center;
+  z-index: 10;
 }
 
 .canvas-body {

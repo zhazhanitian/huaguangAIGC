@@ -3,6 +3,9 @@ import { computed, ref, watch, nextTick, onUnmounted, onMounted } from 'vue'
 import { Modal } from '@arco-design/web-vue'
 import { CircleX, Pencil, RefreshCcw, SendHorizontal } from 'lucide-vue-next'
 import type { CanvasNode } from '../../../stores/canvas'
+import { useContestMode } from '../../../composables/useContestMode'
+
+const { isContestDisabled } = useContestMode()
 
 const props = defineProps<{
   node: CanvasNode
@@ -626,7 +629,7 @@ onUnmounted(() => {
       <button v-if="canEditImage" class="tool-btn tool-btn-edit" title="编辑提示词" @pointerdown.stop @click.stop="startEdit">
         <Pencil :size="16" />
       </button>
-      <button class="tool-btn tool-btn-regen" title="重新生成" @pointerdown.stop @click.stop="emit('generate')">
+      <button class="tool-btn tool-btn-regen" :disabled="isContestDisabled" :title="isContestDisabled ? '比赛禁用' : '重新生成'" @pointerdown.stop @click.stop="!isContestDisabled && emit('generate')">
         <RefreshCcw :size="16" />
       </button>
     </div>
@@ -746,9 +749,9 @@ onUnmounted(() => {
       <span class="failed-text">生成失败</span>
       <p class="failed-summary">{{ failedSummary }}</p>
       <button class="detail-btn" @pointerdown.stop @click.stop="showFailedDetail">查看详情</button>
-      <button class="retry-btn" @pointerdown.stop @click.stop="emit('generate')">
+      <button class="retry-btn" :disabled="isContestDisabled" @pointerdown.stop @click.stop="!isContestDisabled && emit('generate')">
         <RefreshCcw :size="14" />
-        重试
+        {{ isContestDisabled ? '重试（比赛禁用）' : '重试' }}
       </button>
     </div>
     <div v-if="selected" class="selection-border failed-border" />
@@ -796,7 +799,7 @@ onUnmounted(() => {
       <button v-if="canEditImage" class="tool-btn tool-btn-edit" title="编辑提示词" @pointerdown.stop @click.stop="startEdit">
         <Pencil :size="16" />
       </button>
-      <button class="tool-btn tool-btn-regen" title="重新生成" @pointerdown.stop @click.stop="emit('generate')">
+      <button class="tool-btn tool-btn-regen" :disabled="isContestDisabled" :title="isContestDisabled ? '比赛禁用' : '重新生成'" @pointerdown.stop @click.stop="!isContestDisabled && emit('generate')">
         <RefreshCcw :size="16" />
       </button>
     </div>
@@ -961,7 +964,9 @@ onUnmounted(() => {
     <p class="node-prompt">{{ node.prompt }}</p>
     <div class="node-actions">
       <button class="ghost" @click.stop="emit('duplicate')">复用参数</button>
-      <button class="primary" @click.stop="emit('generate')">开始生成</button>
+      <button class="primary" :disabled="isContestDisabled" @click.stop="!isContestDisabled && emit('generate')">
+        {{ isContestDisabled ? '开始生成（比赛禁用）' : '开始生成' }}
+      </button>
     </div>
   </div>
 </template>

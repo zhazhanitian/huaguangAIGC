@@ -15,6 +15,9 @@ import EmptyState from '../../components/EmptyState.vue'
 import WorkCardActionButton from '../../components/WorkCardActionButton.vue'
 import GenerateButton from '../../components/GenerateButton.vue'
 import { onTaskEvent, realtimeConnected } from '../../realtime/socket'
+import { useContestMode } from '../../composables/useContestMode'
+
+const { isContestDisabled } = useContestMode()
 
 /* === 状态 === */
 const activeTab = ref('create')
@@ -591,6 +594,11 @@ async function handleKieQuery() {
       </div>
     </header>
 
+    <!-- 比赛模式提醒 -->
+    <div v-if="isContestDisabled" class="contest-banner">
+      🏆 比赛进行中，音乐生成功能暂时禁用，感谢理解
+    </div>
+
     <!-- ===== 创作 ===== -->
     <div v-show="activeTab === 'create'" class="create-area">
       <aside class="form-panel">
@@ -994,6 +1002,17 @@ async function handleKieQuery() {
   align-items: flex-end;
   justify-content: space-between;
   padding: var(--sp-6) var(--sp-8) var(--sp-4);
+}
+
+.contest-banner {
+  flex-shrink: 0;
+  padding: 8px 20px;
+  background: #fffbe6;
+  border-bottom: 1px solid #ffe58f;
+  color: #874d00;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: center;
 }
 
 .hd-title {

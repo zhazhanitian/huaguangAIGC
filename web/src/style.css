@@ -558,3 +558,13 @@ a:hover { color: var(--accent-cyan); }
 /* --- NProgress 覆盖 --- */
 #nprogress .bar { background: var(--gradient-primary) !important; height: 2px !important; }
 #nprogress .peg { box-shadow: 0 0 10px var(--primary), 0 0 5px var(--primary) !important; }
+
+/* --- 比赛禁用按钮置灰（全局保底，防止各页面 :deep 覆盖） --- */
+.gen-btn--contest-disabled,
+.gen-btn--contest-disabled:hover,
+.gen-btn--contest-disabled:focus {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  pointer-events: none !important;
+}
