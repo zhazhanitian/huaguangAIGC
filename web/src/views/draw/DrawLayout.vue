@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { saveAs } from 'file-saver'
 import { Message, Modal } from '@arco-design/web-vue'
 import {
   IconCopy,
@@ -86,7 +87,7 @@ async function handleBatchDelete() {
 }
 
 async function handleBatchDownload() {
-  const selected = myTasks.value.filter(t => selectedWorkIds.value.has(t.id) && t.resultUrl)
+  const selected = myTasks.value.filter(t => selectedWorkIds.value.has(t.id) && (t.resultUrl || t.imageUrl))
   if (selected.length === 0) {
     Message.warning('选中的作品中没有可下载的文件')
     return
@@ -96,9 +97,10 @@ async function handleBatchDownload() {
     Message.info({ content: `开始下载 ${selected.length} 个文件，请稍候...`, duration: 2000 })
     for (let i = 0; i < selected.length; i++) {
       const task = selected[i]
-      if (!task?.resultUrl) continue
+      const url = task?.resultUrl || task?.imageUrl
+      if (!url) continue
       await new Promise(resolve => setTimeout(resolve, 300))
-      handleDownload(task.resultUrl)
+      handleDownload(url)
     }
     Message.success({ content: `已完成 ${selected.length} 个文件的下载`, duration: 3000 })
   } catch {
@@ -1399,12 +1401,16 @@ function handleRetryAllFailed() {
     },
   })
 }
-function handleDownload(url?: string) {
+async function handleDownload(url?: string) {
+  console.log('handleDownload', url)
   if (!url) return
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `draw-${Date.now()}.png`
-  a.click()
+  try {
+    const res = await fetch(url, { mode: 'cors' })
+    const blob = await res.blob()
+    saveAs(blob, `draw-${Date.now()}.png`)
+  } catch {
+    window.open(url, '_blank')
+  }
 }
 </script>
 
@@ -1833,7 +1839,7 @@ function handleDownload(url?: string) {
                     <WorkCardActionButton title="一键同款" :disabled="!task.prompt" @click="applySameAsTask(task)">
                       <IconPlus />
                     </WorkCardActionButton>
-                    <WorkCardActionButton title="下载" @click="handleDownload(task.resultUrl)">
+                    <WorkCardActionButton title="下载" @click="handleDownload(task.resultUrl || task.imageUrl)">
                       <IconDownload />
                     </WorkCardActionButton>
                     <WorkCardActionButton :title="task.isPublic ? '设为私密' : '设为公开'" @click="handleTogglePublic(task)">
@@ -1924,8 +1930,8 @@ function handleDownload(url?: string) {
                 @click="applySameAsTask(previewTask)">
                 <IconPlus /><span>一键同款</span>
               </WorkCardActionButton>
-              <WorkCardActionButton shape="pill" title="下载" :disabled="!previewTask.resultUrl"
-                @click="handleDownload(previewTask.resultUrl)">
+              <WorkCardActionButton shape="pill" title="下载" :disabled="!previewTask.resultUrl && !previewTask.imageUrl"
+                @click="handleDownload(previewTask.resultUrl || previewTask.imageUrl)">
                 <IconDownload /><span>下载</span>
               </WorkCardActionButton>
               <WorkCardActionButton shape="pill" :title="previewTask.isPublic ? '设为私密' : '设为公开'"
@@ -1955,13 +1961,13 @@ function handleDownload(url?: string) {
                   any)?.label
                   || previewTask.provider || '-' }}</span></div>
                 <div class="detail-item"><span class="k">任务类型</span><span class="v">{{ previewTask.taskType || '-'
-                }}</span>
+                    }}</span>
                 </div>
                 <div class="detail-item"><span class="k">状态</span><span class="v">{{ statusText(previewTask.status) ||
                   '-'
                     }}</span></div>
                 <div class="detail-item"><span class="k">进度</span><span class="v">{{ previewTask.progress ?? 0
-                }}%</span>
+                    }}%</span>
                 </div>
                 <div class="detail-item"><span class="k">公开状态</span><span class="v">{{ previewTask.isPublic ? '公开' :
                   '私密'
