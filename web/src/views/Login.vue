@@ -36,7 +36,7 @@ async function handleLogin() {
     loading.value = true
     await userStore.login(form.phone, form.password)
     Message.success('登录成功')
-    const redirect = (route.query.redirect as string) || '/chat'
+    const redirect = (route.query.redirect as string) || '/home'
     router.push(redirect)
   } catch (err: unknown) {
     const msg =
