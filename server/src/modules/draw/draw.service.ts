@@ -488,11 +488,11 @@ export class DrawService {
         'sora-image',
       ];
       const apimartProviders = [
-        'doubao-seedance-4-5',
         'flux-2-pro',
         'flux-kontext-pro',
         'flux-kontext-max',
       ];
+      const mapiProviders = ['doubao-seedance-4-5'];
       const kieMarketProviders = [
         'z-image',
         'qwen/text-to-image',
@@ -504,6 +504,8 @@ export class DrawService {
         imageUrl = await this.processGrsAI(task);
       } else if (apimartProviders.includes(task.provider)) {
         imageUrl = await this.processApimart(task);
+      } else if (mapiProviders.includes(task.provider)) {
+        imageUrl = await this.processMapi(task);
       } else if (kieMarketProviders.includes(task.provider)) {
         imageUrl = await this.processKieMarket(task);
       } else {
@@ -1102,6 +1104,189 @@ export class DrawService {
     }
 
     throw new Error('Apimart 任务超时（6分钟）');
+  }
+
+  private async processMapi(task: DrawTask): Promise<string> {
+    const MAPI_DEFAULT_BASE = 'https://kapi.planisp.com';
+
+    // 优先读数据库中为该模型配置的 API Key（管理后台可编辑）
+    let auth = await this.resolveModelAuth(task.provider, MAPI_DEFAULT_BASE);
+
+    // 数据库未配置时，回退到环境变量
+    if (!auth?.apiKey) {
+      const envKey = process.env.MAPI_API_KEY || '';
+      if (envKey) {
+        auth = { apiKey: envKey, baseUrl: MAPI_DEFAULT_BASE };
+      }
+    }
+
+    if (!auth?.apiKey) {
+      throw new Error(
+        'Mapi 未配置可用的 API Key（请在管理端-模型管理中为 doubao-seedance-4-5 添加 Key，或配置环境变量 MAPI_API_KEY）',
+      );
+    }
+
+    const baseUrl =
+      this.normalizeBaseUrl(auth.baseUrl) || 'https://kapi.planisp.com';
+    const apiKey = auth.apiKey;
+
+    // 比例 + 分辨率 → MAPI 像素值映射表
+    const MAPI_SIZE_MAP: Record<string, Record<string, string>> = {
+      '2K': {
+        '1:1': '2048x2048',
+        '4:3': '2304x1728',
+        '3:4': '1728x2304',
+        '16:9': '2848x1600',
+        '9:16': '1600x2848',
+        '3:2': '2496x1664',
+        '2:3': '1664x2496',
+        '21:9': '3136x1344',
+        '9:21': '1344x3136',
+      },
+      '4K': {
+        '1:1': '4096x4096',
+        '4:3': '4704x3520',
+        '3:4': '3520x4704',
+        '16:9': '5504x3040',
+        '9:16': '3040x5504',
+        '3:2': '4992x3328',
+        '2:3': '3328x4992',
+        '21:9': '6240x2656',
+        '9:21': '2656x6240',
+      },
+    };
+
+    const rawParams = this.getTaskParams(task);
+    const ratio = typeof rawParams.size === 'string' ? rawParams.size : 'auto';
+    const resolution =
+      typeof rawParams.resolution === 'string' ? rawParams.resolution : '2K';
+    const n = typeof rawParams.n === 'number' ? rawParams.n : undefined;
+    const imageUrlsRaw = Array.isArray(rawParams.imageUrls)
+      ? rawParams.imageUrls
+      : [];
+    const imageUrls = imageUrlsRaw
+      .map((url) => (typeof url === 'string' ? url.trim() : ''))
+      .filter(Boolean);
+
+    // auto 或未知比例直接传分辨率字符串（2K/4K），否则查映射表取像素值
+    const mapiSize =
+      ratio === 'auto' || !ratio
+        ? resolution
+        : (MAPI_SIZE_MAP[resolution]?.[ratio] ?? resolution);
+
+    const generateImagesRequest: Record<string, unknown> = {
+      model: 'doubao-seedream-4-5-251128',
+      prompt: task.prompt,
+      watermark: false,
+      size: mapiSize,
+    };
+
+    // MAPI 多图生成：n>1 时用 sequential_image_generation，n=1 时走默认单图
+    if (typeof n === 'number' && n > 1) {
+      const maxImages = Math.max(2, Math.min(15, Math.floor(n)));
+      generateImagesRequest.sequential_image_generation = 'auto';
+      generateImagesRequest.sequential_image_generation_options = {
+        max_images: maxImages,
+      };
+    }
+    if (imageUrls.length === 1) {
+      generateImagesRequest.image = imageUrls[0];
+    } else if (imageUrls.length > 1) {
+      generateImagesRequest.image = imageUrls.slice(0, 14);
+    }
+
+    const body: Record<string, unknown> = {
+      thirdPartyOrderNo: task.id,
+      generateImagesRequest,
+    };
+
+    this.logger.log(
+      `Mapi 请求: ${baseUrl}/Mapi/v3/images/generations model=doubao-seedream-4-5-251128 | ` +
+        JSON.stringify(body),
+    );
+
+    const createRes = await this.httpRequest<{
+      msg?: string;
+      code?: number;
+      data?: { ourOrderNo?: string };
+    }>({
+      url: `${baseUrl}/Mapi/v3/images/generations`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: apiKey,
+      },
+      body,
+    });
+
+    if (createRes?.code !== 200) {
+      throw new Error(
+        `Mapi 创建任务失败: ${createRes?.msg || JSON.stringify(createRes).slice(0, 300)}`,
+      );
+    } else {
+      this.logger.log(`Mapi 创建任务成功: ${createRes?.data?.ourOrderNo}`);
+    }
+
+    const ourOrderNo = createRes?.data?.ourOrderNo;
+    if (!ourOrderNo) {
+      throw new Error(
+        `Mapi 创建任务失败: 未返回 ourOrderNo，响应: ${JSON.stringify(createRes).slice(0, 300)}`,
+      );
+    }
+
+    const maxAttempts = 120;
+    const pollInterval = 3000;
+
+    for (let i = 0; i < maxAttempts; i++) {
+      await this.sleep(pollInterval);
+
+      const simulated = this.calculateSimulatedProgress(i + 1, pollInterval);
+      if (task.progress < simulated) {
+        task.progress = Math.round(simulated);
+        await this.drawRepository.save(task);
+      }
+
+      const statusRes = await this.httpRequest<{
+        msg?: string;
+        code?: number;
+        data?: {
+          model?: string;
+          created?: number;
+          data?: Array<{
+            url?: string;
+            b64_json?: string | null;
+            size?: string;
+          }>;
+          usage?: { generated_images?: number };
+          error?: unknown;
+        };
+      }>({
+        url: `${baseUrl}/Mapi/v3/images/generations?ourOrderNo=${encodeURIComponent(ourOrderNo)}`,
+        method: 'GET',
+        headers: {
+          Authorization: apiKey,
+        },
+      });
+
+      if (statusRes?.code !== 200) {
+        throw new Error(
+          `Mapi 查询任务失败: ${statusRes?.msg || JSON.stringify(statusRes).slice(0, 300)}`,
+        );
+      }
+
+      const resultData = statusRes?.data;
+
+      if (resultData?.error) {
+        throw new Error(`Mapi 任务失败: ${JSON.stringify(resultData.error)}`);
+      }
+
+      const imageUrl = resultData?.data?.[0]?.url;
+      if (imageUrl) {
+        return imageUrl;
+      }
+    }
+
+    throw new Error('Mapi 任务超时（6分钟）');
   }
 
   /**

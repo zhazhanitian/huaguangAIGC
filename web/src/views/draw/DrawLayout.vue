@@ -601,7 +601,7 @@ const modelConfigs: Record<string, ModelConfig> = {
       { value: '2K', label: '2K 高清' },
       { value: '4K', label: '4K 超清' },
     ],
-    variants: [1, 2, 3, 4],
+    variants: [1],
     maxRefImages: 10,
     hint: '支持文生图/图生图 · 比例丰富 · 最高 4K 超清',
   },

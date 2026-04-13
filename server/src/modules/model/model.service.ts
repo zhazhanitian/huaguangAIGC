@@ -393,6 +393,18 @@ export class ModelService {
     }
   }
 
+  private getMapiApiKey(): string {
+    return String(
+      process.env.MAPI_API_KEY || 'sk-bgoqy7759uqmcbi3ubdvyc02g52er3d1',
+    ).trim();
+  }
+
+  private getMapiBase(): string {
+    return String(
+      process.env.MAPI_API_URL || 'https://kapi.planisp.com',
+    ).replace(/\/+$/, '');
+  }
+
   private getApimartApiKey(): string {
     // Read env at runtime (ConfigModule loads env after module import)
     return String(
@@ -987,11 +999,23 @@ export class ModelService {
       });
     }
 
+    // Mapi - 图像模型
+    const mapiImageModels = [{ name: 'doubao-seedance-4-5', points: 10 }];
+    for (const m of mapiImageModels) {
+      presets.push({
+        modelName: m.name,
+        provider: ModelProvider.CUSTOM,
+        type: ModelType.IMAGE,
+        isActive: true,
+        deductPoints: m.points,
+        apiProvider: 'mapi',
+      });
+    }
+
     // APIMart - 图像模型
     const apimartImageModels = [
       { name: 'gpt-image-1.5', points: 15 },
       { name: 'sora-image', points: 20 },
-      { name: 'doubao-seedance-4-5', points: 10 },
       { name: 'flux-2-pro', points: 15 },
       { name: 'flux-kontext-pro', points: 18 },
       { name: 'flux-kontext-max', points: 25 },
@@ -1201,6 +1225,8 @@ export class ModelService {
     let updated = 0;
 
     // API Key 配置
+    const mapiKey = this.getMapiApiKey();
+    const mapiBase = this.getMapiBase();
     const apimartKey = this.getApimartApiKey();
     const apimartBase = this.getApimartBase();
     const kieKey =
@@ -1256,6 +1282,9 @@ export class ModelService {
         let keyConfig: { apiKey: string; baseUrl: string } | null = null;
 
         switch (p.apiProvider) {
+          case 'mapi':
+            if (mapiKey) keyConfig = { apiKey: mapiKey, baseUrl: mapiBase };
+            break;
           case 'apimart':
             if (apimartKey)
               keyConfig = { apiKey: apimartKey, baseUrl: `${apimartBase}/v1` };

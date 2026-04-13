@@ -57,6 +57,12 @@ export class GlobalConfigService implements OnModuleInit {
     },
     { key: 'GRS_API_KEY', val: '', description: 'GrsAI API Key' },
     {
+      key: 'MAPI_API_URL',
+      val: 'https://kapi.planisp.com',
+      description: 'Mapi 接口地址',
+    },
+    { key: 'MAPI_API_KEY', val: '', description: 'Mapi API Key' },
+    {
       key: 'APIMART_API_URL',
       val: 'https://api.apimart.ai',
       description: 'Apimart 接口地址',
