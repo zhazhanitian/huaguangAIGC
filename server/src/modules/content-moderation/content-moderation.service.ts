@@ -267,10 +267,9 @@ export class ContentModerationService implements OnModuleInit {
 
       // 有 block / watch / mask 时汇总 Detail 中的 Result，取最高风险的提示文案（过滤 nonLabel/未检测出风险，按 level 高优先）
       const levelOrder = (l: string) =>
-        ({ high: 0, medium: 1, low: 2, none: 3 }[l] ?? 4);
+        ({ high: 0, medium: 1, low: 2, none: 3 })[l] ?? 4;
       const isNonLabel = (desc: string, label: string) =>
-        (desc === '未检测出风险' || !desc) &&
-        (label === 'nonLabel' || !label);
+        (desc === '未检测出风险' || !desc) && (label === 'nonLabel' || !label);
       const detailSorted = Array.isArray(detail) ? [...detail] : [];
       detailSorted.sort(
         (a, b) =>

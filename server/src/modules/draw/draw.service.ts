@@ -1005,7 +1005,7 @@ export class DrawService {
       throw new Error(`Apimart 创建任务失败: ${errMsg}`);
     }
 
-    const maxAttempts = 120;
+    const maxAttempts = 600;
     const pollInterval = 3000;
 
     for (let i = 0; i < maxAttempts; i++) {
@@ -1234,7 +1234,7 @@ export class DrawService {
       );
     }
 
-    const maxAttempts = 120;
+    const maxAttempts = 600;
     const pollInterval = 3000;
 
     for (let i = 0; i < maxAttempts; i++) {
@@ -1286,7 +1286,7 @@ export class DrawService {
       }
     }
 
-    throw new Error('Mapi 任务超时（6分钟）');
+    throw new Error('Mapi 任务超时（30分钟）');
   }
 
   /**
