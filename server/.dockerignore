@@ -1,0 +1,15 @@
+node_modules
+dist
+uploads
+.env
+.env.*
+.git
+*.log
+test
+docs
+README.md
+.vscode
+.idea
+.DS_Store
+tsconfig.build.tsbuildinfo
+mapi-index.js
