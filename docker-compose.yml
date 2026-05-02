@@ -11,7 +11,7 @@ services:
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
       MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
     ports:
-      - "3309:3306"
+      - "3310:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./server/scripts/huaguang_aigc-20260302-230054.sql:/docker-entrypoint-initdb.d/init.sql
@@ -21,7 +21,7 @@ services:
     container_name: wanglong-redis
     restart: always
     ports:
-      - "6381:6379"
+      - "6382:6379"
     volumes:
       - redis_data:/data
 
