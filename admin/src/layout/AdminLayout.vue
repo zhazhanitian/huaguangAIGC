@@ -37,7 +37,7 @@ const menuSections = computed(() => {
       label: '管理',
       items: [
         { path: '/users', label: '用户管理', icon: IconUser },
-        { path: '/academic', label: '学院管理', icon: IconUserGroup },
+        { path: '/academic', label: '部门管理', icon: IconUserGroup },
         { path: '/models', label: '模型管理', icon: IconApps },
         { path: '/apikeys', label: 'API Key', icon: IconLock },
       ],
@@ -68,7 +68,7 @@ const breadcrumbItems = computed(() => {
   const names: Record<string, string> = {
     '/dashboard': '数据概览',
     '/users': '用户管理',
-    '/academic': '学院管理',
+    '/academic': '部门管理',
     '/models': '模型管理',
     '/apikeys': 'API Key 管理',
     '/config': '系统配置',
@@ -119,7 +119,7 @@ function comingSoon() {
         </div>
         <transition name="fade-text">
           <div v-if="!collapsed" class="sb-logo-text">
-            <span class="sb-logo-title">华光管理后台系统</span>
+            <span class="sb-logo-title">网龙管理后台系统</span>
             <span class="sb-logo-sub">Admin Console</span>
           </div>
         </transition>

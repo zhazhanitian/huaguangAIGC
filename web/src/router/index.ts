@@ -7,7 +7,7 @@ NProgress.configure({ showSpinner: false })
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/home',
+    redirect: '/chat',
   },
   {
     path: '/login',
@@ -26,12 +26,6 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../layout/AppLayout.vue'),
     meta: { requiresAuth: true },
     children: [
-      {
-        path: 'home',
-        name: 'Home',
-        component: () => import('../views/Home.vue'),
-        meta: { requiresAuth: true },
-      },
       {
         path: 'chat',
         name: 'Chat',
@@ -60,7 +54,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'music',
         name: 'Music',
-        redirect: '/home',
+        redirect: '/chat',
         meta: { requiresAuth: true, hidden: true },
       },
       {
@@ -93,7 +87,7 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.guest && hasToken) {
-    const redirect = (to.query.redirect as string) || '/home'
+    const redirect = (to.query.redirect as string) || '/chat'
     return { path: redirect }
   }
 

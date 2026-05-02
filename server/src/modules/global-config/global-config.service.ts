@@ -22,7 +22,7 @@ export class GlobalConfigService implements OnModuleInit {
   private readonly presets: PresetConfig[] = [
     {
       key: 'siteName',
-      val: '华光人工智能',
+      val: '网龙人工智能',
       description: '站点名称',
       isPublic: true,
     },

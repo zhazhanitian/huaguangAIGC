@@ -3,25 +3,25 @@ version: "3.8"
 services:
   mysql:
     image: mariadb:10.11
-    container_name: huaguang-mysql
+    container_name: wanglong-mysql
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: huaguang_aigc
+      MYSQL_DATABASE: wanglong_aigc
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
       MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
     ports:
-      - "3308:3306"
+      - "3309:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./server/scripts/huaguang_aigc-20260302-230054.sql:/docker-entrypoint-initdb.d/init.sql
 
   redis:
     image: redis:7-alpine
-    container_name: huaguang-redis
+    container_name: wanglong-redis
     restart: always
     ports:
-      - "6380:6379"
+      - "6381:6379"
     volumes:
       - redis_data:/data
 
@@ -29,10 +29,10 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
-    container_name: huaguang-server
+    container_name: wanglong-server
     restart: always
     ports:
-      - "3001:3001"
+      - "3011:3001"
     # 显式加载 server/.env，避免 compose 目录下没有 .env 时 OSS 等环境变量为空
     env_file:
       - ./server/.env
@@ -43,10 +43,10 @@ services:
       - DB_PORT=3306
       - DB_USER=root
       - DB_PASS=root
-      - DB_DATABASE=huaguang_aigc
+      - DB_DATABASE=wanglong_aigc
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - JWT_SECRET=huaguang-aigc-jwt-secret-2026
+      - JWT_SECRET=wanglong-aigc-jwt-secret-2026
       - JWT_EXPIRES_IN=7d
       - TASK_QUEUE_ENABLED=true
     depends_on:
@@ -59,10 +59,10 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
-    container_name: huaguang-web
+    container_name: wanglong-web
     restart: always
     ports:
-      - "3002:80"
+      - "3012:80"
     depends_on:
       - server
 
@@ -70,10 +70,10 @@ services:
     build:
       context: ./admin
       dockerfile: Dockerfile
-    container_name: huaguang-admin
+    container_name: wanglong-admin
     restart: always
     ports:
-      - "3003:80"
+      - "3013:80"
     depends_on:
       - server
 

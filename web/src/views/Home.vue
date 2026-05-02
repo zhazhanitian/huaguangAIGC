@@ -58,7 +58,7 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
         <div class="grid-pattern"></div>
       </div>
       <div class="hero-content">
-        <h1 class="hero-title">泉州华光职业学院</h1>
+        <h1 class="hero-title">泉州网龙职业学院</h1>
         <div class="school-badge">人工智能应用平台</div>
         <p class="hero-subtitle">汇聚前沿 人工智能 技术，打造校级一站式创意设计中枢</p>
       </div>
@@ -89,7 +89,7 @@ function handleCardClick(mod: (typeof dashboardModules)[number]) {
     </section>
 
     <!-- Footer 5% 极简 -->
-    <!-- <footer class="footer">© 2026 泉州华光职业学院 · 人工智能创意设计平台</footer> -->
+    <!-- <footer class="footer">© 2026 泉州网龙职业学院 · 人工智能创意设计平台</footer> -->
   </div>
 </template>
 

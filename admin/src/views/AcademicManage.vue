@@ -66,34 +66,34 @@ const submitLoading = ref(false)
 
 const addButtonText = computed(() => {
   const map: Record<TabKey, string> = {
-    college: '新增学院',
-    grade: '新增学级',
-    major: '新增专业',
-    class: '新增班级',
+    college: '新增部门',
+    grade: '新增区域',
+    major: '新增团队',
+    class: '新增项目组',
   }
   return map[activeTab.value]
 })
 
 const collegeColumns = [
-  { title: '学院名称', dataIndex: 'name' },
+  { title: '部门名称', dataIndex: 'name' },
   { title: '操作', slotName: 'collegeAction', width: 160 },
 ]
 const gradeColumns = [
-  { title: '学院', slotName: 'college', minWidth: 140 },
-  { title: '学级名称', dataIndex: 'name', minWidth: 140 },
+  { title: '部门', slotName: 'college', minWidth: 140 },
+  { title: '区域名称', dataIndex: 'name', minWidth: 140 },
   { title: '操作', slotName: 'gradeAction', width: 200 },
 ]
 const majorColumns = [
-  { title: '学院', slotName: 'college', minWidth: 120 },
-  { title: '学级', slotName: 'grade', minWidth: 120 },
-  { title: '专业名称', dataIndex: 'name', minWidth: 160 },
+  { title: '部门', slotName: 'college', minWidth: 120 },
+  { title: '区域', slotName: 'grade', minWidth: 120 },
+  { title: '团队名称', dataIndex: 'name', minWidth: 160 },
   { title: '操作', slotName: 'majorAction', width: 200 },
 ]
 const classColumns = [
-  { title: '学院', slotName: 'college', minWidth: 120 },
-  { title: '学级', slotName: 'grade', minWidth: 120 },
-  { title: '专业', slotName: 'major', minWidth: 140 },
-  { title: '班级名称', dataIndex: 'name', minWidth: 160 },
+  { title: '部门', slotName: 'college', minWidth: 120 },
+  { title: '区域', slotName: 'grade', minWidth: 120 },
+  { title: '团队', slotName: 'major', minWidth: 140 },
+  { title: '项目组名称', dataIndex: 'name', minWidth: 160 },
   { title: '操作', slotName: 'classAction', width: 160 },
 ]
 
@@ -124,19 +124,19 @@ async function openAdd(type: TabKey, parent?: { collegeId?: string; gradeId?: st
   nameForm.majorId = parent?.majorId ?? undefined
   nameDialogType.value = type
   if (type === 'college') {
-    nameDialogTitle.value = '新增学院'
+    nameDialogTitle.value = '新增部门'
   } else if (type === 'grade') {
-    nameDialogTitle.value = '新增学级'
+    nameDialogTitle.value = '新增区域'
     filterCollegeId.value = parent?.collegeId ?? filterCollegeId.value
     await loadGradeOptionsInModal()
   } else if (type === 'major') {
-    nameDialogTitle.value = '新增专业'
+    nameDialogTitle.value = '新增团队'
     filterCollegeId.value = parent?.collegeId ?? filterCollegeId.value
     filterGradeId.value = parent?.gradeId ?? filterGradeId.value
     await loadGradeOptionsInModal()
     await loadMajorOptionsInModal()
   } else {
-    nameDialogTitle.value = '新增班级'
+    nameDialogTitle.value = '新增项目组'
     filterCollegeId.value = parent?.collegeId ?? filterCollegeId.value
     filterGradeId.value = parent?.gradeId ?? filterGradeId.value
     filterMajorId.value = parent?.majorId ?? filterMajorId.value
@@ -184,13 +184,13 @@ function openEdit(type: TabKey, row: College | Grade | Major | Clazz) {
   nameForm.name = (row as any).name
   nameDialogType.value = type
   if (type === 'college') {
-    nameDialogTitle.value = '编辑学院'
+    nameDialogTitle.value = '编辑部门'
   } else if (type === 'grade') {
-    nameDialogTitle.value = '编辑学级'
+    nameDialogTitle.value = '编辑区域'
   } else if (type === 'major') {
-    nameDialogTitle.value = '编辑专业'
+    nameDialogTitle.value = '编辑团队'
   } else {
-    nameDialogTitle.value = '编辑班级'
+    nameDialogTitle.value = '编辑项目组'
   }
   nameDialogVisible.value = true
   nameFormRef.value?.clearValidate()
@@ -201,15 +201,15 @@ async function submitName() {
   if (errors) return
   const type = nameDialogType.value
   if (type === 'grade' && !nameForm.collegeId) {
-    Message.error('请选择学院')
+    Message.error('请选择部门')
     return
   }
   if (type === 'major' && (!nameForm.collegeId || !nameForm.gradeId)) {
-    Message.error('请选择学院和学级')
+    Message.error('请选择部门和区域')
     return
   }
   if (type === 'class' && (!nameForm.collegeId || !nameForm.gradeId || !nameForm.majorId)) {
-    Message.error('请选择学院、学级和专业')
+    Message.error('请选择部门、区域和团队')
     return
   }
   submitLoading.value = true
@@ -217,38 +217,38 @@ async function submitName() {
     if (type === 'college') {
       if (nameForm.id) {
         await updateCollege(nameForm.id, { name: nameForm.name })
-        Message.success('学院已更新')
+        Message.success('部门已更新')
       } else {
         await createCollege({ name: nameForm.name })
-        Message.success('学院已创建')
+        Message.success('部门已创建')
       }
       await fetchColleges()
     } else if (type === 'grade') {
       if (nameForm.id) {
         await updateGrade(nameForm.id, { name: nameForm.name })
-        Message.success('学级已更新')
+        Message.success('区域已更新')
       } else {
         await createGrade({ name: nameForm.name, collegeId: nameForm.collegeId! })
-        Message.success('学级已创建')
+        Message.success('区域已创建')
       }
       await fetchGrades()
     } else if (type === 'major') {
       if (nameForm.id) {
         await updateMajor(nameForm.id, { name: nameForm.name })
-        Message.success('专业已更新')
+        Message.success('团队已更新')
       } else {
         await createMajor({
           name: nameForm.name,
           collegeId: nameForm.collegeId!,
           gradeId: nameForm.gradeId!,
         })
-        Message.success('专业已创建')
+        Message.success('团队已创建')
       }
       await fetchMajors()
     } else {
       if (nameForm.id) {
         await updateClass(nameForm.id, { name: nameForm.name })
-        Message.success('班级已更新')
+        Message.success('项目组已更新')
       } else {
         await createClass({
           name: nameForm.name,
@@ -256,7 +256,7 @@ async function submitName() {
           gradeId: nameForm.gradeId!,
           majorId: nameForm.majorId!,
         })
-        Message.success('班级已创建')
+        Message.success('项目组已创建')
       }
       await fetchClasses()
     }
@@ -280,19 +280,19 @@ async function handleDelete(type: TabKey, row: College | Grade | Major | Clazz) 
       try {
         if (type === 'college') {
           await deleteCollege(row.id)
-          Message.success('学院已删除')
+          Message.success('部门已删除')
           await fetchColleges()
         } else if (type === 'grade') {
           await deleteGrade(row.id)
-          Message.success('学级已删除')
+          Message.success('区域已删除')
           await fetchGrades()
         } else if (type === 'major') {
           await deleteMajor(row.id)
-          Message.success('专业已删除')
+          Message.success('团队已删除')
           await fetchMajors()
         } else {
           await deleteClass(row.id)
-          Message.success('班级已删除')
+          Message.success('项目组已删除')
           await fetchClasses()
         }
       } catch (e: any) {
@@ -370,8 +370,8 @@ onMounted(async () => {
           <IconApps />
         </div>
         <div>
-          <h2 class="header-title">学院管理</h2>
-          <p class="header-subtitle">管理学院、学级、专业与班级层级结构</p>
+          <h2 class="header-title">部门管理</h2>
+          <p class="header-subtitle">管理部门、区域、团队与项目组层级结构</p>
         </div>
       </div>
       <div class="header-right">
@@ -386,12 +386,12 @@ onMounted(async () => {
 
     <div class="glow-card tab-card">
       <a-tabs v-model:active-key="activeTab" type="line">
-        <a-tab-pane key="college" title="学院">
+        <a-tab-pane key="college" title="部门">
           <a-table :columns="collegeColumns" :data="collegeList" :pagination="false" row-key="id" :loading="loading"
             class="data-table">
             <template #collegeAction="{ record }">
               <div class="action-btns">
-                <a-tooltip content="新增学级" position="top">
+                <a-tooltip content="新增区域" position="top">
                   <a-button type="text" size="small" @click="openAdd('grade', { collegeId: record.id })">
                     <template #icon>
                       <IconPlus />
@@ -417,9 +417,9 @@ onMounted(async () => {
           </a-table>
         </a-tab-pane>
 
-        <a-tab-pane key="grade" title="学级">
+        <a-tab-pane key="grade" title="区域">
           <div class="tab-toolbar">
-            <a-select v-model="filterCollegeId" placeholder="选择学院" allow-clear style="width: 200px" @change="
+            <a-select v-model="filterCollegeId" placeholder="选择部门" allow-clear style="width: 200px" @change="
               () => {
                 resetCascadeFromCollege()
                 fetchGrades()
@@ -437,7 +437,7 @@ onMounted(async () => {
             </template>
             <template #gradeAction="{ record }">
               <div class="action-btns">
-                <a-tooltip content="新增专业" position="top">
+                <a-tooltip content="新增团队" position="top">
                   <a-button type="text" size="small"
                     @click="openAdd('major', { collegeId: record.collegeId, gradeId: record.id })">
                     <template #icon>
@@ -464,9 +464,9 @@ onMounted(async () => {
           </a-table>
         </a-tab-pane>
 
-        <a-tab-pane key="major" title="专业">
+        <a-tab-pane key="major" title="团队">
           <div class="tab-toolbar">
-            <a-select v-model="filterCollegeId" placeholder="选择学院" allow-clear style="width: 180px" @change="
+            <a-select v-model="filterCollegeId" placeholder="选择部门" allow-clear style="width: 180px" @change="
               () => {
                 resetCascadeFromCollege()
                 fetchGrades()
@@ -476,7 +476,7 @@ onMounted(async () => {
             ">
               <a-option v-for="c in collegeList" :key="c.id" :value="c.id" :label="c.name" />
             </a-select>
-            <a-select v-model="filterGradeId" placeholder="选择学级" allow-clear style="width: 180px" @change="
+            <a-select v-model="filterGradeId" placeholder="选择区域" allow-clear style="width: 180px" @change="
               () => {
                 resetCascadeFromGrade()
                 fetchMajors()
@@ -496,7 +496,7 @@ onMounted(async () => {
             </template>
             <template #majorAction="{ record }">
               <div class="action-btns">
-                <a-tooltip content="新增班级" position="top">
+                <a-tooltip content="新增项目组" position="top">
                   <a-button type="text" size="small"
                     @click="openAdd('class', { collegeId: record.collegeId, gradeId: record.gradeId, majorId: record.id })">
                     <template #icon>
@@ -523,9 +523,9 @@ onMounted(async () => {
           </a-table>
         </a-tab-pane>
 
-        <a-tab-pane key="class" title="班级">
+        <a-tab-pane key="class" title="项目组">
           <div class="tab-toolbar">
-            <a-select v-model="filterCollegeId" placeholder="选择学院" allow-clear style="width: 160px" @change="
+            <a-select v-model="filterCollegeId" placeholder="选择部门" allow-clear style="width: 160px" @change="
               () => {
                 resetCascadeFromCollege()
                 fetchGrades()
@@ -535,7 +535,7 @@ onMounted(async () => {
             ">
               <a-option v-for="c in collegeList" :key="c.id" :value="c.id" :label="c.name" />
             </a-select>
-            <a-select v-model="filterGradeId" placeholder="选择学级" allow-clear style="width: 160px" @change="
+            <a-select v-model="filterGradeId" placeholder="选择区域" allow-clear style="width: 160px" @change="
               () => {
                 resetCascadeFromGrade()
                 fetchMajors()
@@ -544,7 +544,7 @@ onMounted(async () => {
             ">
               <a-option v-for="g in gradeList" :key="g.id" :value="g.id" :label="g.name" />
             </a-select>
-            <a-select v-model="filterMajorId" placeholder="选择专业" allow-clear style="width: 160px"
+            <a-select v-model="filterMajorId" placeholder="选择团队" allow-clear style="width: 160px"
               @change="fetchClasses">
               <a-option v-for="m in majorList" :key="m.id" :value="m.id" :label="m.name" />
             </a-select>
@@ -583,79 +583,79 @@ onMounted(async () => {
       </a-tabs>
     </div>
 
-    <a-modal v-model:visible="nameDialogVisible" :title="nameDialogTitle" width="420px" unmount-on-close
+    <a-modal v-model:visible="nameDialogVisible" :title="nameDialogTitle" width="450px" unmount-on-close
       class="edit-modal" :mask-style="{ background: 'var(--bg-overlay)' }">
       <a-form ref="nameFormRef" :model="nameForm" :rules="nameFormRules" layout="horizontal"
         :label-col-props="{ span: 6 }" :wrapper-col-props="{ span: 18 }">
-        <!-- 新增学级：必选学院 + 学级名称 -->
+        <!-- 新增区域：必选部门 + 区域名称 -->
         <template v-if="nameDialogType === 'grade' && !nameForm.id">
-          <a-form-item label="学院" field="collegeId" required>
-            <a-select v-model="nameForm.collegeId" placeholder="请选择学院" allow-clear @change="onModalCollegeChange">
+          <a-form-item label="部门" field="collegeId" required>
+            <a-select v-model="nameForm.collegeId" placeholder="请选择部门" allow-clear @change="onModalCollegeChange">
               <a-option v-for="c in collegeList" :key="c.id" :value="c.id" :label="c.name" />
             </a-select>
           </a-form-item>
-          <a-form-item label="学级名称" field="name">
+          <a-form-item label="区域名称" field="name">
             <a-input v-model="nameForm.name" placeholder="" />
           </a-form-item>
         </template>
-        <!-- 编辑学级：仅名称 -->
+        <!-- 编辑区域：仅名称 -->
         <template v-else-if="nameDialogType === 'grade'">
-          <a-form-item label="学级名称" field="name">
+          <a-form-item label="区域名称" field="name">
             <a-input v-model="nameForm.name" />
           </a-form-item>
         </template>
-        <!-- 新增专业：必选学院、学级 + 专业名称 -->
+        <!-- 新增团队：必选部门、区域 + 团队名称 -->
         <template v-else-if="nameDialogType === 'major' && !nameForm.id">
-          <a-form-item label="学院" field="collegeId" required>
-            <a-select v-model="nameForm.collegeId" placeholder="请选择学院" allow-clear @change="onModalCollegeChange">
+          <a-form-item label="部门" field="collegeId" required>
+            <a-select v-model="nameForm.collegeId" placeholder="请选择部门" allow-clear @change="onModalCollegeChange">
               <a-option v-for="c in collegeList" :key="c.id" :value="c.id" :label="c.name" />
             </a-select>
           </a-form-item>
-          <a-form-item label="学级" field="gradeId" required>
-            <a-select v-model="nameForm.gradeId" placeholder="请选择学级" allow-clear :disabled="!nameForm.collegeId"
+          <a-form-item label="区域" field="gradeId" required>
+            <a-select v-model="nameForm.gradeId" placeholder="请选择区域" allow-clear :disabled="!nameForm.collegeId"
               @change="onModalGradeChange">
               <a-option v-for="g in gradeOptionsInModal" :key="g.id" :value="g.id" :label="g.name" />
             </a-select>
           </a-form-item>
-          <a-form-item label="专业名称" field="name">
+          <a-form-item label="团队名称" field="name">
             <a-input v-model="nameForm.name" />
           </a-form-item>
         </template>
         <template v-else-if="nameDialogType === 'major'">
-          <a-form-item label="专业名称" field="name">
+          <a-form-item label="团队名称" field="name">
             <a-input v-model="nameForm.name" />
           </a-form-item>
         </template>
-        <!-- 新增班级：必选学院、学级、专业 + 班级名称 -->
+        <!-- 新增项目组：必选部门、区域、团队 + 项目组名称 -->
         <template v-else-if="nameDialogType === 'class' && !nameForm.id">
-          <a-form-item label="学院" field="collegeId" required>
-            <a-select v-model="nameForm.collegeId" placeholder="请选择学院" allow-clear @change="onModalCollegeChange">
+          <a-form-item label="部门" field="collegeId" required>
+            <a-select v-model="nameForm.collegeId" placeholder="请选择部门" allow-clear @change="onModalCollegeChange">
               <a-option v-for="c in collegeList" :key="c.id" :value="c.id" :label="c.name" />
             </a-select>
           </a-form-item>
-          <a-form-item label="学级" field="gradeId" required>
-            <a-select v-model="nameForm.gradeId" placeholder="请选择学级" allow-clear :disabled="!nameForm.collegeId"
+          <a-form-item label="区域" field="gradeId" required>
+            <a-select v-model="nameForm.gradeId" placeholder="请选择区域" allow-clear :disabled="!nameForm.collegeId"
               @change="onModalGradeChange">
               <a-option v-for="g in gradeOptionsInModal" :key="g.id" :value="g.id" :label="g.name" />
             </a-select>
           </a-form-item>
-          <a-form-item label="专业" field="majorId" required>
-            <a-select v-model="nameForm.majorId" placeholder="请选择专业" allow-clear :disabled="!nameForm.gradeId">
+          <a-form-item label="团队" field="majorId" required>
+            <a-select v-model="nameForm.majorId" placeholder="请选择团队" allow-clear :disabled="!nameForm.gradeId">
               <a-option v-for="m in majorOptionsInModal" :key="m.id" :value="m.id" :label="m.name" />
             </a-select>
           </a-form-item>
-          <a-form-item label="班级名称" field="name">
+          <a-form-item label="项目组名称" field="name">
             <a-input v-model="nameForm.name" />
           </a-form-item>
         </template>
         <template v-else-if="nameDialogType === 'class'">
-          <a-form-item label="班级名称" field="name">
+          <a-form-item label="项目组名称" field="name">
             <a-input v-model="nameForm.name" />
           </a-form-item>
         </template>
-        <!-- 学院：仅名称 -->
+        <!-- 部门：仅名称 -->
         <template v-else>
-          <a-form-item :label="nameDialogType === 'college' ? '学院名称' : ''" field="name">
+          <a-form-item :label="nameDialogType === 'college' ? '部门名称' : ''" field="name">
             <a-input v-model="nameForm.name" />
           </a-form-item>
         </template>

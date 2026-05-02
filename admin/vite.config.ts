@@ -8,12 +8,12 @@ export default defineConfig({
     // 与用户端 web 一致使用 127.0.0.1，避免 Windows 下 localhost/127.0.0.1 解析不一致导致「地址不对」
     host: '127.0.0.1',
     // 与用户端 3002 拉开差距，避免误开创作端却以为是管理后台
-    port: 5174,
+    port: 3003,
     strictPort: true,
     hmr: {
       protocol: 'ws',
       host: '127.0.0.1',
-      port: 5174,
+      port: 3003,
     },
     proxy: {
       '/api': {

@@ -17,7 +17,7 @@ import MarkdownRender from '../../components/MarkdownRender.vue'
 import { submitFeedback } from '../../api/feedback'
 import { uploadFile } from '../../api/upload'
 import { checkText } from '../../api/content-moderation'
-import huaguangLogo from '../../assets/huaguang-logo.png'
+import huaguangLogo from '../../assets/wanglong.png'
 
 dayjs.extend(relativeTime)
 dayjs.locale(zhCn)
@@ -722,7 +722,7 @@ onBeforeUnmount(() => {
         <!-- 欢迎页 -->
         <div v-if="isWelcome" class="welcome">
           <div class="welcome-logo">
-            <img :src="huaguangLogo" alt="华光 logo" />
+            <img :src="huaguangLogo" alt="网龙 logo" />
           </div>
           <h1 class="welcome-title">有什么可以帮你的？</h1>
           <p class="welcome-hint">在下方输入框输入消息开始对话</p>
@@ -868,7 +868,8 @@ onBeforeUnmount(() => {
           <!-- 已附加的文件列表 -->
           <div v-if="attachedFiles.length > 0" class="file-list">
             <div v-for="f in attachedFiles" :key="f.id" class="file-chip">
-              <img v-if="f.type === 'image' && (f.previewUrl || f.serverUrl)" :src="f.serverUrl || f.previewUrl" class="file-thumb" />
+              <img v-if="f.type === 'image' && (f.previewUrl || f.serverUrl)" :src="f.serverUrl || f.previewUrl"
+                class="file-thumb" />
               <div v-else class="file-icon-box">
                 <IconFile :size="16" />
               </div>
@@ -886,7 +887,7 @@ onBeforeUnmount(() => {
             <a-button class="attach-btn" type="text" size="large" title="上传文件" @click="openFilePicker">
               <IconPlus :size="18" />
             </a-button>
-            <a-textarea ref="inputTextareaRef" v-model="inputText" class="input-textarea" placeholder="给 华光AI 发送消息..."
+            <a-textarea ref="inputTextareaRef" v-model="inputText" class="input-textarea" placeholder="给 网龙AI 发送消息..."
               rows="1" :disabled="chatStore.streaming" @keydown="onKeydown"
               @input="(_, e) => { const t = e.target as HTMLTextAreaElement; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 200) + 'px' }" />
             <a-button class="send"

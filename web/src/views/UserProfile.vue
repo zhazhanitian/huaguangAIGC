@@ -126,7 +126,7 @@ const customRequest = (option: RequestOption) => {
   if (file.size > MAX_UPLOAD_SIZE) {
     Message.error({ content: '图片超过 10MB 限制', duration: 4000 })
     onError(new Error('SIZE'))
-    return { abort() {} }
+    return { abort() { } }
   }
   const task = uploadFile(file)
   task.then(res => {
@@ -380,7 +380,7 @@ const balance = computed(() => Number(userStore.userInfo?.balance ?? 0))
         <a-tab-pane key="about" title="关于">
           <div class="pnl">
             <h3 class="ph">关于</h3>
-            <p class="abt">华光人工智能 创作平台 — 集 人工智能 对话、绘画、视频、音乐于一体的智能创作工具。</p>
+            <p class="abt">网龙人工智能 创作平台 — 集 人工智能 对话、绘画、视频、音乐于一体的智能创作工具。</p>
             <div class="abt-l">
               <a-tag color="gray">版本 1.0.0</a-tag>
               <a href="#" class="link">服务条款</a>
