@@ -81,14 +81,70 @@ export class StaleTaskCleanerService implements OnModuleInit {
     );
 
     const results = await Promise.all([
-      this.cleanTable('draw', 'draw', this.drawRepo, DrawTaskStatus.PROCESSING, DrawTaskStatus.FAILED, cutoff),
-      this.cleanTable('draw_pending', 'draw', this.drawRepo, DrawTaskStatus.PENDING, DrawTaskStatus.FAILED, cutoff),
-      this.cleanTable('video', 'video', this.videoRepo, VideoTaskStatus.PROCESSING, VideoTaskStatus.FAILED, cutoff),
-      this.cleanTable('video_pending', 'video', this.videoRepo, VideoTaskStatus.PENDING, VideoTaskStatus.FAILED, cutoff),
-      this.cleanTable('music', 'music', this.musicRepo, MusicTaskStatus.PROCESSING, MusicTaskStatus.FAILED, cutoff),
-      this.cleanTable('music_pending', 'music', this.musicRepo, MusicTaskStatus.PENDING, MusicTaskStatus.FAILED, cutoff),
-      this.cleanTable('model3d', 'model3d', this.model3dRepo, Model3dTaskStatus.PROCESSING, Model3dTaskStatus.FAILED, cutoff),
-      this.cleanTable('model3d_pending', 'model3d', this.model3dRepo, Model3dTaskStatus.PENDING, Model3dTaskStatus.FAILED, cutoff),
+      this.cleanTable(
+        'draw',
+        'draw',
+        this.drawRepo,
+        DrawTaskStatus.PROCESSING,
+        DrawTaskStatus.FAILED,
+        cutoff,
+      ),
+      this.cleanTable(
+        'draw_pending',
+        'draw',
+        this.drawRepo,
+        DrawTaskStatus.PENDING,
+        DrawTaskStatus.FAILED,
+        cutoff,
+      ),
+      this.cleanTable(
+        'video',
+        'video',
+        this.videoRepo,
+        VideoTaskStatus.PROCESSING,
+        VideoTaskStatus.FAILED,
+        cutoff,
+      ),
+      this.cleanTable(
+        'video_pending',
+        'video',
+        this.videoRepo,
+        VideoTaskStatus.PENDING,
+        VideoTaskStatus.FAILED,
+        cutoff,
+      ),
+      this.cleanTable(
+        'music',
+        'music',
+        this.musicRepo,
+        MusicTaskStatus.PROCESSING,
+        MusicTaskStatus.FAILED,
+        cutoff,
+      ),
+      this.cleanTable(
+        'music_pending',
+        'music',
+        this.musicRepo,
+        MusicTaskStatus.PENDING,
+        MusicTaskStatus.FAILED,
+        cutoff,
+      ),
+      this.cleanTable(
+        'model3d',
+        'model3d',
+        this.model3dRepo,
+        Model3dTaskStatus.PROCESSING,
+        Model3dTaskStatus.FAILED,
+        cutoff,
+      ),
+      this.cleanTable(
+        'model3d_pending',
+        'model3d',
+        this.model3dRepo,
+        Model3dTaskStatus.PENDING,
+        Model3dTaskStatus.FAILED,
+        cutoff,
+      ),
     ]);
 
     const total = results.reduce((sum, r) => sum + r.count, 0);
@@ -97,7 +153,9 @@ export class StaleTaskCleanerService implements OnModuleInit {
         .filter((r) => r.count > 0)
         .map((r) => `${r.table}:${r.count}`)
         .join(', ');
-      this.logger.warn(`[${trigger}] 共清理 ${total} 个孤儿任务，已退还积分 (${detail})`);
+      this.logger.warn(
+        `[${trigger}] 共清理 ${total} 个孤儿任务，已退还积分 (${detail})`,
+      );
     } else {
       this.logger.log(`[${trigger}] 无孤儿任务，跳过`);
     }
@@ -175,7 +233,9 @@ export class StaleTaskCleanerService implements OnModuleInit {
 
       return { table: label, count: stale.length };
     } catch (err) {
-      this.logger.error(`[cleanTable] ${label} 清理失败: ${(err as Error).message}`);
+      this.logger.error(
+        `[cleanTable] ${label} 清理失败: ${(err as Error).message}`,
+      );
       return { table: label, count: 0 };
     }
   }

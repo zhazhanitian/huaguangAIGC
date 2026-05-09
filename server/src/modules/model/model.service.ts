@@ -25,7 +25,10 @@ import {
   toAiModelSyncPayload,
   type MapiCatalogItem,
 } from './mapi-catalog';
-import { dedupeAiModelsByModelName, findFirstAiModel } from './model-query.util';
+import {
+  dedupeAiModelsByModelName,
+  findFirstAiModel,
+} from './model-query.util';
 
 /** 对话完成后的 token 用量（供精确计费使用） */
 export interface ChatUsage {
@@ -135,7 +138,9 @@ export class ModelService {
     const u = raw as Record<string, unknown>;
     const prompt = Number(u.prompt_tokens ?? 0);
     const completion = Number(u.completion_tokens ?? 0);
-    const details = u.prompt_tokens_details as Record<string, unknown> | undefined;
+    const details = u.prompt_tokens_details as
+      | Record<string, unknown>
+      | undefined;
     const cached = Number(details?.cached_tokens ?? 0);
     if (!prompt && !completion) return undefined;
     return {
@@ -161,7 +166,9 @@ export class ModelService {
     if (type === ModelType.THREE_D) {
       return deduped.filter((model) => {
         const name = String(model.modelName || '').toLowerCase();
-        return name.startsWith('tencent-hunyuan-3d') || name.startsWith('tripo3d');
+        return (
+          name.startsWith('tencent-hunyuan-3d') || name.startsWith('tripo3d')
+        );
       });
     }
     return deduped.filter((model) => model.source === 'mapi');
@@ -601,7 +608,9 @@ export class ModelService {
     return def || internalName;
   }
 
-  private async resolveRuntimeModel(modelName: string): Promise<RuntimeModelConfig> {
+  private async resolveRuntimeModel(
+    modelName: string,
+  ): Promise<RuntimeModelConfig> {
     const model = await this.getModelByName(modelName);
     return this.resolveRuntimeModelConfig(model);
   }
@@ -617,16 +626,16 @@ export class ModelService {
     if (isPlanispMapiEnabled()) {
       const mapiConfig = await this.getManagedMapiKey();
       if (shouldUseManagedMapi && mapiConfig) {
-      return {
-        modelName: this.mapPlanispModelName(modelName),
-        maxTokens: model.maxTokens,
-        temperature: Number(model.temperature),
-        topP: model.topP ? Number(model.topP) : undefined,
-        apiKey: mapiConfig.apiKey,
-        baseUrl: mapiConfig.baseUrl || normalizeMapiBaseUrl(),
-        keyId: mapiConfig.keyId,
-        transport: 'openai-chat',
-      };
+        return {
+          modelName: this.mapPlanispModelName(modelName),
+          maxTokens: model.maxTokens,
+          temperature: Number(model.temperature),
+          topP: model.topP ? Number(model.topP) : undefined,
+          apiKey: mapiConfig.apiKey,
+          baseUrl: mapiConfig.baseUrl || normalizeMapiBaseUrl(),
+          keyId: mapiConfig.keyId,
+          transport: 'openai-chat',
+        };
       }
     }
 
@@ -856,10 +865,22 @@ export class ModelService {
   private async chatStreamWithOpenAICompatFetch(
     runtime: RuntimeModelConfig,
     messages: ChatMessage[],
-  ): Promise<{ stream: AsyncIterable<string>; usage: Promise<ChatUsage | undefined> }> {
+  ): Promise<{
+    stream: AsyncIterable<string>;
+    usage: Promise<ChatUsage | undefined>;
+  }> {
     const endpoint = `${(runtime.baseUrl || '').replace(/\/+$/, '')}/chat/completions`;
     const openAIMessages = await this.toOpenAIMessages(messages);
-    const body = this.buildOpenAICompatRequestBody(runtime, openAIMessages, true);
+    const body = this.buildOpenAICompatRequestBody(
+      runtime,
+      openAIMessages,
+      true,
+    );
+
+    this.logger.debug(
+      `[chatStreamWithOpenAICompatFetch] 请求地址: ${endpoint}\n` +
+        `请求体: ${JSON.stringify(body, null, 2)}`,
+    );
 
     const res = await fetch(endpoint, {
       method: 'POST',
@@ -869,20 +890,33 @@ export class ModelService {
       },
       body: JSON.stringify(body),
     });
+
+    this.logger.debug(
+      `[chatStreamWithOpenAICompatFetch] 响应状态: ${res.status}, content-type: ${res.headers.get('content-type')}`,
+    );
+
     if (!res.ok || !res.body) {
       const text = await res.text();
+      this.logger.error(
+        `[chatStreamWithOpenAICompatFetch] 请求失败 status=${res.status}, body=${text.slice(0, 800)}`,
+      );
       throw new BadRequestException(
         `OpenAI 兼容流式请求失败(${res.status}): ${text.slice(0, 400)}`,
       );
     }
 
-    const contentType = String(res.headers.get('content-type') || '').toLowerCase();
+    const contentType = String(
+      res.headers.get('content-type') || '',
+    ).toLowerCase();
     // 一些网关在 stream=true 时依旧返回单次 JSON，这里先兜底一次性解析
     if (
       !contentType.includes('stream+json') &&
       !contentType.includes('text/event-stream')
     ) {
       const text = await res.text();
+      this.logger.debug(
+        `[chatStreamWithOpenAICompatFetch] 非流式响应原始内容: ${text.slice(0, 800)}`,
+      );
       let parsed: any;
       try {
         parsed = JSON.parse(text);
@@ -907,7 +941,8 @@ export class ModelService {
       return {
         stream: oneChunk(),
         usage: Promise.resolve(
-          this.extractUsage(normalized?.usage) || this.extractUsage(parsed?.usage),
+          this.extractUsage(normalized?.usage) ||
+            this.extractUsage(parsed?.usage),
         ),
       };
     }
@@ -939,6 +974,9 @@ export class ModelService {
             for (const rawLine of lines) {
               const line = rawLine.trim();
               if (!line) continue;
+              self.logger.debug(
+                `[chatStreamWithOpenAICompatFetch] stream+json chunk 原始内容: ${line.slice(0, 500)}`,
+              );
               let parsed: any;
               try {
                 parsed = JSON.parse(line);
@@ -981,6 +1019,9 @@ export class ModelService {
             if (!dataLines.length) continue;
             const dataStr = dataLines.join('\n');
             if (!dataStr || dataStr === '[DONE]') continue;
+            self.logger.debug(
+              `[chatStreamWithOpenAICompatFetch] SSE chunk 原始内容: ${dataStr}`,
+            );
             let parsed: any;
             try {
               parsed = JSON.parse(dataStr);
@@ -1224,7 +1265,10 @@ export class ModelService {
   private async executeChatStreamWithRuntime(
     runtime: RuntimeModelConfig,
     messages: ChatMessage[],
-  ): Promise<{ stream: AsyncIterable<string>; usage: Promise<ChatUsage | undefined> }> {
+  ): Promise<{
+    stream: AsyncIterable<string>;
+    usage: Promise<ChatUsage | undefined>;
+  }> {
     if (runtime.transport === 'claude-messages') {
       const stream = await this.chatStreamWithClaudeMessages(runtime, messages);
       if (runtime.keyId) {
@@ -1245,7 +1289,10 @@ export class ModelService {
     }
 
     if (runtime.transport === 'openai-chat' && runtime.baseUrl) {
-      const result = await this.chatStreamWithOpenAICompatFetch(runtime, messages);
+      const result = await this.chatStreamWithOpenAICompatFetch(
+        runtime,
+        messages,
+      );
       if (!runtime.keyId) {
         return result;
       }
@@ -1549,7 +1596,10 @@ export class ModelService {
   async chatStreamWithUsage(
     modelName: string,
     messages: ChatMessage[],
-  ): Promise<{ stream: AsyncIterable<string>; usage: Promise<ChatUsage | undefined> }> {
+  ): Promise<{
+    stream: AsyncIterable<string>;
+    usage: Promise<ChatUsage | undefined>;
+  }> {
     const model = await this.getModelByName(modelName);
     const runtime = await this.resolveRuntimeModelConfig(model);
 
@@ -1753,7 +1803,11 @@ export class ModelService {
       parsed && typeof parsed === 'object'
         ? Number((parsed as Record<string, unknown>).code)
         : NaN;
-    if (!Number.isNaN(businessCode) && businessCode !== 0 && businessCode !== 200) {
+    if (
+      !Number.isNaN(businessCode) &&
+      businessCode !== 0 &&
+      businessCode !== 200
+    ) {
       const msg =
         String((parsed as Record<string, unknown>).msg || '').trim() ||
         'MAPI 目录接口返回业务错误';
@@ -2184,14 +2238,16 @@ export class ModelService {
         name: 'tripo3d-text-to-model',
         points: 45,
         displayName: 'Tripo 3D 文生模型',
-        description: 'Tripo 官方 Text to 3D，适合从中文/英文描述直接生成带贴图 3D 模型。',
+        description:
+          'Tripo 官方 Text to 3D，适合从中文/英文描述直接生成带贴图 3D 模型。',
         source: 'tripo',
       },
       {
         name: 'tripo3d-image-to-model',
         points: 50,
         displayName: 'Tripo 3D 图生模型',
-        description: 'Tripo 官方 Image to 3D，适合基于单张参考图生成贴图与预览更完整的 3D 资产。',
+        description:
+          'Tripo 官方 Image to 3D，适合基于单张参考图生成贴图与预览更完整的 3D 资产。',
         source: 'tripo',
       },
     ];
@@ -2271,7 +2327,10 @@ export class ModelService {
           model.displayName = p.displayName;
           changed = true;
         }
-        if (typeof p.description === 'string' && model.description !== p.description) {
+        if (
+          typeof p.description === 'string' &&
+          model.description !== p.description
+        ) {
           model.description = p.description;
           changed = true;
         }
@@ -2301,7 +2360,8 @@ export class ModelService {
           model.deductPoints !== p.deductPoints
         ) {
           model.deductPoints = p.deductPoints;
-          if (!model.source || model.source === 'local') model.source = 'preset';
+          if (!model.source || model.source === 'local')
+            model.source = 'preset';
           changed = true;
         }
         if (changed) {
