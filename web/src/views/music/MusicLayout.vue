@@ -60,11 +60,11 @@ const musicOptionToBackend: Record<string, string> = {
   V5: 'suno-v4.5plus',
 }
 const modelOptionsDef = [
-  { value: 'V4', label: 'V4（经典）', ptsKey: 'suno-v4', descKey: 'suno-v4' },
-  { value: 'V4_5', label: 'V4（增强）', ptsKey: 'suno-v4', descKey: 'suno-v4' },
-  { value: 'V4_5PLUS', label: 'V4 Plus（推荐）', ptsKey: 'suno-v4.5plus', descKey: 'suno-v4.5plus' },
-  { value: 'V4_5ALL', label: 'V4 All（全能）', ptsKey: 'suno-v4.5plus', descKey: 'suno-v4.5plus' },
-  { value: 'V5', label: 'V5（旗舰）', ptsKey: 'suno-v4.5plus', descKey: 'suno-v4.5plus' },
+  { value: 'V4', label: 'V4（经典）', ptsKey: 'suno-v4', descKey: 'suno-v4', color: '#0ea5e9' },
+  { value: 'V4_5', label: 'V4（增强）', ptsKey: 'suno-v4', descKey: 'suno-v4', color: '#22c55e' },
+  { value: 'V4_5PLUS', label: 'V4 Plus（推荐）', ptsKey: 'suno-v4.5plus', descKey: 'suno-v4.5plus', color: '#f59e0b' },
+  { value: 'V4_5ALL', label: 'V4 All（全能）', ptsKey: 'suno-v4.5plus', descKey: 'suno-v4.5plus', color: '#8b5cf6' },
+  { value: 'V5', label: 'V5（旗舰）', ptsKey: 'suno-v4.5plus', descKey: 'suno-v4.5plus', color: '#ef4444' },
 ]
 const modelOptions = computed(() => {
   const set = activeMusicModelNames.value
@@ -86,6 +86,7 @@ const modelOptions = computed(() => {
     label: m.label,
     pts: musicPointsMap.value[m.ptsKey] ?? 0,
     desc: musicDescMap.value[m.descKey] || (m.value === 'V4' || m.value === 'V4_5' ? '兼顾质量与速度，适合大部分创作场景' : '平台默认推荐，质量/耗时平衡最佳'),
+    color: (m as any).color ?? '#165DFF',
   }))
 })
 
@@ -613,16 +614,20 @@ async function handleKieQuery() {
         <!-- 模型 -->
         <section class="fg">
           <label class="fl">模型</label>
-          <div class="model-select">
-            <select v-model="form.model" class="text-input">
-              <option v-for="m in modelOptions" :key="m.value" :value="m.value">
-                {{ m.label }}{{ m.pts ? ` (${m.pts}积分)` : '' }}
-              </option>
-            </select>
-            <p v-if="modelOptions.find(x => x.value === form.model)?.desc" class="model-desc">
-              {{ modelOptions.find(x => x.value === form.model)?.desc }}
-            </p>
-          </div>
+          <a-select v-model="form.model" class="music-model-select">
+            <a-option v-for="m in modelOptions" :key="m.value" :value="m.value" :label="m.label">
+              <div class="ui-option">
+                <span class="ui-option-dot" :style="{ background: m.color }" />
+                <div class="ui-option-main">
+                  <div class="ui-option-header">
+                    <span class="ui-option-title">{{ m.label }}</span>
+                    <span v-if="m.pts" class="ui-option-badge">{{ m.pts }}积分</span>
+                  </div>
+                  <span class="ui-option-desc">{{ m.desc }}</span>
+                </div>
+              </div>
+            </a-option>
+          </a-select>
         </section>
 
         <!-- 模式 -->
@@ -683,11 +688,11 @@ async function handleKieQuery() {
         <template v-if="customMode && showAdvanced">
           <section class="fg">
             <label class="fl">人声性别（vocalGender）</label>
-            <select v-model="form.vocalGender" class="text-input">
-              <option :value="undefined">不指定</option>
-              <option value="m">男声（m）</option>
-              <option value="f">女声（f）</option>
-            </select>
+            <a-select v-model="form.vocalGender" class="music-model-select" placeholder="不指定">
+              <a-option :value="undefined">不指定</a-option>
+              <a-option value="m">男声（m）</a-option>
+              <a-option value="f">女声（f）</a-option>
+            </a-select>
           </section>
           <section class="fg">
             <label class="fl">风格强度（styleWeight，0-1）</label>
@@ -708,10 +713,10 @@ async function handleKieQuery() {
           </section>
           <section class="fg">
             <label class="fl">人设模式（personaModel）</label>
-            <select v-model="form.personaModel" class="text-input">
-              <option value="style_persona">style_persona</option>
-              <option value="voice_persona">voice_persona</option>
-            </select>
+            <a-select v-model="form.personaModel" class="music-model-select">
+              <a-option value="style_persona">style_persona</a-option>
+              <a-option value="voice_persona">voice_persona</a-option>
+            </a-select>
           </section>
         </template>
 
@@ -726,21 +731,21 @@ async function handleKieQuery() {
           <p class="ct-desc">基于你已完成的作品做扩展、翻唱、加人声或生成伴奏，无需填写技术参数。</p>
 
           <label class="fl">选择作品</label>
-          <select v-model="remixSourceTaskId" class="text-input">
-            <option value="">不选择（请先选作品）</option>
-            <option v-for="t in completedTasks" :key="t.id" :value="t.id">
+          <a-select v-model="remixSourceTaskId" class="music-model-select" placeholder="请先选作品">
+            <a-option value="">不选择（请先选作品）</a-option>
+            <a-option v-for="t in completedTasks" :key="t.id" :value="t.id">
               {{ t.title || (t.prompt || '').slice(0, 20) || '未命名作品' }}
-            </option>
-          </select>
+            </a-option>
+          </a-select>
 
           <label class="fl" style="margin-top:10px">二次创作动作</label>
-          <select v-model="remixOperation" class="text-input">
-            <option value="">不选择（请先选动作）</option>
-            <option value="uploadCover">翻唱改编</option>
-            <option value="uploadExtend">续写扩展</option>
-            <option value="addVocals">添加人声</option>
-            <option value="addInstrumental">提取伴奏</option>
-          </select>
+          <a-select v-model="remixOperation" class="music-model-select" placeholder="请先选动作">
+            <a-option value="">不选择（请先选动作）</a-option>
+            <a-option value="uploadCover">翻唱改编</a-option>
+            <a-option value="uploadExtend">续写扩展</a-option>
+            <a-option value="addVocals">添加人声</a-option>
+            <a-option value="addInstrumental">提取伴奏</a-option>
+          </a-select>
 
           <label class="fl" style="margin-top:10px">创作描述</label>
           <textarea v-model="remixPrompt" class="text-area" rows="3" placeholder="例如：保留旋律，节奏更轻快，更适合短视频配乐" />
@@ -925,11 +930,11 @@ async function handleKieQuery() {
       <div class="toolkit-grid">
         <section class="toolkit-panel">
           <h3 class="toolkit-title">操作选择</h3>
-          <select v-model="selectedOperation" class="text-input">
-            <option v-for="op in operationOptions" :key="op.value" :value="op.value">
+          <a-select v-model="selectedOperation" class="music-model-select">
+            <a-option v-for="op in operationOptions" :key="op.value" :value="op.value">
               {{ op.label }}（{{ op.hint }}）
-            </option>
-          </select>
+            </a-option>
+          </a-select>
           <div class="toolkit-tip">
             按 Kie 官方参数模板生成，可直接修改 JSON 后提交。若需要上传音频，请先准备“公网可访问链接”。
           </div>
@@ -1184,16 +1189,8 @@ async function handleKieQuery() {
   color: var(--text-4);
 }
 
-.model-select {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.model-desc {
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-4);
+.music-model-select {
+  width: 100%;
 }
 
 /* 纯音乐开关 */

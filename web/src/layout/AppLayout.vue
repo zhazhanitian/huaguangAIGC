@@ -8,6 +8,7 @@ import {
   IconImage,
   IconEdit,
   IconVideoCamera,
+  IconMusic,
   IconApps,
   IconUser,
   IconSettings,
@@ -44,6 +45,7 @@ const navItems = [
   { path: '/draw', icon: IconImage, title: '绘画' },
   { path: '/canvas', icon: IconEdit, title: '画布' },
   { path: '/video', icon: IconVideoCamera, title: '视频' },
+  { path: '/music', icon: IconMusic, title: '音乐' },
   { path: '/model3d', icon: IconApps, title: '3D' },
   { path: '/user', icon: IconUser, title: '个人' },
 ]

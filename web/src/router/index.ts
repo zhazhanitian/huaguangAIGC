@@ -56,12 +56,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../views/video/VideoLayout.vue'),
         meta: { requiresAuth: true },
       },
-      // 音乐模块暂不开放，保留重定向占位。
       {
         path: 'music',
         name: 'Music',
-        redirect: '/home',
-        meta: { requiresAuth: true, hidden: true },
+        component: () => import('../views/music/MusicLayout.vue'),
+        meta: { requiresAuth: true },
       },
       {
         path: 'model3d',
