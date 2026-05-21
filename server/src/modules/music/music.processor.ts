@@ -3,7 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { MusicTask } from './music.entity';
+import { MusicTask, MusicTaskStatus } from './music.entity';
 import { MusicService } from './music.service';
 
 /**
@@ -28,6 +28,16 @@ export class MusicProcessor {
     const task = await this.musicRepository.findOne({ where: { id: taskId } });
     if (!task) {
       this.logger.error(`音乐任务不存在: ${taskId}`);
+      return;
+    }
+
+    if (
+      task.status === MusicTaskStatus.FAILED ||
+      task.status === MusicTaskStatus.COMPLETED
+    ) {
+      this.logger.warn(
+        `[skip] 音乐任务 ${taskId} 已是终态 ${task.status}，跳过重试，防止重复退款`,
+      );
       return;
     }
 

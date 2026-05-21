@@ -171,7 +171,12 @@ export class DrawService {
     params: Record<string, unknown>,
   ): Promise<{ points: number; mapi: boolean; breakdown: string }> {
     const m = await findFirstAiModel(this.modelRepository, { modelName });
-    if (!m) return { points: POINTS_PER_DRAW_FALLBACK, mapi: false, breakdown: '模型未找到' };
+    if (!m)
+      return {
+        points: POINTS_PER_DRAW_FALLBACK,
+        mapi: false,
+        breakdown: '模型未找到',
+      };
     if (m.source !== 'mapi') {
       return {
         points: m.deductPoints > 0 ? m.deductPoints : POINTS_PER_DRAW_FALLBACK,
@@ -612,16 +617,18 @@ export class DrawService {
       task.status = DrawTaskStatus.FAILED;
       task.errorMessage = msg;
       task.progress = 0;
+      // 退款前先读取并清零 deductPoints，防止 Bull 重试时二次退款
+      const refundPoints = Number(task.deductPoints ?? 0);
+      task.deductPoints = 0;
       await this.drawRepository.save(task);
       this.emit(task.userId, 'task.failed', task);
-      // 失败时退还积分
-      try {
-        await this.userService.addBalance(
-          task.userId,
-          Number(task.deductPoints),
-        );
-      } catch (refundErr) {
-        this.logger.error(`退还积分失败: ${task.userId}`, refundErr);
+      // 失败时退还积分（仅当有扣分记录时执行一次）
+      if (refundPoints > 0) {
+        try {
+          await this.userService.addBalance(task.userId, refundPoints);
+        } catch (refundErr) {
+          this.logger.error(`退还积分失败: ${task.userId}`, refundErr);
+        }
       }
       throw err;
     }
@@ -836,7 +843,12 @@ export class DrawService {
     });
 
     // === 精准结算：按 MAPI 实际返回的 usage.generated_images 重算，与预扣差额多退少补 ===
-    await this.reconcileMapiImageBilling(task, aiModel, result, Number(passthrough.n ?? 1));
+    await this.reconcileMapiImageBilling(
+      task,
+      aiModel,
+      result,
+      Number(passthrough.n ?? 1),
+    );
 
     this.logger.log(`[MAPI 图片] 完成: taskId=${task.id}, url=${url}`);
     return url;
@@ -2162,9 +2174,13 @@ export class DrawService {
       if (points > 0) {
         try {
           await this.userService.addBalance(userId, points);
-          this.logger.log(`[deleteTask/cancel] 取消排队任务，退还 ${points} 积分 userId=${userId} taskId=${taskId}`);
+          this.logger.log(
+            `[deleteTask/cancel] 取消排队任务，退还 ${points} 积分 userId=${userId} taskId=${taskId}`,
+          );
         } catch (refundErr) {
-          this.logger.error(`[deleteTask/cancel] 退还积分失败: ${(refundErr as Error).message}`);
+          this.logger.error(
+            `[deleteTask/cancel] 退还积分失败: ${(refundErr as Error).message}`,
+          );
         }
       }
     }
@@ -2314,10 +2330,7 @@ export class DrawService {
    * 管理员强制将指定任务标记为 failed。
    * 用于处理卡死在 processing/pending 但上游已无法推进的孤儿任务。
    */
-  async adminForceFailTask(
-    taskId: string,
-    reason?: string,
-  ): Promise<DrawTask> {
+  async adminForceFailTask(taskId: string, reason?: string): Promise<DrawTask> {
     const task = await this.drawRepository.findOne({ where: { id: taskId } });
     if (!task) {
       throw new NotFoundException(`任务 ${taskId} 不存在`);
@@ -2327,26 +2340,34 @@ export class DrawService {
     }
 
     const errorMsg =
-      reason ||
-      `管理员手动终止（原状态：${task.status}），已退还积分`;
+      reason || `管理员手动终止（原状态：${task.status}），已退还积分`;
 
     await this.drawRepository.update(taskId, {
       status: DrawTaskStatus.FAILED,
       errorMessage: errorMsg,
     });
 
-    // 退还积分
+    // 退还积分（更新并清零 deductPoints，防止重复退款）
     const points = Number(task.deductPoints ?? 0);
     if (points > 0) {
+      await this.drawRepository.update(taskId, { deductPoints: 0 } as any);
       try {
         await this.userService.addBalance(task.userId, points);
-        this.logger.log(`[adminForceFailTask] 已退还 ${points} 积分 userId=${task.userId}`);
+        this.logger.log(
+          `[adminForceFailTask] 已退还 ${points} 积分 userId=${task.userId}`,
+        );
       } catch (refundErr) {
-        this.logger.error(`[adminForceFailTask] 退还积分失败: ${(refundErr as Error).message}`);
+        this.logger.error(
+          `[adminForceFailTask] 退还积分失败: ${(refundErr as Error).message}`,
+        );
       }
     }
 
-    const updated = { ...task, status: DrawTaskStatus.FAILED, errorMessage: errorMsg };
+    const updated = {
+      ...task,
+      status: DrawTaskStatus.FAILED,
+      errorMessage: errorMsg,
+    };
 
     // 推送 WebSocket 通知
     try {

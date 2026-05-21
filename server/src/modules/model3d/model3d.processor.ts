@@ -3,7 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Model3dTask } from './model3d.entity';
+import { Model3dTask, Model3dTaskStatus } from './model3d.entity';
 import { Model3dService } from './model3d.service';
 
 @Processor('model3d-queue')
@@ -26,6 +26,16 @@ export class Model3dProcessor {
     });
     if (!task) {
       this.logger.error(`3D 任务不存在: ${taskId}`);
+      return;
+    }
+
+    if (
+      task.status === Model3dTaskStatus.FAILED ||
+      task.status === Model3dTaskStatus.COMPLETED
+    ) {
+      this.logger.warn(
+        `[skip] 3D 任务 ${taskId} 已是终态 ${task.status}，跳过重试，防止重复退款`,
+      );
       return;
     }
 

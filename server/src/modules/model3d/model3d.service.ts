@@ -544,15 +544,16 @@ export class Model3dService {
       task.status = Model3dTaskStatus.FAILED;
       task.errorMessage = msg;
       task.progress = 0;
+      const refundPoints = Number(task.deductPoints ?? 0);
+      task.deductPoints = 0;
       await this.model3dRepository.save(task);
       this.emit(task.userId, 'task.failed', task);
-      try {
-        await this.userService.addBalance(
-          task.userId,
-          Number(task.deductPoints),
-        );
-      } catch (refundErr) {
-        this.logger.error(`退还积分失败: ${task.userId}`, refundErr);
+      if (refundPoints > 0) {
+        try {
+          await this.userService.addBalance(task.userId, refundPoints);
+        } catch (refundErr) {
+          this.logger.error(`退还积分失败: ${task.userId}`, refundErr);
+        }
       }
       throw err;
     }
