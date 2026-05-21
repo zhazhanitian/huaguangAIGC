@@ -8,12 +8,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bull';
 import { In, Repository } from 'typeorm';
 import { Queue } from 'bull';
+import { randomUUID } from 'crypto';
 import { readFile } from 'fs/promises';
 import { basename, extname, join } from 'path';
 import { ProxyAgent } from 'undici';
 import { VideoTask, VideoTaskStatus, VideoTaskType } from './video.entity';
 import { CreateVideoTaskDto } from './dto/create-video-task.dto';
 import { UserService } from '../user/user.service';
+import { CreditLogType, CreditRefType } from '../credit-log/credit-log.entity';
 import { AiModel, ModelKey } from '../model/model.entity';
 import { findFirstAiModel } from '../model/model-query.util';
 import { RealtimeService } from '../realtime/realtime.service';
@@ -288,7 +290,11 @@ export class VideoService {
     this.logger.log(
       `[Video 预扣] model=${dto.provider} points=${deductPoints} ${pricing.mapi ? '[MAPI]' : ''} ${pricing.breakdown}`,
     );
-    await this.userService.deductBalance(userId, deductPoints);
+    await this.userService.deductBalance(userId, deductPoints, {
+      type: CreditLogType.CONSUME_VIDEO,
+      refType: CreditRefType.VIDEO,
+      remark: `视频生成预扣：${dto.provider}`,
+    });
 
     const task = this.videoRepository.create({
       userId,
@@ -309,15 +315,34 @@ export class VideoService {
       await this.videoQueue.add(
         'process',
         { taskId: saved.id },
-        { attempts: 3 },
+        { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
       );
     } else {
-      // 不走队列：直接异步触发处理
-      void this.processVideoTask(saved).catch((err) => {
+      // 不走队列：直接异步触发处理；无重试，失败直接终态
+      void this.processVideoTask(saved).catch(async (err) => {
         const msg = err instanceof Error ? err.message : String(err);
         this.logger.error(
-          `TASK_QUEUE_ENABLED=false：视频任务直接处理失�? ${saved.id}, ${msg}`,
+          `TASK_QUEUE_ENABLED=false：视频任务直接处理失败: ${saved.id}, ${msg}`,
         );
+        try {
+          const freshTask = await this.videoRepository.findOne({
+            where: { id: saved.id },
+          });
+          if (
+            freshTask &&
+            freshTask.status !== VideoTaskStatus.COMPLETED &&
+            freshTask.status !== VideoTaskStatus.FAILED
+          ) {
+            await this.finalizeVideoTaskFailed(
+              freshTask,
+              err instanceof Error ? err : new Error(String(err)),
+            );
+          }
+        } catch (finalizeErr) {
+          this.logger.error(
+            `[createTask/direct] finalizeVideoTaskFailed 失败: ${saved.id}, ${(finalizeErr as Error).message}`,
+          );
+        }
       });
     }
     return saved;
@@ -483,25 +508,45 @@ export class VideoService {
       this.logger.log(`视频任务完成: ${task.id}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`视频任务失败: ${task.id}, ${msg}`);
+      this.logger.error(`视频任务异常（待重试或终态处理）: ${task.id}, ${msg}`);
       task.params = {
         ...(task.params ?? {}),
         [this.PARAM_ENDED_AT_MS]: Date.now(),
       } as any;
-      task.status = VideoTaskStatus.FAILED;
       task.errorMessage = msg;
       task.progress = 0;
+      // 仅记录错误，不标记 FAILED、不退款——由 Processor 在最后一次重试耗尽后调用 finalizeVideoTaskFailed
       await this.videoRepository.save(task);
-      this.emit(task.userId, 'task.failed', task);
-      try {
-        await this.userService.addBalance(
-          task.userId,
-          Number(task.deductPoints),
-        );
-      } catch (refundErr) {
-        this.logger.error(`�?还积分失�? ${task.userId}`, refundErr);
-      }
       throw err;
+    }
+  }
+
+  /**
+   * 终态处理：标记任务为 FAILED，退还预扣积分，推送 WebSocket 通知。
+   * 由 VideoProcessor 在所有 Bull 重试耗尽后调用，也用于 TASK_QUEUE_ENABLED=false 的直接模式。
+   */
+  async finalizeVideoTaskFailed(task: VideoTask, err?: Error): Promise<void> {
+    const msg = err?.message ?? task.errorMessage ?? '任务失败';
+    task.status = VideoTaskStatus.FAILED;
+    task.errorMessage = msg;
+    task.progress = 0;
+    const refundPoints = Number(task.deductPoints ?? 0);
+    task.deductPoints = 0;
+    await this.videoRepository.save(task);
+    this.emit(task.userId, 'task.failed', task);
+    if (refundPoints > 0) {
+      try {
+        await this.userService.addBalance(task.userId, refundPoints, {
+          type: CreditLogType.REFUND_TASK,
+          refId: task.id,
+          refType: CreditRefType.VIDEO,
+          remark: `视频任务失败退款`,
+        });
+      } catch (refundErr) {
+        this.logger.error(
+          `[finalizeVideoTaskFailed] 退还积分失败 userId=${task.userId}: ${(refundErr as Error).message}`,
+        );
+      }
     }
   }
 
@@ -757,7 +802,7 @@ export class VideoService {
     this.logger.log(
       `[MAPI 视频] 创建任务: model=${req.model}, taskId=${task.id}, ratio=${ratio || '-'}, duration=${duration || '-'}, audio=${generateAudio}, img2video=${imageUrl ? 'Y' : 'N'}`,
     );
-    const { ourOrderNo } = await createMapiVideoTask(req, task.id);
+    const { ourOrderNo } = await createMapiVideoTask(req, `${task.id}_${randomUUID().slice(0, 8)}`);
 
     task.progress = 30;
     await this.videoRepository.save(task);
@@ -856,7 +901,7 @@ export class VideoService {
     this.logger.log(
       `[MAPI 腾讯视频] 创建任务: ${spec.modelName}-${spec.modelVersion}, taskId=${task.id}, ratio=${ratio}, duration=${duration}, resolution=${resolution}, img2video=${fileInfos.length > 0 ? 'Y' : 'N'}`,
     );
-    const { ourOrderNo } = await createMapiTencentVideoTask(req, task.id);
+    const { ourOrderNo } = await createMapiTencentVideoTask(req, `${task.id}_${randomUUID().slice(0, 8)}`);
 
     task.progress = 30;
     await this.videoRepository.save(task);
@@ -944,12 +989,22 @@ export class VideoService {
       const charged = Number(task.deductPoints || 0);
       const diff = actual.points - charged;
       if (diff > 0) {
-        await this.userService.deductBalance(task.userId, diff);
+        await this.userService.deductBalance(task.userId, diff, {
+          type: CreditLogType.CONSUME_VIDEO,
+          refId: task.id,
+          refType: CreditRefType.VIDEO,
+          remark: `视频 MAPI 结算补扣（实际 ${actual.points}，已扣 ${charged}）`,
+        });
         this.logger.log(
           `[MAPI 结算] taskId=${task.id} 补扣 ${diff} 积分（实�?${actual.points}，已�?${charged}）�??${actual.breakdown}`,
         );
       } else if (diff < 0) {
-        await this.userService.addBalance(task.userId, -diff);
+        await this.userService.addBalance(task.userId, -diff, {
+          type: CreditLogType.REFUND_TASK,
+          refId: task.id,
+          refType: CreditRefType.VIDEO,
+          remark: `视频 MAPI 结算退还（实际 ${actual.points}，已扣 ${charged}）`,
+        });
         this.logger.log(
           `[MAPI 结算] taskId=${task.id} �?�?${-diff} 积分（实�?${actual.points}，已�?${charged}）�??${actual.breakdown}`,
         );
@@ -3447,7 +3502,12 @@ export class VideoService {
       const points = Number(task.deductPoints ?? 0);
       if (points > 0) {
         try {
-          await this.userService.addBalance(userId, points);
+          await this.userService.addBalance(userId, points, {
+            type: CreditLogType.REFUND_TASK,
+            refId: taskId,
+            refType: CreditRefType.VIDEO,
+            remark: `视频任务取消退款`,
+          });
           this.logger.log(`[deleteTask/cancel] 取消排队任务，�??�?${points} 积分 userId=${userId} taskId=${taskId}`);
         } catch (refundErr) {
           this.logger.error(`[deleteTask/cancel] �?还积分失�? ${(refundErr as Error).message}`);
@@ -3560,7 +3620,12 @@ export class VideoService {
     const points = Number(task.deductPoints ?? 0);
     if (points > 0) {
       try {
-        await this.userService.addBalance(task.userId, points);
+        await this.userService.addBalance(task.userId, points, {
+          type: CreditLogType.REFUND_TASK,
+          refId: taskId,
+          refType: CreditRefType.VIDEO,
+          remark: `管理员强制失败退款`,
+        });
         this.logger.log(`[adminForceFailTask] 已�??�?${points} 积分 userId=${task.userId}`);
       } catch (refundErr) {
         this.logger.error(`[adminForceFailTask] �?还积分失�? ${(refundErr as Error).message}`);

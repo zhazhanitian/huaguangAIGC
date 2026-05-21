@@ -11,6 +11,7 @@ import {
   IconPlus,
   IconUser,
   IconRefresh,
+  IconRedo,
 } from '@arco-design/web-vue/es/icon'
 import {
   getUsers,
@@ -25,6 +26,7 @@ import {
   type CreateUserData,
   type ResetUserPasswordData,
 } from '../api/user'
+import { rechargeCreditLog } from '../api/creditLog'
 import {
   getColleges,
   getGrades,
@@ -58,6 +60,63 @@ const editDialogVisible = ref(false)
 const addDialogVisible = ref(false)
 const resetDialogVisible = ref(false)
 
+// 积分充值弹窗状态
+const rechargeDialogVisible = ref(false)
+const rechargeLoading = ref(false)
+interface RechargeFormState {
+  userId: string
+  username: string
+  phone: string
+  currentBalance: number
+  amount: number | undefined
+  remark: string
+}
+const rechargeForm = ref<RechargeFormState>({
+  userId: '',
+  username: '',
+  phone: '',
+  currentBalance: 0,
+  amount: undefined,
+  remark: '',
+})
+const rechargeFormRef = ref<FormInstance>()
+
+function openRecharge(row: User) {
+  rechargeForm.value = {
+    userId: row.id,
+    username: row.username,
+    phone: row.phone,
+    currentBalance: Number((row as any).balance ?? 0),
+    amount: undefined,
+    remark: '',
+  }
+  rechargeDialogVisible.value = true
+}
+
+async function submitRecharge() {
+  const valid = await rechargeFormRef.value?.validate()
+  if (valid) return
+  if (!rechargeForm.value.amount || rechargeForm.value.amount <= 0) {
+    Message.error('充值积分必须大于 0')
+    return
+  }
+  rechargeLoading.value = true
+  try {
+    await rechargeCreditLog({
+      userId: rechargeForm.value.userId,
+      amount: rechargeForm.value.amount,
+      remark: rechargeForm.value.remark,
+    })
+    Message.success('充值成功')
+    rechargeDialogVisible.value = false
+    fetchList()
+  } catch {
+    Message.error('充值失败，请重试')
+  } finally {
+    rechargeLoading.value = false
+  }
+}
+
 interface EditFormState {
   id?: string
   username?: string
@@ -65,7 +124,6 @@ interface EditFormState {
   email?: string
   role?: 'user' | 'admin' | 'super'
   status?: 'active' | 'banned'
-  balance?: number
   collegeId?: string | null
   gradeId?: string | null
   majorId?: string | null
@@ -81,7 +139,6 @@ interface AddFormState {
   password: string
   role: 'user' | 'admin' | 'super'
   status: 'active' | 'banned'
-  balance: number
   collegeId?: string
   gradeId?: string
   majorId?: string
@@ -94,7 +151,6 @@ const addForm = reactive<AddFormState>({
   password: '',
   role: 'user',
   status: 'active',
-  balance: 0,
   collegeId: undefined,
   gradeId: undefined,
   majorId: undefined,
@@ -283,7 +339,6 @@ async function openEdit(row: User) {
     email: row.email,
     role: row.role,
     status: row.status === 'active' ? 'active' : 'banned',
-    balance: Number((row as any).balance ?? 0),
     collegeId: row.collegeId ?? undefined,
     gradeId: row.gradeId ?? undefined,
     majorId: row.majorId ?? undefined,
@@ -318,7 +373,6 @@ async function openEdit(row: User) {
 const editRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   role: [{ required: true, message: '请选择角色', trigger: 'change' }],
-  balance: [{ type: 'number', min: 0, message: '余额不能小于 0', trigger: 'blur' }],
 }
 
 const addRules = {
@@ -363,7 +417,6 @@ async function openAdd() {
   addForm.password = ''
   addForm.role = 'user'
   addForm.status = 'active'
-  addForm.balance = 0
   addForm.collegeId = undefined
   addForm.gradeId = undefined
   addForm.majorId = undefined
@@ -486,7 +539,6 @@ async function submitAdd() {
       password: addForm.password,
       role: addForm.role,
       status: addForm.status,
-      balance: Number(addForm.balance ?? 0),
       collegeId: addForm.collegeId || undefined,
       gradeId: addForm.gradeId || undefined,
       majorId: addForm.majorId || undefined,
@@ -509,13 +561,12 @@ async function submitEdit() {
   if (!editForm.value.id) return
   editLoading.value = true
   try {
-    const { id, username, email, role, status, balance, collegeId, gradeId, majorId, classId } = editForm.value
+    const { id, username, email, role, status, collegeId, gradeId, majorId, classId } = editForm.value
     const data: UpdateUserData = {
       username,
       email,
       role,
       status,
-      balance: balance == null ? undefined : Number(balance),
       collegeId: collegeId ?? null,
       gradeId: gradeId ?? null,
       majorId: majorId ?? null,
@@ -737,6 +788,13 @@ function onPageSizeChange(size: number) {
         </template>
         <template #action="{ record }">
           <template v-if="canManageRow(record)">
+            <a-tooltip v-if="isSuperAdmin" content="积分充值">
+              <a-button type="text" size="small" class="action-btn" style="color: var(--color-success-6)" @click="openRecharge(record)">
+                <template #icon>
+                  <IconRedo />
+                </template>
+              </a-button>
+            </a-tooltip>
             <a-tooltip content="编辑">
               <a-button type="text" size="small" class="action-btn" @click="openEdit(record)">
                 <template #icon>
@@ -805,9 +863,6 @@ function onPageSizeChange(size: number) {
             <a-radio value="banned">已封禁</a-radio>
           </a-radio-group>
         </a-form-item>
-        <a-form-item label="余额" field="balance">
-          <a-input-number v-model="editForm.balance" :min="0" :precision="2" style="width: 200px" />
-        </a-form-item>
         <a-form-item label="学院" field="collegeId">
           <a-select v-model="editForm.collegeId" placeholder="可选" allow-clear style="width: 100%"
             @change="onEditFormCollegeChange">
@@ -871,9 +926,6 @@ function onPageSizeChange(size: number) {
             <a-radio value="banned">已封禁</a-radio>
           </a-radio-group>
         </a-form-item>
-        <a-form-item label="初始余额" field="balance">
-          <a-input-number v-model="addForm.balance" :min="0" :precision="2" style="width: 200px" />
-        </a-form-item>
         <a-form-item label="学院" field="collegeId">
           <a-select v-model="addForm.collegeId" placeholder="可选" allow-clear style="width: 100%"
             @change="onAddFormCollegeChange">
@@ -920,6 +972,32 @@ function onPageSizeChange(size: number) {
         <a-button @click="resetDialogVisible = false">取消</a-button>
         <a-button type="primary" :loading="resetLoading" @click="submitResetPassword">
           确认重置
+        </a-button>
+      </template>
+    </a-modal>
+
+    <!-- Recharge Modal -->
+    <a-modal v-model:visible="rechargeDialogVisible" title="积分充值" width="420px" unmount-on-close class="edit-modal"
+      :mask-style="{ background: 'var(--bg-overlay)' }" @close="rechargeFormRef?.clearValidate()">
+      <a-form ref="rechargeFormRef" :model="rechargeForm" layout="horizontal" :label-col-props="{ span: 6 }"
+        :wrapper-col-props="{ span: 18 }">
+        <a-form-item label="用户">
+          <span class="form-readonly-text">{{ rechargeForm.username }}（{{ rechargeForm.phone }}）</span>
+        </a-form-item>
+        <a-form-item label="当前余额">
+          <span class="form-readonly-text balance-highlight">{{ rechargeForm.currentBalance }}</span>
+        </a-form-item>
+        <a-form-item label="充值积分" field="amount" :rules="[{ required: true, message: '请输入充值积分' }]">
+          <a-input-number v-model="rechargeForm.amount" :min="1" :precision="0" placeholder="请输入正整数" style="width: 200px" />
+        </a-form-item>
+        <a-form-item label="备注" field="remark" :rules="[{ required: true, message: '备注不能为空' }]">
+          <a-textarea v-model="rechargeForm.remark" placeholder="请填写充值原因（必填）" :auto-size="{ minRows: 2, maxRows: 4 }" />
+        </a-form-item>
+      </a-form>
+      <template #footer>
+        <a-button @click="rechargeDialogVisible = false">取消</a-button>
+        <a-button type="primary" :loading="rechargeLoading" @click="submitRecharge">
+          确认充值
         </a-button>
       </template>
     </a-modal>
@@ -1080,6 +1158,17 @@ function onPageSizeChange(size: number) {
 .no-permission-tip {
   color: var(--text-3);
   font-size: 12px;
+}
+
+.form-readonly-text {
+  color: var(--text-1);
+  line-height: 32px;
+}
+
+.balance-highlight {
+  color: var(--color-success-6);
+  font-weight: 600;
+  font-size: 15px;
 }
 
 .pagination-wrap {

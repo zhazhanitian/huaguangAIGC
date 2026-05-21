@@ -9,6 +9,7 @@ import { Model3dTask, Model3dTaskStatus } from '../model3d/model3d.entity';
 import { RealtimeService } from '../realtime/realtime.service';
 import { UserService } from '../user/user.service';
 import type { TaskModuleKey } from '../realtime/realtime.types';
+import { CreditLogType, CreditRefType } from '../credit-log/credit-log.entity';
 
 /**
  * 孤儿任务超时阈值（分钟）。
@@ -127,7 +128,7 @@ export class StaleTaskCleanerService implements OnModuleInit {
 
       const ids = stale.map((t) => t.id);
 
-      // 批量更新状态
+      // 批量更新状态，同步清零 deductPoints 防止后续重复退款
       await repo
         .createQueryBuilder()
         .update()
@@ -135,9 +136,19 @@ export class StaleTaskCleanerService implements OnModuleInit {
           status: toStatus as any,
           errorMessage: STALE_ERROR_MSG as any,
           updatedAt: new Date() as any,
+          deductPoints: 0 as any,
         } as any)
         .whereInIds(ids)
         .execute();
+
+      // module → CreditRefType 映射
+      const refTypeMap: Record<string, CreditRefType> = {
+        draw: CreditRefType.DRAW,
+        video: CreditRefType.VIDEO,
+        music: CreditRefType.MUSIC,
+        model3d: CreditRefType.MODEL3D,
+      };
+      const refType = refTypeMap[module] ?? CreditRefType.DRAW;
 
       // 逐个：退还积分 + 推送 WebSocket
       for (const task of stale) {
@@ -145,7 +156,12 @@ export class StaleTaskCleanerService implements OnModuleInit {
         const points = Number(task.deductPoints ?? 0);
         if (points > 0) {
           try {
-            await this.userService.addBalance(task.userId, points);
+            await this.userService.addBalance(task.userId, points, {
+              type: CreditLogType.REFUND_TASK,
+              refId: task.id,
+              refType,
+              remark: `孤儿任务超时退款（${module}）`,
+            });
             this.logger.log(
               `[stale-refund] userId=${task.userId} taskId=${task.id} refund=${points}pts`,
             );

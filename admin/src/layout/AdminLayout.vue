@@ -15,6 +15,8 @@ import {
   IconCloud,
   IconLock,
   IconFile,
+  IconHistory,
+  IconTool,
 } from '@arco-design/web-vue/es/icon'
 
 const route = useRoute()
@@ -56,6 +58,8 @@ const menuSections = computed(() => {
       label: '超级管理',
       items: [
         { path: '/task-logs', label: '任务日志', icon: IconFile },
+        { path: '/credit-logs', label: '积分流水', icon: IconHistory },
+        { path: '/credit-correction', label: '积分修正', icon: IconTool },
       ],
     })
   }
@@ -74,6 +78,8 @@ const breadcrumbItems = computed(() => {
     '/config': '系统配置',
     '/ops': '运维监控',
     '/task-logs': '任务日志',
+    '/credit-logs': '积分流水',
+    '/credit-correction': '积分修正',
   }
   return [
     { path: '/dashboard', label: '管理后台' },

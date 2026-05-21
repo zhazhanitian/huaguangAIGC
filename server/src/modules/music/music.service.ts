@@ -14,6 +14,7 @@ import { ProxyAgent } from 'undici';
 import { MusicTask, MusicTaskStatus, MusicProvider } from './music.entity';
 import { CreateMusicTaskDto } from './dto/create-music-task.dto';
 import { UserService } from '../user/user.service';
+import { CreditLogType, CreditRefType } from '../credit-log/credit-log.entity';
 import { AiModel } from '../model/model.entity';
 import { findFirstAiModel } from '../model/model-query.util';
 import { RealtimeService } from '../realtime/realtime.service';
@@ -148,7 +149,11 @@ export class MusicService {
     }
 
     const deductPoints = await this.resolvePoints(dto.model);
-    await this.userService.deductBalance(userId, deductPoints);
+    await this.userService.deductBalance(userId, deductPoints, {
+      type: CreditLogType.CONSUME_MUSIC,
+      refType: CreditRefType.MUSIC,
+      remark: `音乐生成预扣：${dto.model ?? '默认'}`,
+    });
 
     const normalizedPrompt = (dto.prompt || '').trim();
     const customMode = dto.customMode ?? true;
@@ -363,22 +368,41 @@ export class MusicService {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`音乐任务失败: ${task.id}, ${msg}`);
-      task.status = MusicTaskStatus.FAILED;
+      this.logger.error(`音乐任务异常（待重试或终态处理）: ${task.id}, ${msg}`);
       task.errorMessage = msg;
       task.progress = 0;
-      const refundPoints = Number(task.deductPoints ?? 0);
-      task.deductPoints = 0;
+      // 仅记录错误，不标记 FAILED、不退款——由 Processor 在最后一次重试耗尽后调用 finalizeMusicTaskFailed
       await this.musicRepository.save(task);
-      this.emit(task.userId, 'task.failed', task);
-      if (refundPoints > 0) {
-        try {
-          await this.userService.addBalance(task.userId, refundPoints);
-        } catch (refundErr) {
-          this.logger.error(`退还积分失败: ${task.userId}`, refundErr);
-        }
-      }
       throw err;
+    }
+  }
+
+  /**
+   * 终态处理：标记任务为 FAILED，退还预扣积分，推送 WebSocket 通知。
+   * 由 MusicProcessor 在所有 Bull 重试耗尽后调用。
+   */
+  async finalizeMusicTaskFailed(task: MusicTask, err?: Error): Promise<void> {
+    const msg = err?.message ?? task.errorMessage ?? '任务失败';
+    task.status = MusicTaskStatus.FAILED;
+    task.errorMessage = msg;
+    task.progress = 0;
+    const refundPoints = Number(task.deductPoints ?? 0);
+    task.deductPoints = 0;
+    await this.musicRepository.save(task);
+    this.emit(task.userId, 'task.failed', task);
+    if (refundPoints > 0) {
+      try {
+        await this.userService.addBalance(task.userId, refundPoints, {
+          type: CreditLogType.REFUND_TASK,
+          refId: task.id,
+          refType: CreditRefType.MUSIC,
+          remark: `音乐任务失败退款`,
+        });
+      } catch (refundErr) {
+        this.logger.error(
+          `[finalizeMusicTaskFailed] 退还积分失败 userId=${task.userId}: ${(refundErr as Error).message}`,
+        );
+      }
     }
   }
 
@@ -873,7 +897,12 @@ export class MusicService {
     const deductPoints = await this.resolvePoints(
       String((task.params as any)?.model),
     );
-    await this.userService.deductBalance(userId, deductPoints);
+    await this.userService.deductBalance(userId, deductPoints, {
+      type: CreditLogType.CONSUME_MUSIC,
+      refId: task.id,
+      refType: CreditRefType.MUSIC,
+      remark: `音乐任务重试扣费`,
+    });
 
     task.status = MusicTaskStatus.PENDING;
     task.progress = 0;

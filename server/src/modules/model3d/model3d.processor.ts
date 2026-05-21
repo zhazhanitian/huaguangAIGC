@@ -19,7 +19,11 @@ export class Model3dProcessor {
   @Process({ name: 'process', concurrency: 5 })
   async handleProcess(job: Job<{ taskId: string }>) {
     const { taskId } = job.data;
-    this.logger.log(`开始处理 3D 任务: ${taskId}`);
+    const maxAttempts = job.opts.attempts ?? 1;
+    const currentAttempt = job.attemptsMade + 1;
+    this.logger.log(
+      `开始处理 3D 任务: ${taskId}（第 ${currentAttempt}/${maxAttempts} 次）`,
+    );
 
     const task = await this.model3dRepository.findOne({
       where: { id: taskId },
@@ -34,11 +38,29 @@ export class Model3dProcessor {
       task.status === Model3dTaskStatus.COMPLETED
     ) {
       this.logger.warn(
-        `[skip] 3D 任务 ${taskId} 已是终态 ${task.status}，跳过重试，防止重复退款`,
+        `[skip] 3D 任务 ${taskId} 已是终态 ${task.status}，跳过，防止重复处理`,
       );
       return;
     }
 
-    await this.model3dService.processModel3dTask(task);
+    try {
+      await this.model3dService.processModel3dTask(task);
+    } catch (err) {
+      const isLastAttempt = job.attemptsMade >= maxAttempts - 1;
+      if (isLastAttempt) {
+        this.logger.warn(
+          `[finalize] 3D 任务 ${taskId} 已耗尽全部 ${maxAttempts} 次重试，标记失败并退款`,
+        );
+        await this.model3dService.finalizeModel3dTaskFailed(
+          task,
+          err instanceof Error ? err : new Error(String(err)),
+        );
+      } else {
+        this.logger.warn(
+          `[retry] 3D 任务 ${taskId} 第 ${currentAttempt} 次失败，等待 Bull 重试...`,
+        );
+      }
+      throw err;
+    }
   }
 }

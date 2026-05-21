@@ -2,13 +2,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsEnum,
-  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
-  Max,
   MaxLength,
-  Min,
   MinLength,
 } from 'class-validator';
 import { UserRole, UserStatus } from '../user.entity';
@@ -61,13 +58,6 @@ export class CreateUserDto {
   @IsOptional()
   @IsEnum(UserStatus, { message: '状态不合法' })
   status?: UserStatus;
-
-  @ApiPropertyOptional({ description: '初始余额', example: 0, default: 0 })
-  @IsOptional()
-  @IsNumber({}, { message: '余额必须为数字' })
-  @Min(0, { message: '余额不能小于 0' })
-  @Max(99999999, { message: '余额过大' })
-  balance?: number;
 
   @ApiPropertyOptional({ description: '学院 ID，可为空' })
   @IsOptional()

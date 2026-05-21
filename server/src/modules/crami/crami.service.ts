@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { Crami, CramiStatus } from './crami.entity';
 import { UserService } from '../user/user.service';
 import * as crypto from 'crypto';
+import { CreditLogType, CreditRefType } from '../credit-log/credit-log.entity';
 
 /**
  * 卡密/兑换码服务
@@ -62,7 +63,12 @@ export class CramiService {
 
     // 发放积分
     if (crami.points > 0) {
-      await this.userService.addBalance(userId, crami.points);
+      await this.userService.addBalance(userId, crami.points, {
+        type: CreditLogType.RECHARGE_CRAMI,
+        refId: crami.id,
+        refType: CreditRefType.CRAMI,
+        remark: `卡密兑换：${crami.code}`,
+      });
     }
 
     // 延长会员

@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Invitation, InvitationStatus } from './invitation.entity';
 import { UserService } from '../user/user.service';
 import { Config } from '../global-config/config.entity';
+import { CreditLogType, CreditRefType } from '../credit-log/credit-log.entity';
 
 /** 默认邀请奖励配置 key */
 const CONFIG_INVITER_REWARD = 'invitation_inviter_reward';
@@ -75,7 +76,12 @@ export class InvitationService {
     await this.invitationRepository.save(invitation);
 
     if (inviterReward > 0) {
-      await this.userService.addBalance(inviter.id, inviterReward);
+      await this.userService.addBalance(inviter.id, inviterReward, {
+        type: CreditLogType.RECHARGE_INVITE,
+        refId: invitation.id,
+        refType: CreditRefType.INVITATION,
+        remark: `直接邀请奖励`,
+      });
     }
 
     // 间接邀请：邀请人的邀请人获得奖励
@@ -89,7 +95,12 @@ export class InvitationService {
         status: InvitationStatus.SUCCESS,
       });
       await this.invitationRepository.save(indirectInvitation);
-      await this.userService.addBalance(inviterUser.invitedBy, indirectReward);
+      await this.userService.addBalance(inviterUser.invitedBy, indirectReward, {
+        type: CreditLogType.RECHARGE_INVITE,
+        refId: indirectInvitation.id,
+        refType: CreditRefType.INVITATION,
+        remark: `间接邀请奖励`,
+      });
     }
 
     return invitation;

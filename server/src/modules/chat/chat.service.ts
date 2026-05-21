@@ -15,6 +15,7 @@ import {
 } from '../model/model.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UserService } from '../user/user.service';
+import { CreditLogType, CreditRefType } from '../credit-log/credit-log.entity';
 import { AiModel, ModelType } from '../model/model.entity';
 import { findFirstAiModel } from '../model/model-query.util';
 import { ContentModerationService } from '../content-moderation/content-moderation.service';
@@ -110,12 +111,20 @@ export class ChatService {
       });
       const diff = actual.points - prededucted;
       if (diff > 0) {
-        await this.userService.deductBalance(userId, diff);
+        await this.userService.deductBalance(userId, diff, {
+          type: CreditLogType.CONSUME_CHAT,
+          refType: CreditRefType.CHAT,
+          remark: `对话 MAPI 结算补扣（实际 ${actual.points}，已扣 ${prededucted}）`,
+        });
         this.logger.log(
           `[MAPI 结算] chat ${aiModel.modelName} 补扣 ${diff} 积分（实际 ${actual.points}，已扣 ${prededucted}）— ${actual.breakdown}`,
         );
       } else if (diff < 0) {
-        await this.userService.addBalance(userId, -diff);
+        await this.userService.addBalance(userId, -diff, {
+          type: CreditLogType.REFUND_TASK,
+          refType: CreditRefType.CHAT,
+          remark: `对话 MAPI 结算退还（实际 ${actual.points}，已扣 ${prededucted}）`,
+        });
         this.logger.log(
           `[MAPI 结算] chat ${aiModel.modelName} 退还 ${-diff} 积分（实际 ${actual.points}，已扣 ${prededucted}）— ${actual.breakdown}`,
         );
@@ -290,7 +299,11 @@ export class ChatService {
     this.logger.log(
       `[Chat 预扣] model=${model} points=${pts} ${pricing.mapi ? '[MAPI]' : ''} ${pricing.breakdown}`,
     );
-    if (pts > 0) await this.userService.deductBalance(userId, pts);
+    if (pts > 0) await this.userService.deductBalance(userId, pts, {
+      type: CreditLogType.CONSUME_CHAT,
+      refType: CreditRefType.CHAT,
+      remark: `对话预扣：${model}`,
+    });
 
     const userLog = this.logRepository.create({
       groupId,
@@ -327,7 +340,11 @@ export class ChatService {
       // 失败退还预扣
       if (pts > 0) {
         try {
-          await this.userService.addBalance(userId, pts);
+          await this.userService.addBalance(userId, pts, {
+            type: CreditLogType.REFUND_TASK,
+            refType: CreditRefType.CHAT,
+            remark: `对话失败退款：${model}`,
+          });
         } catch {}
       }
       throw err;
@@ -379,7 +396,11 @@ export class ChatService {
     this.logger.log(
       `[Chat 预扣 流式] model=${model} points=${pts} ${pricing.mapi ? '[MAPI]' : ''} ${pricing.breakdown}`,
     );
-    if (pts > 0) await this.userService.deductBalance(userId, pts);
+    if (pts > 0) await this.userService.deductBalance(userId, pts, {
+      type: CreditLogType.CONSUME_CHAT,
+      refType: CreditRefType.CHAT,
+      remark: `对话流式预扣：${model}`,
+    });
 
     const userLog = this.logRepository.create({
       groupId,
@@ -447,7 +468,11 @@ export class ChatService {
         // 流式失败退还预扣
         if (pts > 0) {
           try {
-            await self.userService.addBalance(userId, pts);
+            await self.userService.addBalance(userId, pts, {
+              type: CreditLogType.REFUND_TASK,
+              refType: CreditRefType.CHAT,
+              remark: `对话流式失败退款：${model}`,
+            });
           } catch {}
         }
         throw err;

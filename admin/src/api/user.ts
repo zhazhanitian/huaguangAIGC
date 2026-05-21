@@ -39,7 +39,6 @@ export interface UpdateUserData {
   username?: string
   role?: 'user' | 'admin' | 'super'
   status?: 'active' | 'banned'
-  balance?: number
   collegeId?: string | null
   gradeId?: string | null
   majorId?: string | null
@@ -53,7 +52,6 @@ export interface CreateUserData {
   username: string
   role?: 'user' | 'admin' | 'super'
   status?: 'active' | 'banned'
-  balance?: number
   collegeId?: string
   gradeId?: string
   majorId?: string

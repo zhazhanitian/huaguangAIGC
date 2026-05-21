@@ -21,6 +21,7 @@ import {
 } from './draw-routing.util';
 import { CreateDrawTaskDto } from './dto/create-draw-task.dto';
 import { UserService } from '../user/user.service';
+import { CreditLogType, CreditRefType } from '../credit-log/credit-log.entity';
 import { AiModel, ModelKey } from '../model/model.entity';
 import {
   findFirstAiModel,
@@ -258,7 +259,11 @@ export class DrawService {
     );
 
     // 校验并扣减余额
-    await this.userService.deductBalance(userId, deductPoints);
+    await this.userService.deductBalance(userId, deductPoints, {
+      type: CreditLogType.CONSUME_DRAW,
+      refType: CreditRefType.DRAW,
+      remark: `绘图预扣：${providerName}`,
+    });
 
     const taskSource = this.normalizeTaskSource(dto.source);
     const normalizedParams = { ...(dto.params || {}) } as Record<
@@ -329,18 +334,37 @@ export class DrawService {
       await this.drawQueue.add(
         'process',
         { taskId: saved.id },
-        { attempts: 3 },
+        { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
       );
     } else {
       this.logger.log(
         `[createTask] taskId=${saved.id} TASK_QUEUE_ENABLED=${taskQueueEnabled} envRaw=${process.env.TASK_QUEUE_ENABLED ?? ''} -> direct processDrawTask`,
       );
-      // 不走队列：直接异步触发处理（用于对比测试）
-      void this.processDrawTask(saved).catch((err) => {
+      // 不走队列：直接异步触发处理（用于对比测试）；无重试，失败直接终态
+      void this.processDrawTask(saved).catch(async (err) => {
         const msg = err instanceof Error ? err.message : String(err);
         this.logger.error(
           `TASK_QUEUE_ENABLED=false：绘画任务直接处理失败: ${saved.id}, ${msg}`,
         );
+        try {
+          const freshTask = await this.drawRepository.findOne({
+            where: { id: saved.id },
+          });
+          if (
+            freshTask &&
+            freshTask.status !== DrawTaskStatus.COMPLETED &&
+            freshTask.status !== DrawTaskStatus.FAILED
+          ) {
+            await this.finalizeDrawTaskFailed(
+              freshTask,
+              err instanceof Error ? err : new Error(String(err)),
+            );
+          }
+        } catch (finalizeErr) {
+          this.logger.error(
+            `[createTask/direct] finalizeDrawTaskFailed 失败: ${saved.id}, ${(finalizeErr as Error).message}`,
+          );
+        }
       });
     }
 
@@ -608,29 +632,45 @@ export class DrawService {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`绘画任务失败: ${task.id}, ${msg}`);
-      // 落库真实结束时间
+      this.logger.error(`绘画任务异常（待重试或终态处理）: ${task.id}, ${msg}`);
       task.params = {
         ...(task.params ?? {}),
         [this.PARAM_ENDED_AT_MS]: Date.now(),
       } as any;
-      task.status = DrawTaskStatus.FAILED;
       task.errorMessage = msg;
       task.progress = 0;
-      // 退款前先读取并清零 deductPoints，防止 Bull 重试时二次退款
-      const refundPoints = Number(task.deductPoints ?? 0);
-      task.deductPoints = 0;
+      // 仅记录错误，不标记 FAILED、不退款——由 Processor 在最后一次重试耗尽后调用 finalizeDrawTaskFailed
       await this.drawRepository.save(task);
-      this.emit(task.userId, 'task.failed', task);
-      // 失败时退还积分（仅当有扣分记录时执行一次）
-      if (refundPoints > 0) {
-        try {
-          await this.userService.addBalance(task.userId, refundPoints);
-        } catch (refundErr) {
-          this.logger.error(`退还积分失败: ${task.userId}`, refundErr);
-        }
-      }
       throw err;
+    }
+  }
+
+  /**
+   * 终态处理：标记任务为 FAILED，退还预扣积分，推送 WebSocket 通知。
+   * 由 DrawProcessor 在所有 Bull 重试耗尽后调用，也用于 TASK_QUEUE_ENABLED=false 的直接模式。
+   */
+  async finalizeDrawTaskFailed(task: DrawTask, err?: Error): Promise<void> {
+    const msg = err?.message ?? task.errorMessage ?? '任务失败';
+    task.status = DrawTaskStatus.FAILED;
+    task.errorMessage = msg;
+    task.progress = 0;
+    const refundPoints = Number(task.deductPoints ?? 0);
+    task.deductPoints = 0;
+    await this.drawRepository.save(task);
+    this.emit(task.userId, 'task.failed', task);
+    if (refundPoints > 0) {
+      try {
+        await this.userService.addBalance(task.userId, refundPoints, {
+          type: CreditLogType.REFUND_TASK,
+          refId: task.id,
+          refType: CreditRefType.DRAW,
+          remark: `绘图任务失败退款`,
+        });
+      } catch (refundErr) {
+        this.logger.error(
+          `[finalizeDrawTaskFailed] 退还积分失败 userId=${task.userId}: ${(refundErr as Error).message}`,
+        );
+      }
     }
   }
 
@@ -817,7 +857,7 @@ export class DrawService {
 
     // Nano Banana 走文档专用路径：/Mapi/Grsai/v3/images/generations
     if (isNanoBanana) {
-      const { url, result } = await createMapiGrsaiNanoBananaTask(req, task.id);
+      const { url, result } = await createMapiGrsaiNanoBananaTask(req, `${task.id}_${randomUUID().slice(0, 8)}`);
       task.progress = 90;
       await this.drawRepository.save(task);
       this.emit(task.userId, 'task.updated', task);
@@ -831,7 +871,7 @@ export class DrawService {
       return url;
     }
 
-    const { ourOrderNo } = await createMapiImageTask(req, task.id);
+    const { ourOrderNo } = await createMapiImageTask(req, `${task.id}_${randomUUID().slice(0, 8)}`);
     // 进度推进到 30%
     task.progress = 30;
     await this.drawRepository.save(task);
@@ -873,12 +913,22 @@ export class DrawService {
       const charged = Number(task.deductPoints || 0);
       const diff = actual.points - charged;
       if (diff > 0) {
-        await this.userService.deductBalance(task.userId, diff);
+        await this.userService.deductBalance(task.userId, diff, {
+          type: CreditLogType.CONSUME_DRAW,
+          refId: task.id,
+          refType: CreditRefType.DRAW,
+          remark: `绘图 MAPI 结算补扣（实际 ${actual.points}，已扣 ${charged}）`,
+        });
         this.logger.log(
           `[MAPI 结算] taskId=${task.id} 补扣 ${diff} 积分（实际 ${actual.points}，已扣 ${charged}）— ${actual.breakdown}`,
         );
       } else if (diff < 0) {
-        await this.userService.addBalance(task.userId, -diff);
+        await this.userService.addBalance(task.userId, -diff, {
+          type: CreditLogType.REFUND_TASK,
+          refId: task.id,
+          refType: CreditRefType.DRAW,
+          remark: `绘图 MAPI 结算退还（实际 ${actual.points}，已扣 ${charged}）`,
+        });
         this.logger.log(
           `[MAPI 结算] taskId=${task.id} 退还 ${-diff} 积分（实际 ${actual.points}，已扣 ${charged}）— ${actual.breakdown}`,
         );
@@ -2173,7 +2223,12 @@ export class DrawService {
       const points = Number(task.deductPoints ?? 0);
       if (points > 0) {
         try {
-          await this.userService.addBalance(userId, points);
+          await this.userService.addBalance(userId, points, {
+            type: CreditLogType.REFUND_TASK,
+            refId: taskId,
+            refType: CreditRefType.DRAW,
+            remark: `绘图任务取消退款`,
+          });
           this.logger.log(
             `[deleteTask/cancel] 取消排队任务，退还 ${points} 积分 userId=${userId} taskId=${taskId}`,
           );
@@ -2352,7 +2407,12 @@ export class DrawService {
     if (points > 0) {
       await this.drawRepository.update(taskId, { deductPoints: 0 } as any);
       try {
-        await this.userService.addBalance(task.userId, points);
+        await this.userService.addBalance(task.userId, points, {
+          type: CreditLogType.REFUND_TASK,
+          refId: taskId,
+          refType: CreditRefType.DRAW,
+          remark: `管理员强制失败退款：${errorMsg}`,
+        });
         this.logger.log(
           `[adminForceFailTask] 已退还 ${points} 积分 userId=${task.userId}`,
         );

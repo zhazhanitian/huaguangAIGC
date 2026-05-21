@@ -20,6 +20,7 @@ import {
 } from './model3d.entity';
 import { CreateModel3dTaskDto } from './dto/create-model3d-task.dto';
 import { UserService } from '../user/user.service';
+import { CreditLogType, CreditRefType } from '../credit-log/credit-log.entity';
 import { AiModel, ModelKey } from '../model/model.entity';
 import { findFirstAiModel } from '../model/model-query.util';
 import { RealtimeService } from '../realtime/realtime.service';
@@ -45,7 +46,9 @@ const POINTS_PER_MODEL3D_FALLBACK =
 // 注意：必须动态读取 env，不能缓存为 top-level 常量，否则启动时序变化会导致“envRaw=false 但开关仍 true”的矛盾。
 function isTaskQueueEnabledFromEnv(): boolean {
   const raw = process.env.TASK_QUEUE_ENABLED;
-  const normalized = String(raw ?? 'true').trim().toLowerCase();
+  const normalized = String(raw ?? 'true')
+    .trim()
+    .toLowerCase();
   return normalized !== 'false';
 }
 const AI3D_VERSION = '2025-05-13';
@@ -244,7 +247,11 @@ export class Model3dService {
     const deductPoints = await this.resolvePoints(
       dto.provider || 'tencent-hunyuan-3d-pro',
     );
-    await this.userService.deductBalance(userId, deductPoints);
+    await this.userService.deductBalance(userId, deductPoints, {
+      type: CreditLogType.CONSUME_MODEL3D,
+      refType: CreditRefType.MODEL3D,
+      remark: `3D 生成预扣：${dto.provider ?? 'tencent-hunyuan-3d-pro'}`,
+    });
 
     const task = this.model3dRepository.create({
       userId,
@@ -263,15 +270,34 @@ export class Model3dService {
       await this.model3dQueue.add(
         'process',
         { taskId: saved.id },
-        { attempts: 3 },
+        { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
       );
     } else {
-      // 不走队列：直接异步触发处理（用于对比测试）
-      void this.processModel3dTask(saved).catch((err) => {
+      // 不走队列：直接异步触发处理；无重试，失败直接终态
+      void this.processModel3dTask(saved).catch(async (err) => {
         const msg = err instanceof Error ? err.message : String(err);
         this.logger.error(
           `TASK_QUEUE_ENABLED=false：3D任务直接处理失败: ${saved.id}, ${msg}`,
         );
+        try {
+          const freshTask = await this.model3dRepository.findOne({
+            where: { id: saved.id },
+          });
+          if (
+            freshTask &&
+            freshTask.status !== Model3dTaskStatus.COMPLETED &&
+            freshTask.status !== Model3dTaskStatus.FAILED
+          ) {
+            await this.finalizeModel3dTaskFailed(
+              freshTask,
+              err instanceof Error ? err : new Error(String(err)),
+            );
+          }
+        } catch (finalizeErr) {
+          this.logger.error(
+            `[createTask/direct] finalizeModel3dTaskFailed 失败: ${saved.id}, ${(finalizeErr as Error).message}`,
+          );
+        }
       });
     }
     return saved;
@@ -510,7 +536,9 @@ export class Model3dService {
         this.emit(task.userId, 'task.updated', task);
 
         await this.pollTripoTask(task, submitResult.taskId, submitResult.auth);
-        this.logger.log(`3D 任务完成: ${task.id}, tripoTaskId=${submitResult.taskId}`);
+        this.logger.log(
+          `3D 任务完成: ${task.id}, tripoTaskId=${submitResult.taskId}`,
+        );
       } else {
         const submitResult = await this.submitTencentAi3dTask(task);
         const mergedParams = {
@@ -535,27 +563,48 @@ export class Model3dService {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`3D 任务失败: ${task.id}, ${msg}`);
-      // 落库真实结束时间戳
+      this.logger.error(`3D 任务异常（待重试或终态处理）: ${task.id}, ${msg}`);
       task.params = {
         ...(task.params ?? {}),
         [this.PARAM_ENDED_AT_MS]: Date.now(),
       } as any;
-      task.status = Model3dTaskStatus.FAILED;
       task.errorMessage = msg;
       task.progress = 0;
-      const refundPoints = Number(task.deductPoints ?? 0);
-      task.deductPoints = 0;
+      // 仅记录错误，不标记 FAILED、不退款——由 Processor 在最后一次重试耗尽后调用 finalizeModel3dTaskFailed
       await this.model3dRepository.save(task);
-      this.emit(task.userId, 'task.failed', task);
-      if (refundPoints > 0) {
-        try {
-          await this.userService.addBalance(task.userId, refundPoints);
-        } catch (refundErr) {
-          this.logger.error(`退还积分失败: ${task.userId}`, refundErr);
-        }
-      }
       throw err;
+    }
+  }
+
+  /**
+   * 终态处理：标记任务为 FAILED，退还预扣积分，推送 WebSocket 通知。
+   * 由 Model3dProcessor 在所有 Bull 重试耗尽后调用，也用于 TASK_QUEUE_ENABLED=false 的直接模式。
+   */
+  async finalizeModel3dTaskFailed(
+    task: Model3dTask,
+    err?: Error,
+  ): Promise<void> {
+    const msg = err?.message ?? task.errorMessage ?? '任务失败';
+    task.status = Model3dTaskStatus.FAILED;
+    task.errorMessage = msg;
+    task.progress = 0;
+    const refundPoints = Number(task.deductPoints ?? 0);
+    task.deductPoints = 0;
+    await this.model3dRepository.save(task);
+    this.emit(task.userId, 'task.failed', task);
+    if (refundPoints > 0) {
+      try {
+        await this.userService.addBalance(task.userId, refundPoints, {
+          type: CreditLogType.REFUND_TASK,
+          refId: task.id,
+          refType: CreditRefType.MODEL3D,
+          remark: `3D 任务失败退款`,
+        });
+      } catch (refundErr) {
+        this.logger.error(
+          `[finalizeModel3dTaskFailed] 退还积分失败 userId=${task.userId}: ${(refundErr as Error).message}`,
+        );
+      }
     }
   }
 
@@ -635,13 +684,22 @@ export class Model3dService {
   private getTripoNetworkErrorMessage(err: unknown, baseUrl: string): string {
     const error = err as {
       message?: string;
-      cause?: { code?: string; address?: string; port?: number; errors?: unknown[] };
+      cause?: {
+        code?: string;
+        address?: string;
+        port?: number;
+        errors?: unknown[];
+      };
     };
     const cause = error?.cause;
     const nested = Array.isArray(cause?.errors)
       ? cause.errors
           .map((item) => {
-            const e = item as { code?: string; address?: string; port?: number };
+            const e = item as {
+              code?: string;
+              address?: string;
+              port?: number;
+            };
             return [e.code, e.address, e.port].filter(Boolean).join(' ');
           })
           .filter(Boolean)
@@ -664,7 +722,10 @@ export class Model3dService {
     baseUrl: string;
     auth: { apiKey: string; baseUrl: string };
   }> {
-    const auth = await this.resolveModelAuth(task.provider, TRIPO_API_URL_FALLBACK);
+    const auth = await this.resolveModelAuth(
+      task.provider,
+      TRIPO_API_URL_FALLBACK,
+    );
     if (!auth?.apiKey) {
       throw new Error(
         `模型 ${task.provider} 未配置可用的 Tripo API Key（请在管理端-模型管理中为该模型配置 Key）`,
@@ -769,7 +830,9 @@ export class Model3dService {
       }
 
       const detail = (json?.data || json || {}) as Record<string, unknown>;
-      const tripoStatus = String(detail.status || '').trim().toLowerCase();
+      const tripoStatus = String(detail.status || '')
+        .trim()
+        .toLowerCase();
       const mapped = mapTripoStatusToLocal(tripoStatus);
       const output =
         detail.output && typeof detail.output === 'object'
@@ -784,7 +847,9 @@ export class Model3dService {
             ? detail.running_left_time
             : undefined,
         queuing_num:
-          typeof detail.queuing_num === 'number' ? detail.queuing_num : undefined,
+          typeof detail.queuing_num === 'number'
+            ? detail.queuing_num
+            : undefined,
         error_code: detail.error_code,
         error_msg: detail.error_msg,
       };
@@ -880,8 +945,21 @@ export class Model3dService {
   }
 
   private guessFileExtension(url?: string | null): string | undefined {
-    const clean = String(url || '').split('?')[0].toLowerCase();
-    const candidates = ['.glb', '.gltf', '.obj', '.fbx', '.stl', '.usdz', '.png', '.jpg', '.jpeg', '.webp'];
+    const clean = String(url || '')
+      .split('?')[0]
+      .toLowerCase();
+    const candidates = [
+      '.glb',
+      '.gltf',
+      '.obj',
+      '.fbx',
+      '.stl',
+      '.usdz',
+      '.png',
+      '.jpg',
+      '.jpeg',
+      '.webp',
+    ];
     return candidates.find((ext) => clean.endsWith(ext));
   }
 

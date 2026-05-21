@@ -5,6 +5,7 @@ import { SigninLog } from './signin.entity';
 import { UserService } from '../user/user.service';
 import { GlobalConfigService } from '../global-config/global-config.service';
 import * as dayjs from 'dayjs';
+import { CreditLogType, CreditRefType } from '../credit-log/credit-log.entity';
 
 /** 签到配置 key */
 const CONFIG_SIGNIN_POINTS = 'signin_points';
@@ -105,7 +106,11 @@ export class SigninService {
     });
     await this.signinRepository.save(log);
 
-    await this.userService.addBalance(userId, points);
+    await this.userService.addBalance(userId, points, {
+      type: CreditLogType.RECHARGE_SIGNIN,
+      refType: CreditRefType.SIGNIN,
+      remark: `签到奖励，连续${streak}天`,
+    });
 
     return {
       points,

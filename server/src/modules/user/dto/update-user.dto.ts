@@ -1,13 +1,4 @@
-import {
-  IsOptional,
-  IsString,
-  IsEnum,
-  IsNumber,
-  Min,
-  Max,
-  IsEmail,
-  IsUUID,
-} from 'class-validator';
+import { IsOptional, IsString, IsEnum, IsEmail, IsUUID } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole, UserStatus } from '../user.entity';
 
@@ -44,13 +35,6 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   sign?: string;
-
-  @ApiPropertyOptional({ description: '余额（管理员可直接修改）', example: 0 })
-  @IsOptional()
-  @IsNumber({}, { message: '余额必须为数字' })
-  @Min(0, { message: '余额不能小于 0' })
-  @Max(99999999, { message: '余额过大' })
-  balance?: number;
 
   @ApiPropertyOptional({ description: '学院 ID，可为空' })
   @IsOptional()

@@ -64,6 +64,18 @@ const router = createRouter({
           component: () => import('../views/TaskLogs.vue'),
           meta: { requiresSuper: true },
         },
+        {
+          path: 'credit-logs',
+          name: 'CreditLogs',
+          component: () => import('../views/CreditLogs.vue'),
+          meta: { requiresSuper: true },
+        },
+        {
+          path: 'credit-correction',
+          name: 'CreditCorrection',
+          component: () => import('../views/CreditCorrection.vue'),
+          meta: { requiresSuper: true },
+        },
       ],
     },
   ],

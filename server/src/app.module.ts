@@ -44,6 +44,7 @@ import { OpsModule } from './modules/ops/ops.module';
 import { AcademicModule } from './modules/academic/academic.module';
 import { TaskLogModule } from './modules/task-log/task-log.module';
 import { StaleTaskCleanerModule } from './modules/stale-task-cleaner/stale-task-cleaner.module';
+import { CreditLogModule } from './modules/credit-log/credit-log.module';
 
 const enableDbSchemaLog =
   String(process.env.DB_SCHEMA_LOG || '').toLowerCase() === 'true';
@@ -129,6 +130,7 @@ const enableDbSchemaLog =
     AcademicModule,
     TaskLogModule,
     StaleTaskCleanerModule,
+    CreditLogModule,
   ],
   providers: [
     {

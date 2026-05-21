@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order, Package, OrderStatus, PayType } from './payment.entity';
 import { UserService } from '../user/user.service';
+import { CreditLogType, CreditRefType } from '../credit-log/credit-log.entity';
 
 /**
  * 支付服务
@@ -120,7 +121,12 @@ export class PaymentService {
 
     // 发放积分
     if (pkg.points > 0) {
-      await this.userService.addBalance(order.userId, pkg.points);
+      await this.userService.addBalance(order.userId, pkg.points, {
+        type: CreditLogType.RECHARGE_PAYMENT,
+        refId: order.id,
+        refType: CreditRefType.ORDER,
+        remark: `套餐购买：${pkg.name ?? order.orderNo}`,
+      });
     }
 
     // 延长会员

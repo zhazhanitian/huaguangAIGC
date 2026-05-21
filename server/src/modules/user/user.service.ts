@@ -3,15 +3,30 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, Repository, DataSource } from 'typeorm';
 import { User, UserRole, UserStatus } from './user.entity';
 import { UserListDto } from './dto/user-list.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { College, Grade, Major, Clazz } from '../academic/academic.entity';
+import {
+  CreditLog,
+  CreditLogType,
+  CreditRefType,
+} from '../credit-log/credit-log.entity';
+
+/** 调用 addBalance / deductBalance 时传入的上下文，用于写积分流水 */
+export interface BalanceContext {
+  type: CreditLogType;
+  refId?: string;
+  refType?: CreditRefType;
+  remark?: string;
+  operatorId?: string;
+}
 
 /** 仅超级管理员可操作的角色 */
 const SUPER_ROLE = UserRole.SUPER;
@@ -27,6 +42,7 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
@@ -66,7 +82,7 @@ export class UserService {
       username: dto.username,
       role: dto.role ?? UserRole.USER,
       status: dto.status ?? UserStatus.ACTIVE,
-      balance: dto.balance ?? 0,
+      balance: 0,
       inviteCode,
       invitedBy: null,
       collegeId: dto.collegeId ?? null,
@@ -324,35 +340,102 @@ export class UserService {
       }
       user.email = newEmail;
     }
-    // balance comes from admin panel; keep it numeric for decimal column.
-    if ((updates as any).balance !== undefined) {
-      user.balance = Number((updates as any).balance);
-    }
-    const { ...rest } = updates as any;
+    // balance 不允许通过此接口直接修改，必须走积分流水
+    const { balance: _ignored, ...rest } = updates as any;
     Object.assign(user, rest);
     return this.userRepository.save(user);
   }
 
   /**
-   * 增加用户余额
+   * 增加用户余额（原子事务，可选写入积分流水）
    */
-  async addBalance(userId: string, amount: number): Promise<User> {
-    const user = await this.findById(userId);
-    user.balance = Number(user.balance) + amount;
-    return this.userRepository.save(user);
+  async addBalance(
+    userId: string,
+    amount: number,
+    ctx?: BalanceContext,
+  ): Promise<User> {
+    return this.dataSource.transaction(async (manager) => {
+      // 行锁确保并发安全
+      const user = await manager
+        .getRepository(User)
+        .createQueryBuilder('u')
+        .setLock('pessimistic_write')
+        .where('u.id = :id', { id: userId })
+        .getOne();
+      if (!user) throw new NotFoundException('用户不存在');
+
+      const before = Number(user.balance);
+      const after = before + amount;
+
+      await manager.getRepository(User).update(userId, {
+        balance: after,
+      });
+
+      if (ctx) {
+        const log = manager.getRepository(CreditLog).create({
+          userId,
+          type: ctx.type,
+          amount,
+          balanceBefore: before,
+          balanceAfter: after,
+          refId: ctx.refId ?? null,
+          refType: ctx.refType ?? null,
+          remark: ctx.remark ?? null,
+          operatorId: ctx.operatorId ?? null,
+        });
+        await manager.getRepository(CreditLog).save(log);
+      }
+
+      user.balance = after;
+      return user;
+    });
   }
 
   /**
-   * 扣减用户余额
+   * 扣减用户余额（原子事务，可选写入积分流水）
    */
-  async deductBalance(userId: string, amount: number): Promise<User> {
-    const user = await this.findById(userId);
-    const current = Number(user.balance);
-    if (current < amount) {
-      throw new NotFoundException('余额不足');
-    }
-    user.balance = current - amount;
-    return this.userRepository.save(user);
+  async deductBalance(
+    userId: string,
+    amount: number,
+    ctx?: BalanceContext,
+  ): Promise<User> {
+    return this.dataSource.transaction(async (manager) => {
+      const user = await manager
+        .getRepository(User)
+        .createQueryBuilder('u')
+        .setLock('pessimistic_write')
+        .where('u.id = :id', { id: userId })
+        .getOne();
+      if (!user) throw new NotFoundException('用户不存在');
+
+      const before = Number(user.balance);
+      if (before < amount) {
+        throw new BadRequestException('余额不足');
+      }
+      const after = before - amount;
+
+      await manager.getRepository(User).update(userId, {
+        balance: after,
+      });
+
+      if (ctx) {
+        const log = manager.getRepository(CreditLog).create({
+          userId,
+          type: ctx.type,
+          amount: -amount,
+          balanceBefore: before,
+          balanceAfter: after,
+          refId: ctx.refId ?? null,
+          refType: ctx.refType ?? null,
+          remark: ctx.remark ?? null,
+          operatorId: ctx.operatorId ?? null,
+        });
+        await manager.getRepository(CreditLog).save(log);
+      }
+
+      user.balance = after;
+      return user;
+    });
   }
 
   /**
@@ -378,6 +461,15 @@ export class UserService {
    */
   async findByInviteCode(inviteCode: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { inviteCode } });
+  }
+
+  /**
+   * 根据手机号查找用户（找不到时抛出异常）
+   */
+  async findByPhone(phone: string): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { phone } });
+    if (!user) throw new NotFoundException('用户不存在');
+    return user;
   }
 
   /**
