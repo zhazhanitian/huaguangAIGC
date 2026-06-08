@@ -114,6 +114,20 @@ export interface ChatTaskLog extends UserInfo {
   createdAt: string
 }
 
+export interface TaskLogStats {
+  totalTasks: number
+  totalPoints: number
+  draw: { tasks: number; points: number }
+  canvas: { tasks: number; points: number }
+  video: { tasks: number; points: number }
+  music: { tasks: number; points: number }
+  model3d: { tasks: number; points: number }
+  chat: { tasks: number }
+}
+
+export const getTaskLogStats = () =>
+  api.get<TaskLogStats>('/admin/task-logs/stats')
+
 export const getDrawTaskLogs = (params: TaskLogQuery) =>
   api.get<PageResult<DrawTaskLog>>('/admin/task-logs/draw', { params })
 
@@ -131,3 +145,28 @@ export const getModel3dTaskLogs = (params: TaskLogQuery) =>
 
 export const getChatTaskLogs = (params: TaskLogQuery) =>
   api.get<PageResult<ChatTaskLog>>('/admin/task-logs/chat', { params })
+
+// ─── 导出 Excel ─────────────────────────────────────────────────────────────
+
+type ExportTab = 'draw' | 'canvas' | 'video' | 'music' | 'model3d' | 'chat'
+
+export async function exportTaskLogs(tab: ExportTab, params: Omit<TaskLogQuery, 'page' | 'pageSize'>) {
+  const blob = await api.get<Blob>(`/admin/task-logs/export/${tab}`, {
+    params,
+    responseType: 'blob',
+  })
+  const tabNameMap: Record<ExportTab, string> = {
+    draw: '生图记录',
+    canvas: '画布记录',
+    video: '生视频记录',
+    music: '生音乐记录',
+    model3d: '生3D记录',
+    chat: '对话记录',
+  }
+  const url = URL.createObjectURL(blob as unknown as Blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${tabNameMap[tab]}_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`
+  a.click()
+  URL.revokeObjectURL(url)
+}

@@ -9,6 +9,7 @@ import {
   IconApps,
   IconMessage,
   IconEdit,
+  IconDownload,
 } from '@arco-design/web-vue/es/icon'
 import {
   getDrawTaskLogs,
@@ -17,12 +18,15 @@ import {
   getMusicTaskLogs,
   getModel3dTaskLogs,
   getChatTaskLogs,
+  getTaskLogStats,
+  exportTaskLogs,
   type DrawTaskLog,
   type VideoTaskLog,
   type MusicTaskLog,
   type Model3dTaskLog,
   type ChatTaskLog,
   type TaskLogQuery,
+  type TaskLogStats,
 } from '../api/taskLogs'
 
 // ===== Tab 配置 =====
@@ -96,6 +100,19 @@ const taskTypeOptions = computed(() => {
 
 const showTaskType = computed(() => ['draw', 'canvas', 'video', 'model3d'].includes(activeTab.value))
 const showProvider = computed(() => activeTab.value !== 'chat')
+
+// ===== 统计面板 =====
+const statsLoading = ref(false)
+const stats = ref<TaskLogStats | null>(null)
+
+async function fetchStats() {
+  statsLoading.value = true
+  try {
+    stats.value = await getTaskLogStats()
+  } finally {
+    statsLoading.value = false
+  }
+}
 
 // ===== 数据 =====
 const loading = ref(false)
@@ -245,6 +262,25 @@ function formatDuration(sec: number | null) {
   return m > 0 ? `${m}m${s}s` : `${s}s`
 }
 
+// ===== 导出 =====
+const exporting = ref(false)
+
+async function handleExport() {
+  exporting.value = true
+  try {
+    await exportTaskLogs(activeTab.value as any, {
+      userKeyword: filter.userKeyword || undefined,
+      status: filter.status || undefined,
+      taskType: filter.taskType || undefined,
+      provider: filter.provider || undefined,
+      startDate: filter.startDate || undefined,
+      endDate: filter.endDate || undefined,
+    })
+  } finally {
+    exporting.value = false
+  }
+}
+
 // ===== 预览弹窗 =====
 const previewVisible = ref(false)
 const previewItem = ref<any>(null)
@@ -258,6 +294,7 @@ function openPreview(item: any) {
 
 // 初始加载
 fetchData()
+fetchStats()
 </script>
 
 <template>
@@ -269,6 +306,67 @@ fetchData()
         <span class="page-subtitle">查看所有用户的 AI 生成任务记录（仅超级管理员可见）</span>
       </div>
       <a-tag color="orangered" class="super-badge">超级管理员专属</a-tag>
+    </div>
+
+    <!-- 统计面板 -->
+    <div class="stats-panel card">
+      <div v-if="statsLoading" class="stats-skeleton">
+        <div v-for="i in 7" :key="i" class="stats-skeleton-item">
+          <div class="skeleton-line short"></div>
+          <div class="skeleton-line long"></div>
+        </div>
+      </div>
+      <div v-else-if="stats" class="stats-grid">
+        <!-- 总计 -->
+        <div class="stat-card stat-card--total">
+          <div class="stat-icon stat-icon--total">∑</div>
+          <div class="stat-label">总消耗积分</div>
+          <div class="stat-value stat-value--highlight">{{ stats.totalPoints.toLocaleString() }}</div>
+          <div class="stat-sub">共 {{ stats.totalTasks.toLocaleString() }} 条任务</div>
+        </div>
+        <!-- 生图 -->
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--draw"><IconImage /></div>
+          <div class="stat-label">生图积分</div>
+          <div class="stat-value">{{ stats.draw.points.toLocaleString() }}</div>
+          <div class="stat-sub">{{ stats.draw.tasks.toLocaleString() }} 次</div>
+        </div>
+        <!-- 画布 -->
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--canvas"><IconEdit /></div>
+          <div class="stat-label">画布积分</div>
+          <div class="stat-value">{{ stats.canvas.points.toLocaleString() }}</div>
+          <div class="stat-sub">{{ stats.canvas.tasks.toLocaleString() }} 次</div>
+        </div>
+        <!-- 生视频 -->
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--video"><IconVideoCamera /></div>
+          <div class="stat-label">视频积分</div>
+          <div class="stat-value">{{ stats.video.points.toLocaleString() }}</div>
+          <div class="stat-sub">{{ stats.video.tasks.toLocaleString() }} 次</div>
+        </div>
+        <!-- 生音乐 -->
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--music"><IconMusic /></div>
+          <div class="stat-label">音乐积分</div>
+          <div class="stat-value">{{ stats.music.points.toLocaleString() }}</div>
+          <div class="stat-sub">{{ stats.music.tasks.toLocaleString() }} 次</div>
+        </div>
+        <!-- 生3D -->
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--model3d"><IconApps /></div>
+          <div class="stat-label">3D 积分</div>
+          <div class="stat-value">{{ stats.model3d.points.toLocaleString() }}</div>
+          <div class="stat-sub">{{ stats.model3d.tasks.toLocaleString() }} 次</div>
+        </div>
+        <!-- 对话 -->
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--chat"><IconMessage /></div>
+          <div class="stat-label">对话次数</div>
+          <div class="stat-value">{{ stats.chat.tasks.toLocaleString() }}</div>
+          <div class="stat-sub">不扣积分</div>
+        </div>
+      </div>
     </div>
 
     <!-- Tab 切换 -->
@@ -323,6 +421,16 @@ fetchData()
     <div class="table-wrap card">
       <div class="table-header">
         <span class="table-total">共 <strong>{{ total }}</strong> 条记录</span>
+        <a-button
+          type="outline"
+          size="small"
+          :loading="exporting"
+          class="export-btn"
+          @click="handleExport"
+        >
+          <template #icon><IconDownload /></template>
+          导出 Excel
+        </a-button>
       </div>
 
       <!-- 生图 / 画布 -->
@@ -901,6 +1009,173 @@ fetchData()
   padding: 20px;
 }
 
+/* ===== 统计面板 ===== */
+.stats-panel {
+  padding: 14px 16px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 1300px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 800px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 14px 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  transition: background 0.15s;
+  min-width: 0;
+}
+
+.stat-card:hover {
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.stat-card--total {
+  background: rgba(22, 93, 255, 0.08);
+  border-color: rgba(22, 93, 255, 0.2);
+}
+
+.stat-card--total:hover {
+  background: rgba(22, 93, 255, 0.12);
+}
+
+.stat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+
+.stat-icon--total {
+  background: rgba(22, 93, 255, 0.18);
+  color: #7EB8FF;
+  font-size: 17px;
+  font-weight: 800;
+  font-style: italic;
+}
+
+.stat-icon--draw {
+  background: rgba(0, 180, 42, 0.14);
+  color: #52c41a;
+}
+
+.stat-icon--canvas {
+  background: rgba(114, 46, 209, 0.14);
+  color: #b37feb;
+}
+
+.stat-icon--video {
+  background: rgba(255, 77, 79, 0.14);
+  color: #ff7875;
+}
+
+.stat-icon--music {
+  background: rgba(255, 169, 64, 0.14);
+  color: #ffa940;
+}
+
+.stat-icon--model3d {
+  background: rgba(19, 194, 194, 0.14);
+  color: #36cfc9;
+}
+
+.stat-icon--chat {
+  background: rgba(22, 93, 255, 0.14);
+  color: #7EB8FF;
+}
+
+.stat-label {
+  font-size: 10px;
+  color: var(--text-4);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-1);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.stat-value--highlight {
+  color: #7EB8FF;
+}
+
+.stat-sub {
+  font-size: 10px;
+  color: var(--text-4);
+  white-space: nowrap;
+}
+
+/* 骨架屏 */
+.stats-skeleton {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+}
+
+.stats-skeleton-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+}
+
+.skeleton-line {
+  height: 10px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+.skeleton-line.short {
+  width: 55%;
+}
+
+.skeleton-line.long {
+  width: 75%;
+  height: 18px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* ===== 筛选栏 ===== */
 .filter-bar {
   padding: 16px 20px;
@@ -946,8 +1221,17 @@ fetchData()
 }
 
 .table-header {
-  padding: 16px 20px 12px;
+  padding: 12px 16px 12px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.export-btn {
+  flex-shrink: 0;
+  font-size: 13px;
 }
 
 .table-total {
