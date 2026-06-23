@@ -74,6 +74,20 @@ export function getUserCreditInfo(phone: string) {
   return request.get<UserInfoResult>('/admin/credit-logs/user-info', { params: { phone } })
 }
 
+/** 导出积分流水 Excel */
+export async function exportCreditLogs(params?: Omit<CreditLogListParams, 'page' | 'pageSize'>) {
+  const blob = await request.get<Blob>('/admin/credit-logs/export', {
+    params,
+    responseType: 'blob',
+  })
+  const url = URL.createObjectURL(blob as unknown as Blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `积分流水_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.xlsx`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 /** 积分类型中文映射 */
 export const CREDIT_TYPE_LABELS: Record<string, string> = {
   recharge_payment: '套餐购买',

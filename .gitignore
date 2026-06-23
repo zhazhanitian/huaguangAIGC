@@ -1,0 +1,4 @@
+# 数据库备份/导出文件（含敏感配置数据，禁止提交）
+database/*.sql
+database/*.sql.gz
+*.sql.bak

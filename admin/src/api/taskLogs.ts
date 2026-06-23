@@ -122,7 +122,7 @@ export interface TaskLogStats {
   video: { tasks: number; points: number }
   music: { tasks: number; points: number }
   model3d: { tasks: number; points: number }
-  chat: { tasks: number }
+  chat: { tasks: number; points: number }
 }
 
 export const getTaskLogStats = () =>

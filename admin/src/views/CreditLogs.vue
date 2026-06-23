@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted } from 'vue'
-import { IconSearch, IconRefresh } from '@arco-design/web-vue/es/icon'
+import { IconSearch, IconRefresh, IconDownload } from '@arco-design/web-vue/es/icon'
 import {
   getCreditLogs,
+  exportCreditLogs,
   CREDIT_TYPE_LABELS,
   CREDIT_TYPE_COLORS,
   type CreditLog,
@@ -121,6 +122,23 @@ function formatDate(dateStr: string) {
   }).replace(/\//g, '-')
 }
 
+// ===== 导出 =====
+const exporting = ref(false)
+
+async function handleExport() {
+  exporting.value = true
+  try {
+    await exportCreditLogs({
+      phone: filter.phone || undefined,
+      type: filter.type || undefined,
+      startDate: filter.startDate || undefined,
+      endDate: filter.endDate || undefined,
+    })
+  } finally {
+    exporting.value = false
+  }
+}
+
 onMounted(fetchList)
 </script>
 
@@ -171,6 +189,20 @@ onMounted(fetchList)
 
     <!-- 数据表格 -->
     <div class="table-card glass-card">
+      <div class="table-header">
+        <span class="table-total">共 <strong>{{ total }}</strong> 条记录</span>
+        <a-button
+          type="outline"
+          size="small"
+          :loading="exporting"
+          class="export-btn"
+          @click="handleExport"
+        >
+          <template #icon><IconDownload /></template>
+          导出 Excel
+        </a-button>
+      </div>
+
       <a-table
         :columns="columns"
         :data="tableData"
@@ -255,6 +287,29 @@ onMounted(fetchList)
 .table-card {
   padding: var(--sp-6);
   overflow: hidden;
+}
+
+.table-header {
+  padding: 0 0 var(--sp-4) 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.table-total {
+  font-size: 13px;
+  color: var(--text-3);
+}
+
+.table-total strong {
+  color: var(--text-1);
+  font-weight: 700;
+}
+
+.export-btn {
+  flex-shrink: 0;
+  font-size: 13px;
 }
 
 .credit-table :deep(.arco-table-tr:hover .arco-table-td) {

@@ -362,9 +362,9 @@ fetchStats()
         <!-- 对话 -->
         <div class="stat-card">
           <div class="stat-icon stat-icon--chat"><IconMessage /></div>
-          <div class="stat-label">对话次数</div>
-          <div class="stat-value">{{ stats.chat.tasks.toLocaleString() }}</div>
-          <div class="stat-sub">不扣积分</div>
+          <div class="stat-label">对话积分</div>
+          <div class="stat-value">{{ stats.chat.points.toLocaleString() }}</div>
+          <div class="stat-sub">{{ stats.chat.tasks.toLocaleString() }} 次</div>
         </div>
       </div>
     </div>
@@ -683,13 +683,6 @@ fetchStats()
                     }}</span></a-tooltip>
               </template>
             </a-table-column>
-            <a-table-column title="Tokens" :width="80" align="right">
-              <template #cell="{ record }"><span class="points">{{ record.tokens }}</span></template>
-            </a-table-column>
-            <a-table-column title="输入/输出" :width="108" align="center">
-              <template #cell="{ record }"><span class="token-detail nowrap">{{ record.promptTokens }}/{{
-                record.completionTokens }}</span></template>
-            </a-table-column>
             <a-table-column title="状态" :width="92">
               <template #cell="{ record }"><span class="status-cell" :class="`status-${record.status}`">{{
                 getStatusLabel(record.status) }}</span></template>
@@ -769,18 +762,6 @@ fetchStats()
           <!-- 对话（无媒体，左侧显示统计） -->
           <template v-else-if="previewTab === 'chat'">
             <div class="detail-chat-stats">
-              <div class="chat-stat-item">
-                <span class="chat-stat-label">总 Tokens</span>
-                <span class="chat-stat-value">{{ previewItem.tokens }}</span>
-              </div>
-              <div class="chat-stat-item">
-                <span class="chat-stat-label">输入</span>
-                <span class="chat-stat-value">{{ previewItem.promptTokens }}</span>
-              </div>
-              <div class="chat-stat-item">
-                <span class="chat-stat-label">输出</span>
-                <span class="chat-stat-value">{{ previewItem.completionTokens }}</span>
-              </div>
               <div class="chat-stat-item">
                 <span class="chat-stat-label">状态</span>
                 <span class="status-cell" :class="`status-${previewItem.status}`">{{ getStatusLabel(previewItem.status)

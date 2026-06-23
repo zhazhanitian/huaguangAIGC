@@ -4,11 +4,13 @@ import {
   Post,
   Body,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
+import { Response } from 'express';
 import { CreditLogService, FindCreditLogsDto } from './credit-log.service';
 import { CreditLogType } from './credit-log.entity';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -189,5 +191,15 @@ export class CreditLogController {
         createdAt: log.createdAt,
       })),
     };
+  }
+
+  @Get('export')
+  @ApiOperation({ summary: '导出积分流水 Excel' })
+  async exportLogs(@Query() query: QueryLogsDto, @Res() res: Response) {
+    const buf = await this.creditLogService.exportLogs(query);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent('积分流水')}.xlsx`);
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+    res.end(buf);
   }
 }

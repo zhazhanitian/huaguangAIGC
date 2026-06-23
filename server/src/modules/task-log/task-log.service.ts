@@ -8,6 +8,7 @@ import { MusicTask } from '../music/music.entity';
 import { Model3dTask } from '../model3d/model3d.entity';
 import { ChatLog } from '../chat/chat.entity';
 import { User } from '../user/user.entity';
+import { CreditLog, CreditLogType } from '../credit-log/credit-log.entity';
 import { TaskLogQueryDto, PageResult } from './task-log-query.dto';
 
 type TaskWithUser<T> = T & { username?: string; userEmail?: string; userPhone?: string };
@@ -27,6 +28,8 @@ export class TaskLogService {
     private readonly chatLogRepo: Repository<ChatLog>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(CreditLog)
+    private readonly creditLogRepo: Repository<CreditLog>,
   ) {}
 
   /** 批量获取用户信息 Map，key = userId */
@@ -194,9 +197,9 @@ export class TaskLogService {
     video: { tasks: number; points: number };
     music: { tasks: number; points: number };
     model3d: { tasks: number; points: number };
-    chat: { tasks: number };
+    chat: { tasks: number; points: number };
   }> {
-    const [drawStats, canvasStats, videoStats, musicStats, model3dStats, chatStats] =
+    const [drawStats, canvasStats, videoStats, musicStats, model3dStats, chatStats, chatPointsRaw] =
       await Promise.all([
         // 生图（非 canvas 来源）
         this.drawRepo
@@ -247,6 +250,13 @@ export class TaskLogService {
           .select('COUNT(*)', 'tasks')
           .where("t.role = 'assistant'")
           .getRawOne<{ tasks: string }>(),
+
+        // 对话积分消耗（从 credit_logs 中统计 consume_chat 的净扣分，amount 为负数故取 ABS）
+        this.creditLogRepo
+          .createQueryBuilder('c')
+          .select('COALESCE(ABS(SUM(c.amount)), 0)', 'points')
+          .where('c.type = :type', { type: CreditLogType.CONSUME_CHAT })
+          .getRawOne<{ points: string }>(),
       ]);
 
     const toNum = (v: string | undefined) => Number(v ?? 0);
@@ -256,10 +266,10 @@ export class TaskLogService {
     const video = { tasks: toNum(videoStats?.tasks), points: toNum(videoStats?.points) };
     const music = { tasks: toNum(musicStats?.tasks), points: toNum(musicStats?.points) };
     const model3d = { tasks: toNum(model3dStats?.tasks), points: toNum(model3dStats?.points) };
-    const chat = { tasks: toNum(chatStats?.tasks) };
+    const chat = { tasks: toNum(chatStats?.tasks), points: toNum(chatPointsRaw?.points) };
 
     const totalTasks = draw.tasks + canvas.tasks + video.tasks + music.tasks + model3d.tasks + chat.tasks;
-    const totalPoints = draw.points + canvas.points + video.points + music.points + model3d.points;
+    const totalPoints = draw.points + canvas.points + video.points + music.points + model3d.points + chat.points;
 
     return { totalTasks, totalPoints, draw, canvas, video, music, model3d, chat };
   }
@@ -562,9 +572,6 @@ export class TaskLogService {
       { header: '手机', key: 'phone', width: 16 },
       { header: '模型', key: 'model', width: 24 },
       { header: '回复内容', key: 'content', width: 60 },
-      { header: 'Tokens', key: 'tokens', width: 10 },
-      { header: '输入Tokens', key: 'promptTokens', width: 12 },
-      { header: '输出Tokens', key: 'completionTokens', width: 12 },
       { header: '状态', key: 'status', width: 10 },
       { header: '创建时间', key: 'createdAt', width: 22 },
     ];
@@ -576,9 +583,6 @@ export class TaskLogService {
         phone: r.userPhone ?? '',
         model: r.model,
         content: r.content ?? '',
-        tokens: r.tokens ?? 0,
-        promptTokens: r.promptTokens ?? 0,
-        completionTokens: r.completionTokens ?? 0,
         status: r.status,
         createdAt: this.fmtDate(r.createdAt),
       });
