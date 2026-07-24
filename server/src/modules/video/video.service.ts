@@ -509,14 +509,21 @@ export class VideoService {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`视频任务异常（待重试或终态处理）: ${task.id}, ${msg}`);
-      task.params = {
-        ...(task.params ?? {}),
+      // 重新从 DB 读取最新状态，避免用内存中的旧 entity 覆盖孤儿清理器已写入的 FAILED 终态
+      const freshTask = await this.videoRepository.findOne({ where: { id: task.id } });
+      if (!freshTask || freshTask.status === VideoTaskStatus.COMPLETED || freshTask.status === VideoTaskStatus.FAILED) {
+        // 任务已被孤儿清理或其他机制终态处理，不再覆盖
+        this.logger.warn(`[processVideoTask] 任务 ${task.id} 已是终态(${freshTask?.status ?? 'not found'})，跳过 catch save`);
+        throw err;
+      }
+      freshTask.params = {
+        ...(freshTask.params ?? {}),
         [this.PARAM_ENDED_AT_MS]: Date.now(),
       } as any;
-      task.errorMessage = msg;
-      task.progress = 0;
+      freshTask.errorMessage = msg;
+      freshTask.progress = 0;
       // 仅记录错误，不标记 FAILED、不退款——由 Processor 在最后一次重试耗尽后调用 finalizeVideoTaskFailed
-      await this.videoRepository.save(task);
+      await this.videoRepository.save(freshTask);
       throw err;
     }
   }

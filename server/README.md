@@ -1,99 +1,214 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 华光 AIGC · 服务端
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS + TypeORM + Bull 队列的后端服务，提供 AI 绘图、视频、音乐、3D 生成等接口。
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 目录
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- [项目结构](#项目结构)
+- [Docker 部署（推荐）](#docker-部署推荐)
+- [发布更新](#发布更新)
+- [本地开发](#本地开发)
+- [环境变量说明](#环境变量说明)
+- [常用运维命令](#常用运维命令)
 
-## Project setup
+---
 
-```bash
-$ npm install
+## 项目结构
+
+```
+huaguangAIGC/
+├── docker-compose.yml      # 整体编排：MySQL + Redis + Server + Web + Admin
+├── server/
+│   ├── .env                # 后端敏感配置（API Key 等，不提交 git）
+│   ├── Dockerfile          # Server 镜像构建
+│   └── src/
+├── web/                    # 用户前端
+└── admin/                  # 管理后台
 ```
 
-## Compile and run the project
+---
+
+## Docker 部署（推荐）
+
+### 首次部署
+
+1. **上传代码到服务器**
+
+   ```bash
+   # 在服务器上克隆或 scp 上传代码
+   git clone <仓库地址> /opt/huaguang
+   cd /opt/huaguang
+   ```
+
+2. **配置环境变量**
+
+   复制并修改后端配置文件（**必须修改，不要用默认值**）：
+
+   ```bash
+   cp server/.env.example server/.env   # 如果有 example 文件
+   # 或直接编辑
+   vim server/.env
+   ```
+
+   关键字段参考 [环境变量说明](#环境变量说明)。
+
+3. **准备数据库初始化 SQL**
+
+   `docker-compose.yml` 会在 MySQL 首次启动时自动执行：
+
+   ```
+   server/scripts/huaguang_aigc-20260302-230054.sql
+   ```
+
+   确保该文件存在。
+
+4. **启动所有服务**
+
+   ```bash
+   # 在 huaguangAIGC/ 目录下执行
+   docker compose up -d --build
+   ```
+
+   首次启动会构建镜像，需要几分钟。启动后：
+
+   | 服务 | 地址 |
+   |------|------|
+   | 后端 API | `http://服务器IP:3001` |
+   | 用户前端 | `http://服务器IP:3002` |
+   | 管理后台 | `http://服务器IP:3003` |
+   | MySQL | `服务器IP:3308`（仅内部使用） |
+
+5. **确认服务正常**
+
+   ```bash
+   docker compose ps          # 所有服务应为 Up 状态
+   docker compose logs server # 查看后端启动日志
+   ```
+
+---
+
+## 发布更新
+
+每次代码改动后，按以下步骤推送到生产：
 
 ```bash
-# development
-$ npm run start
+# 1. 拉取最新代码
+cd /opt/huaguang
+git pull
 
-# watch mode
-$ npm run start:dev
+# 2. 重新构建并重启（只重启有变化的服务）
+docker compose up -d --build server
 
-# production mode
-$ npm run start:prod
+# 3. 如果前端也有改动
+docker compose up -d --build web admin
+
+# 4. 确认新版本正常运行
+docker compose logs -f server
 ```
 
-## Run tests
+> **注意**：`--build` 会重新构建镜像，确保代码变更生效。  
+> 不加 `--build` 只会重启容器，代码不会更新。
+
+---
+
+## 本地开发
 
 ```bash
-# unit tests
-$ npm run test
+# 安装依赖
+pnpm install
 
-# e2e tests
-$ npm run test:e2e
+# 启动开发服务器（热更新）
+pnpm dev
 
-# test coverage
-$ npm run test:cov
+# 编译
+pnpm build
+
+# 生产模式运行（本地测试 build 产物）
+node dist/main.js
 ```
 
-## Deployment
+本地开发需要本地或 Docker 的 MySQL 和 Redis，修改 `server/.env` 中的连接地址。
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+---
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## 环境变量说明
+
+`server/.env` 文件配置（docker-compose 会优先用 `environment` 块覆盖同名变量）：
+
+| 变量 | 说明 | 示例 |
+|------|------|------|
+| `PORT` | 服务监听端口 | `3001` |
+| `DB_HOST` | MySQL 地址（Docker 内用服务名） | `mysql` / `127.0.0.1` |
+| `DB_PORT` | MySQL 端口 | `3306` |
+| `DB_USER` | MySQL 用户名 | `root` |
+| `DB_PASS` | MySQL 密码 | `your-password` |
+| `DB_DATABASE` | 数据库名 | `huaguang_aigc` |
+| `DB_SYNC` | 自动同步表结构（**生产环境改为 false**） | `true` / `false` |
+| `REDIS_HOST` | Redis 地址 | `redis` / `127.0.0.1` |
+| `REDIS_PORT` | Redis 端口 | `6379` |
+| `JWT_SECRET` | JWT 签名密钥（**必须修改为随机字符串**） | `your-random-secret` |
+| `JWT_EXPIRES_IN` | Token 有效期 | `7d` |
+| `TASK_QUEUE_ENABLED` | 是否启用 Bull 任务队列 | `true` |
+| `MAPI_ENABLED` | 是否启用 MAPI 聚合平台 | `true` |
+| `MAPI_API_KEY` | MAPI 平台 API Key | `sk-xxx` |
+| `MAPI_BASE_URL` | MAPI 接口地址 | `https://server.mapi.zone/Mapi/v3` |
+| `OSS_REGION` | 阿里云 OSS 地域 | `oss-cn-shanghai` |
+| `OSS_BUCKET` | OSS Bucket 名 | `your-bucket` |
+| `OSS_ACCESS_KEY_ID` | OSS AccessKeyId | - |
+| `OSS_ACCESS_KEY_SECRET` | OSS AccessKeySecret | - |
+| `ALIYUN_CONTENT_MODERATION_ACCESS_KEY_ID` | 内容安全 AK | - |
+| `ALIYUN_CONTENT_MODERATION_ACCESS_KEY_SECRET` | 内容安全 SK | - |
+| `STALE_TASK_TIMEOUT_MIN` | 孤儿任务超时阈值（分钟，默认 30） | `30` |
+
+### Docker 环境变量优先级
+
+`docker-compose.yml` 的 `environment` 块 > `env_file`（即 `server/.env`）。
+
+目前 compose 文件中固定覆盖了以下变量，无需在 `.env` 中重复设置：
+
+```yaml
+DB_HOST=mysql        # 容器内通过服务名互访
+REDIS_HOST=redis
+DB_SYNC=true         # ⚠️ 上线稳定后建议改为 false
+```
+
+---
+
+## 常用运维命令
 
 ```bash
-$ npm install -g mau
-$ mau deploy
+# ── 查看状态 ──────────────────────────────
+docker compose ps                    # 所有容器状态
+docker compose logs -f server        # 实时查看后端日志
+docker compose logs -f --tail=100 server  # 最近 100 行
+
+# ── 重启 ──────────────────────────────────
+docker compose restart server        # 重启后端（不重新构建）
+docker compose restart               # 重启所有服务
+
+# ── 更新代码后重新构建 ─────────────────────
+docker compose up -d --build server  # 仅重构后端
+docker compose up -d --build         # 重构所有服务
+
+# ── 进入容器调试 ───────────────────────────
+docker exec -it huaguang-server sh   # 进入后端容器
+docker exec -it huaguang-mysql mysql -uroot -proot huaguang_aigc  # 进入 MySQL
+
+# ── 数据库备份 ─────────────────────────────
+docker exec huaguang-mysql mysqldump -uroot -proot huaguang_aigc > backup_$(date +%Y%m%d).sql
+
+# ── 彻底清除重装（⚠️ 会删除数据库数据） ───
+docker compose down -v               # 停止并删除容器 + 数据卷
+docker compose up -d --build         # 重新构建启动
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## 注意事项
 
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- **生产环境务必修改** `JWT_SECRET`、数据库密码，不要使用默认值
+- `DB_SYNC=true` 会在每次启动时自动同步表结构，适合开发阶段；生产稳定后建议改为 `false`，改用手动迁移
+- OSS / 内容安全等云服务不配置时服务仍可启动，对应功能会跳过或降级
+- 孤儿任务清理默认 30 分钟超时，可通过 `STALE_TASK_TIMEOUT_MIN` 环境变量调整

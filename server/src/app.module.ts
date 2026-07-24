@@ -72,6 +72,9 @@ const enableDbSchemaLog =
       // 默认仅保留 error；需要排查 schema 变更时可开启 DB_SCHEMA_LOG=true
       logging: enableDbSchemaLog ? ['error', 'schema'] : ['error'],
       charset: 'utf8mb4',
+      // 强制统一使用 UTC 存储/比较时间，避免 Node.js 本地时区与 MySQL 系统时区不一致
+      // 导致 updatedAt 比较出现偏差（如孤儿任务误判）
+      timezone: 'Z',
     }),
 
     // Bull 队列（Redis）
