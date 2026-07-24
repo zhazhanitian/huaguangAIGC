@@ -41,7 +41,7 @@
 - 已在 `vite.config.ts` 中按第三方依赖拆分 vendor chunk，并设置合理的 chunk 警告阈值，最终生产构建无警告通过。
 
 ## 前端 MAPI 模型可用性检查
-- 运行证据：本地后端公开模型接口返回 MAPI 模型共 16 个；MAPI 上游目录 `https://kapi.planisp.com/ai_model/list` 返回 `200`，`isAvailable=true` 模型共 16 个。
+- 运行证据：本地后端公开模型接口返回 MAPI 模型共 16 个；MAPI 上游目录 `https://server.mapi.zone/ai_model/list` 返回 `200`，`isAvailable=true` 模型共 16 个。
 - 当前前端会通过后端列表展示的 MAPI 模型中，不在上游可用目录里的模型：
   - `kling-3.0`（视频，显示名：Kling 3.0，本地 `isActive=1`、`isPublic=1`、`source=mapi`）
 - 前端硬编码候选中有 25 个不在本地公开启用 MAPI 列表中；这些模型当前会被前端按后端启用列表过滤掉，不属于当前实际可展示模型。
@@ -295,12 +295,12 @@
 - 已修复远端 `.env`：
   - `MAPI_ENABLED=true`
   - `MAPI_API_KEY=sk-z719wdkxrkymppz9sxyxuf5gso2xpvsn`
-  - `MAPI_BASE_URL=https://kapi.planisp.com/Mapi/v3`
+  - `MAPI_BASE_URL=https://server.mapi.zone/Mapi/v3`
 - 已重启线上 `huaguang-server` 容器。
 - 容器环境验证：
   - `MAPI_ENABLED=true`
   - `MAPI_API_KEY=...`
-  - `MAPI_BASE_URL=https://kapi.planisp.com/Mapi/v3`
+  - `MAPI_BASE_URL=https://server.mapi.zone/Mapi/v3`
 - 后端健康验证：`/api/docs` 返回 200。
 - 模块验证：
   - 图片：`POST /api/draw/task` 使用 `nano-banana-2` 成功进入 MAPI 图片链路，日志出现 `[MAPI 图片] 创建任务`，并完成生成。

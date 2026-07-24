@@ -147,7 +147,7 @@
 - 已写入远端 `/www/wwwroot/huaguangAIGC-master/server/.env`：
   - `MAPI_ENABLED=true`
   - `MAPI_API_KEY=sk-z719wdkxrkymppz9sxyxuf5gso2xpvsn`
-  - `MAPI_BASE_URL=https://kapi.planisp.com/Mapi/v3`
+  - `MAPI_BASE_URL=https://server.mapi.zone/Mapi/v3`
 - 已 `docker compose up -d --force-recreate server` 重启 `huaguang-server`。
 - 已验证容器环境变量进入容器，`/api/docs` 返回 200。
 - 已验证图片、视频、文本 MAPI 路径：

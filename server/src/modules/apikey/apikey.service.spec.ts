@@ -24,7 +24,7 @@ describe('ApiKeyService', () => {
       APIMART_API_KEY: 'apimart-test-key',
       GRSAI_API_KEY: 'grsai-test-key',
       MAPI_API_KEY: 'mapi-test-key',
-      MAPI_BASE_URL: 'https://kapi.planisp.com/Mapi/v3',
+      MAPI_BASE_URL: 'https://server.mapi.zone/Mapi/v3',
     };
     service = new ApiKeyService(repository as any, dataSource as any);
   });
@@ -46,7 +46,7 @@ describe('ApiKeyService', () => {
       name: 'MAPI API',
       provider: 'mapi',
       apiKey: 'mapi-test-key',
-      baseUrl: 'https://kapi.planisp.com/Mapi/v3',
+      baseUrl: 'https://server.mapi.zone/Mapi/v3',
     });
   });
 
@@ -80,7 +80,7 @@ describe('ApiKeyService', () => {
       name: 'MAPI API',
       provider: 'mapi',
       apiKey: 'mapi-test-key',
-      baseUrl: 'https://kapi.planisp.com/Mapi/v3',
+      baseUrl: 'https://server.mapi.zone/Mapi/v3',
     });
   });
 });

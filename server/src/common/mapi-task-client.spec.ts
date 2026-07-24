@@ -47,7 +47,7 @@ describe('mapi-task-client', () => {
         ...originalEnv,
         MAPI_ENABLED: 'true',
         MAPI_API_KEY: 'sk-test',
-        MAPI_BASE_URL: 'https://kapi.planisp.com/Mapi/v3',
+        MAPI_BASE_URL: 'https://server.mapi.zone/Mapi/v3',
       };
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
@@ -82,7 +82,7 @@ describe('mapi-task-client', () => {
 
       expect(result.ourOrderNo).toBe('P_26040716160313401000002');
       expect(global.fetch).toHaveBeenCalledWith(
-        'https://kapi.planisp.com/Mapi/Tencent/v3/contents/generations/tasks',
+        'https://server.mapi.zone/Mapi/Tencent/v3/contents/generations/tasks',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({

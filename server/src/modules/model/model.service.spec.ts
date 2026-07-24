@@ -26,7 +26,7 @@ describe('ModelService', () => {
     process.env = {
       ...originalEnv,
       MAPI_ENABLED: 'true',
-      MAPI_BASE_URL: 'https://kapi.planisp.com/Mapi/v3',
+      MAPI_BASE_URL: 'https://server.mapi.zone/Mapi/v3',
     };
     delete process.env.MAPI_API_KEY;
     service = new ModelService(
@@ -69,7 +69,7 @@ describe('ModelService', () => {
       id: 'global-mapi-1',
       provider: 'mapi',
       apiKey: 'db-mapi-key',
-      baseUrl: 'https://kapi.planisp.com/Mapi/v3',
+      baseUrl: 'https://server.mapi.zone/Mapi/v3',
       isActive: true,
     });
 
@@ -77,7 +77,7 @@ describe('ModelService', () => {
 
     expect(runtime).toMatchObject({
       apiKey: 'db-mapi-key',
-      baseUrl: 'https://kapi.planisp.com/Mapi/v3',
+      baseUrl: 'https://server.mapi.zone/Mapi/v3',
       keyId: 'global:global-mapi-1',
       transport: 'openai-chat',
     });
@@ -124,7 +124,7 @@ describe('ModelService', () => {
           id: 'global-mapi-1',
           provider: ApiKeyProvider.MAPI,
           apiKey: 'db-mapi-key',
-          baseUrl: 'https://kapi.planisp.com/Mapi/v3',
+          baseUrl: 'https://server.mapi.zone/Mapi/v3',
           isActive: true,
         };
       }
@@ -166,7 +166,7 @@ describe('ModelService', () => {
       maxTokens: 4096,
       temperature: 0.7,
       apiKey: 'db-mapi-key',
-      baseUrl: 'https://kapi.planisp.com/Mapi/v3',
+      baseUrl: 'https://server.mapi.zone/Mapi/v3',
       keyId: 'global:global-mapi-1',
       transport: 'openai-chat',
     });

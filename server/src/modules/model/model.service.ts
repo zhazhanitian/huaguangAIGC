@@ -740,7 +740,7 @@ export class ModelService {
   /** MAPI 的 OpenAI 兼容端点走 /Mapi/v3，鉴权头要求 Authorization: sk-xxx（不带 Bearer） */
   private isMapiOpenAICompat(runtime: RuntimeModelConfig): boolean {
     const base = String(runtime.baseUrl || '').toLowerCase();
-    return base.includes('/mapi/') || base.includes('kapi.planisp.com/mapi');
+    return base.includes('/mapi/') || base.includes('server.mapi.zone/mapi');
   }
 
   private buildOpenAICompatAuthHeader(runtime: RuntimeModelConfig): string {
@@ -1714,7 +1714,7 @@ export class ModelService {
   }
 
   private async fetchMapiCatalog(): Promise<MapiCatalogItem[]> {
-    const response = await fetch('https://kapi.planisp.com/ai_model/list', {
+    const response = await fetch('https://server.mapi.zone/ai_model/list', {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -1730,7 +1730,7 @@ export class ModelService {
     });
 
     const text = await response.text();
-    console.log('[MAPI Sync] 请求地址: https://kapi.planisp.com/ai_model/list');
+    console.log('[MAPI Sync] 请求地址: https://server.mapi.zone/ai_model/list');
     console.log(`[MAPI Sync] 状态码: ${response.status}`);
     console.log(`[MAPI Sync] 返回内容前200字符: ${text.substring(0, 200)}`);
 

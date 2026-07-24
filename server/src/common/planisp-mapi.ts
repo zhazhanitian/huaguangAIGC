@@ -17,7 +17,7 @@ export function getPlanispApiKey(): string {
 
 /** 默认与文档常见写法一致：根域名 + /v1 */
 export function normalizeMapiBaseUrl(): string {
-  const fallback = 'https://kapi.planisp.com/Mapi/v3';
+  const fallback = 'https://server.mapi.zone/Mapi/v3';
   let base = String(process.env.MAPI_BASE_URL || fallback).trim().replace(/\/+$/, '');
   return base;
 }
